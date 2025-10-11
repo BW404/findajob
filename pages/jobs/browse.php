@@ -23,15 +23,9 @@
     <link rel="stylesheet" href="../../assets/css/main.css">
 </head>
 <body>
+    <?php include '../../includes/header.php'; ?>
+    
     <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <a href="../../index.php" class="logo">
-                    <img src="../../assets/images/logo.png" alt="FindAJob Nigeria" class="logo-img">
-                </a>
-                <h1 class="page-title">Browse Jobs</h1>
-            </div>
-        </header>
 
         <main class="main-content">
             <!-- Search Filters -->
@@ -236,5 +230,7 @@
             });
         });
     </script>
+
+    <?php include '../../includes/footer.php'; ?>
 </body>
 </html>

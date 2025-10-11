@@ -98,7 +98,7 @@ if (isLoggedIn()) {
 
                     <!-- Submit Button -->
                     <div class="register-submit-section">
-                        <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+                        <button type="submit" class="btn btn-register btn-block">Create Account</button>
                     </div>
                 </div>
             </form>

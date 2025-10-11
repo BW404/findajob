@@ -4,6 +4,15 @@
  * Shared header component for all pages
  */
 
+// Include required dependencies
+$header_base_path = dirname(__DIR__) . '/';
+if (file_exists($header_base_path . 'config/session.php')) {
+    require_once $header_base_path . 'config/session.php';
+}
+if (file_exists($header_base_path . 'includes/functions.php')) {
+    require_once $header_base_path . 'includes/functions.php';
+}
+
 // Ensure session is started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -53,26 +62,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
                         <li><a href="<?php echo $is_auth_page ? '../jobs/browse.php' : '/findajob/pages/jobs/browse.php'; ?>" class="nav-link">Browse Jobs</a></li>
                         <li><a href="<?php echo $is_auth_page ? '../services/cv-creator.php' : '/findajob/pages/services/cv-creator.php'; ?>" class="nav-link">CV Builder</a></li>
                         <li><a href="<?php echo $is_auth_page ? 'login.php' : '/findajob/pages/auth/login.php'; ?>" class="nav-link">Sign In</a></li>
-                        <li><a href="<?php echo $is_auth_page ? 'register-jobseeker.php' : '/findajob/pages/auth/register-jobseeker.php'; ?>" class="btn btn-primary nav-cta">Get Started</a></li>
-                    <?php endif; ?>
-                    
-                    <?php if (isDevelopmentMode()): ?>
-                        <li class="nav-dropdown dev-tools">
-                            <a href="#" class="nav-link dropdown-toggle dev-link">
-                                🛠️ Dev Tools
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a href="<?php echo $is_auth_page ? '../../temp_mail.php' : '/findajob/temp_mail.php'; ?>">📧 Email Inbox</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../test_email.php' : '/findajob/test_email.php'; ?>">🧪 Test Emails</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../test_registration.php' : '/findajob/test_registration.php'; ?>">🔧 Test Registration</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../test_database.php' : '/findajob/test_database.php'; ?>">🗄️ Test Database</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../logo_test.php' : '/findajob/logo_test.php'; ?>">🎨 Logo Test</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../logo_path_test.php' : '/findajob/logo_path_test.php'; ?>">🔗 Logo Paths</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../dev_status.php' : '/findajob/dev_status.php'; ?>">📊 Dev Status</a></li>
-                                <li class="dropdown-divider"></li>
-                                <li><a href="#" onclick="console.log('Development Mode Active'); alert('Check browser console for dev tools');">🐛 Console</a></li>
-                            </ul>
-                        </li>
+                        <li><a href="<?php echo $is_auth_page ? 'register-jobseeker.php' : '/findajob/pages/auth/register-jobseeker.php'; ?>" class="btn btn-register nav-cta">Get Started</a></li>
                     <?php endif; ?>
                 </ul>
             </div>
@@ -226,45 +216,6 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
     height: 1px;
     background: #e2e8f0;
     margin: 0.5rem 0;
-}
-
-/* Development Tools Styling */
-.dev-tools .dev-link {
-    background: linear-gradient(45deg, #f59e0b, #d97706);
-    color: white !important;
-    border-radius: 6px;
-    padding: 0.5rem 1rem !important;
-    font-weight: 600;
-    font-size: 0.85rem;
-    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
-    animation: pulse-dev 2s infinite;
-}
-
-.dev-tools .dev-link:hover {
-    background: linear-gradient(45deg, #d97706, #b45309);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
-}
-
-.dev-tools .dropdown-menu {
-    border: 2px solid #f59e0b;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.dev-tools .dropdown-menu a {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
-}
-
-.dev-tools .dropdown-menu a:hover {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-@keyframes pulse-dev {
-    0%, 100% { box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
-    50% { box-shadow: 0 2px 8px rgba(245, 158, 11, 0.6); }
 }
 
 .nav-toggle {

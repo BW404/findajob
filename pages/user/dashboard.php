@@ -2,6 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/functions.php';
 
 requireJobSeeker();
 
@@ -24,30 +25,129 @@ $user = $stmt->fetch();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?php echo SITE_NAME; ?></title>
     <link rel="stylesheet" href="../../assets/css/main.css">
+    
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .main-content, .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .alert-info {
+            background: var(--blue-light, #dbeafe);
+            border: 1px solid var(--blue, #2563eb);
+            color: var(--blue-dark, #1d4ed8);
+        }
+        
+
+
+        @media (max-width: 768px) {
+            .dashboard-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .header-actions {
+                justify-content: center;
+            }
+            
+            .dashboard-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div>
-                    <span>Welcome, <?php echo htmlspecialchars($user['first_name']); ?>!</span>
-                    <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
-                        <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-secondary" style="margin-right: 1rem;">📧 Dev Emails</a>
-                    <?php endif; ?>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include '../../includes/header.php'; ?>
 
-    <main class="container">
-        <div style="padding: 2rem 0;">
-            <h1>Job Seeker Dashboard</h1>
-            
-            <?php if (!$user['email_verified']): ?>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div>
+                <h1 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">🏠 Job Seeker Dashboard</h1>
+                <p style="margin: 0; color: var(--text-secondary);">Welcome back, <?php echo htmlspecialchars($user['first_name']); ?>! Track your job search progress and manage your applications</p>
+            </div>
+            <div class="header-actions">
+                <?php if (isDevelopmentMode()): ?>
+                    <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-blue btn-sm">📧 Dev Emails</a>
+                <?php endif; ?>
+                <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
+        
+        <?php if (!$user['email_verified']): ?>
                 <div class="alert alert-info">
                     <strong>Please verify your email address.</strong>
                     Your account is not fully activated until you verify your email.
@@ -57,8 +157,8 @@ $user = $stmt->fetch();
                 </div>
             <?php endif; ?>
 
-            <!-- Dashboard Stats Cards -->
-            <div class="dashboard-stats">
+        <!-- Dashboard Stats Cards -->
+        <div class="dashboard-stats">
                 <div class="stat-card">
                     <div class="stat-icon">📋</div>
                     <div class="stat-content">
@@ -94,10 +194,10 @@ $user = $stmt->fetch();
                         <div class="stat-change neutral">Complete profile</div>
                     </div>
                 </div>
-            </div>
+        </div>
 
-            <!-- Main Dashboard Content -->
-            <div class="dashboard-content">
+        <!-- Main Dashboard Content -->
+        <div class="dashboard-content">
                 <!-- Left Column -->
                 <div class="dashboard-left">
                     <!-- Profile Summary Card -->
@@ -302,7 +402,35 @@ $user = $stmt->fetch();
                 </div>
             </div>
         </div>
-    </main>
+        
+        <!-- Dashboard Tips Section -->
+        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 2rem;">
+            <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">💡 Job Search Tips</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div>
+                    <h4 style="color: var(--success); margin: 0 0 0.5rem 0;">📝 Optimize Your Profile</h4>
+                    <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                        Complete your profile with skills, experience, and education to increase visibility 
+                        to employers and improve job matching.
+                    </p>
+                </div>
+                <div>
+                    <h4 style="color: var(--orange); margin: 0 0 0.5rem 0;">🎯 Apply Strategically</h4>
+                    <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                        Tailor your CV for each application and write compelling cover letters. 
+                        Quality applications get better response rates.
+                    </p>
+                </div>
+                <div>
+                    <h4 style="color: var(--purple); margin: 0 0 0.5rem 0;">🔄 Stay Active</h4>
+                    <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                        Log in regularly, update your profile, and respond quickly to employer messages 
+                        to maintain high visibility in search results.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Bottom Navigation for Mobile -->
     <nav class="app-bottom-nav">
@@ -481,5 +609,7 @@ $user = $stmt->fetch();
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
     </script>
+
+    <?php include '../../includes/footer.php'; ?>
 </body>
 </html>

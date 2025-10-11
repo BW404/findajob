@@ -12,6 +12,29 @@
   --border: #e2e8f0;
   --success: #059669;
   --error: #dc2626;
+  
+  /* New softer colors for better balance */
+  --amber: #f59e0b;
+  --amber-light: #fef3c7;
+  --amber-dark: #d97706;
+  --yellow: #eab308;
+  --yellow-light: #fefce8;
+  --yellow-dark: #ca8a04;
+  --orange: #ea580c;
+  --orange-light: #fed7aa;
+  --orange-dark: #c2410c;
+  --green: #059669;
+  --green-light: #dcfce7;
+  --green-dark: #047857;
+  --purple: #7c3aed;
+  --purple-light: #ede9fe;
+  --purple-dark: #5b21b6;
+  --teal: #0d9488;
+  --teal-light: #ccfbf1;
+  --teal-dark: #0f766e;
+  --black: #1f2937;
+  --black-light: #374151;
+  --black-dark: #111827;
 }
 
 * {
@@ -281,6 +304,125 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* New Colored Button Variations */
+.btn-amber {
+  background-color: var(--amber);
+  color: white;
+}
+
+.btn-amber:hover {
+  background-color: var(--amber-dark);
+}
+
+.btn-yellow {
+  background-color: var(--yellow);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.btn-yellow:hover {
+  background-color: var(--yellow-dark);
+  color: white;
+}
+
+.btn-green {
+  background-color: var(--green);
+  color: white;
+}
+
+.btn-green:hover {
+  background-color: var(--green-dark);
+}
+
+.btn-orange {
+  background-color: var(--orange);
+  color: white;
+}
+
+.btn-orange:hover {
+  background-color: var(--orange-dark);
+}
+
+.btn-purple {
+  background-color: var(--purple);
+  color: white;
+}
+
+.btn-purple:hover {
+  background-color: var(--purple-dark);
+}
+
+.btn-teal {
+  background-color: var(--teal);
+  color: white;
+}
+
+.btn-teal:hover {
+  background-color: var(--teal-dark);
+}
+
+.btn-black {
+  background-color: var(--black);
+  color: white;
+}
+
+.btn-black:hover {
+  background-color: var(--black-dark);
+}
+
+/* Button Size Variations */
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  min-height: 36px;
+}
+
+.btn-lg {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  min-height: 52px;
+}
+
+/* Specific Button Types for Better UX */
+.btn-login {
+  background-color: var(--amber);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-login:hover {
+  background-color: var(--amber-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+}
+
+.btn-register {
+  background-color: var(--green);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-register:hover {
+  background-color: var(--green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.btn-apply-job {
+  background-color: var(--yellow);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.btn-apply-job:hover {
+  background-color: var(--yellow-dark);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25);
+}
+
+
 
 .form-check {
   display: flex;
@@ -913,24 +1055,28 @@ body {
 }
 
 .btn-apply {
-  background: var(--primary);
-  color: white;
+  background: var(--yellow);
+  color: var(--text-primary);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-apply:hover {
-  background: var(--primary-dark);
+  background: var(--yellow-dark);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25);
 }
 
 .btn-save {
-  background: var(--background);
-  border: 1px solid var(--border);
+  background: var(--teal-light);
+  border: 1px solid var(--teal);
+  color: var(--teal-dark);
   padding: 0.5rem;
   border-radius: 6px;
   cursor: pointer;
@@ -938,7 +1084,11 @@ body {
 }
 
 .btn-save:hover {
-  background: var(--primary-light);
+  background: var(--teal);
+  color: white;
+  border-color: var(--teal-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
 }
 
 /* Activity List */
@@ -1126,6 +1276,17 @@ body {
     padding: 1rem 2rem;
     white-space: nowrap;
     align-self: stretch;
+    background-color: var(--black);
+    color: white;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.search-btn:hover {
+    background-color: var(--black-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(31, 41, 55, 0.25);
 }
 
 /* Mobile Responsive */

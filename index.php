@@ -44,22 +44,7 @@ if (isLoggedIn()) {
     <meta name="msapplication-TileImage" content="/findajob/assets/images/icons/icon-192x192.svg">
 </head>
 <body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div class="nav-actions">
-                    <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
-                        <a href="temp_mail.php" target="_blank" class="btn btn-secondary dev-email-btn">📧 Dev Emails</a>
-                    <?php endif; ?>
-                    <a href="pages/auth/login.php" class="btn btn-outline">Login</a>
-                    <a href="pages/auth/register.php" class="btn btn-primary">Get Started</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include 'includes/header.php'; ?>
 
     <main>
         <!-- Hero Section -->
@@ -81,8 +66,8 @@ if (isLoggedIn()) {
                             <input type="text" name="location" placeholder="Location" 
                                    class="search-input">
                         </div>
-                        <button type="submit" class="btn btn-primary search-btn">
-                            Search Jobs
+                        <button type="submit" class="btn search-btn">
+                            🔍 Search Jobs
                         </button>
                     </form>
                 </div>
@@ -146,7 +131,7 @@ if (isLoggedIn()) {
                     Join thousands of Nigerians who have found their dream jobs through our platform
                 </p>
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <a href="pages/auth/register.php?type=job_seeker" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.125rem;">
+                    <a href="pages/auth/register.php?type=job_seeker" class="btn btn-register" style="padding: 1rem 2rem; font-size: 1.125rem;">
                         I'm Looking for a Job
                     </a>
                     <a href="pages/auth/register.php?type=employer" class="btn btn-outline" style="padding: 1rem 2rem; font-size: 1.125rem;">
@@ -214,5 +199,7 @@ if (isLoggedIn()) {
             }
         }
     </script>
+
+    <?php include 'includes/footer.php'; ?>
 </body>
 </html>

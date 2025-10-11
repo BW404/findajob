@@ -4,45 +4,13 @@
  * Essential helper functions for the application
  */
 
-/**
- * Check if user is logged in
- * @return bool
- */
-function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
-
-/**
- * Check if current user is an employer
- * @return bool
- */
-function isEmployer() {
-    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'employer';
-}
-
-/**
- * Check if current user is a job seeker
- * @return bool
- */
-function isJobSeeker() {
-    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'job_seeker';
-}
-
-/**
- * Get current user ID
- * @return int|null
- */
-function getCurrentUserId() {
-    return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
-}
-
-/**
- * Get current user type
- * @return string|null
- */
-function getCurrentUserType() {
-    return isset($_SESSION['user_type']) ? $_SESSION['user_type'] : null;
-}
+// Authentication and session functions are defined in config/session.php
+// Available functions from session.php:
+// - isLoggedIn(), isJobSeeker(), isEmployer(), isAdmin()
+// - getCurrentUserId(), getCurrentUserType()
+// - loginUser(), logoutUser(), isEmailVerified()
+// - requireLogin(), requireJobSeeker(), requireEmployer()
+// - generateCSRFToken(), validateCSRFToken()
 
 /**
  * Sanitize input data
@@ -258,25 +226,8 @@ function logActivity($message, $level = 'INFO') {
     file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 }
 
-/**
- * Generate CSRF token
- * @return string
- */
-function generateCSRFToken() {
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
-}
-
-/**
- * Verify CSRF token
- * @param string $token
- * @return bool
- */
-function verifyCSRFToken($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-}
+// CSRF token functions are defined in config/session.php
+// generateCSRFToken(), validateCSRFToken() are available from session.php
 
 /**
  * Get user's IP address

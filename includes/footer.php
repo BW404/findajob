@@ -4,6 +4,12 @@
  * Shared footer component for all pages
  */
 
+// Include required dependencies
+$footer_base_path = dirname(__DIR__) . '/';
+if (file_exists($footer_base_path . 'includes/functions.php')) {
+    require_once $footer_base_path . 'includes/functions.php';
+}
+
 // Check if we're on an auth page
 $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
 $base_path = $is_auth_page ? '../../' : '/findajob/';

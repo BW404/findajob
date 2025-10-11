@@ -258,10 +258,13 @@ CREATE TABLE cvs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
+    description TEXT,
     content JSON,
     file_path VARCHAR(500),
     file_name VARCHAR(255),
+    original_filename VARCHAR(255),
     file_size INT,
+    file_type VARCHAR(50),
     is_primary BOOLEAN DEFAULT FALSE,
     is_public BOOLEAN DEFAULT TRUE,
     template_id VARCHAR(50),
@@ -272,7 +275,8 @@ CREATE TABLE cvs (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_is_primary (is_primary),
-    INDEX idx_is_public (is_public)
+    INDEX idx_is_public (is_public),
+    INDEX idx_file_type (file_type)
 );
 
 -- Insert sample job categories

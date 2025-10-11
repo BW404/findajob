@@ -671,19 +671,7 @@ $profileCompletion = calculateProfileCompletion($user);
     </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div>
-                    <span>Welcome, <?php echo htmlspecialchars($user['first_name']); ?>!</span>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include '../../includes/header.php'; ?>
 
     <main class="profile-container">
         <!-- Profile Header -->
@@ -1504,5 +1492,7 @@ $profileCompletion = calculateProfileCompletion($user);
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
     </script>
+
+    <?php include '../../includes/footer.php'; ?>
 </body>
 </html>
