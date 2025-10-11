@@ -18,8 +18,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
         <div class="nav-container">
             <div class="nav-brand">
                 <a href="<?php echo $is_auth_page ? '../../index.php' : '/findajob/index.php'; ?>" class="brand-link">
-                    <img src="<?php echo $is_auth_page ? '../../assets/images/icons/icon-192x192.svg' : '/findajob/assets/images/icons/icon-192x192.svg'; ?>" alt="FindAJob Nigeria" class="brand-logo">
-                    <span class="brand-text">FindAJob</span>
+                    <img src="<?php echo $is_auth_page ? '../../assets/images/logo_full.png' : '/findajob/assets/images/logo_full.png'; ?>" alt="FindAJob Nigeria" class="brand-logo">
                 </a>
             </div>
             
@@ -68,6 +67,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
                                 <li><a href="<?php echo $is_auth_page ? '../../test_registration.php' : '/findajob/test_registration.php'; ?>">🔧 Test Registration</a></li>
                                 <li><a href="<?php echo $is_auth_page ? '../../test_database.php' : '/findajob/test_database.php'; ?>">🗄️ Test Database</a></li>
                                 <li><a href="<?php echo $is_auth_page ? '../../logo_test.php' : '/findajob/logo_test.php'; ?>">🎨 Logo Test</a></li>
+                                <li><a href="<?php echo $is_auth_page ? '../../logo_path_test.php' : '/findajob/logo_path_test.php'; ?>">🔗 Logo Paths</a></li>
                                 <li><a href="<?php echo $is_auth_page ? '../../dev_status.php' : '/findajob/dev_status.php'; ?>">📊 Dev Status</a></li>
                                 <li class="dropdown-divider"></li>
                                 <li><a href="#" onclick="console.log('Development Mode Active'); alert('Check browser console for dev tools');">🐛 Console</a></li>
@@ -122,8 +122,9 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
 }
 
 .brand-logo {
-    width: 32px;
-    height: 32px;
+    height: 40px;
+    width: auto;
+    max-width: 180px;
 }
 
 .brand-text {

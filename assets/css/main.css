@@ -465,6 +465,16 @@ body {
   font-size: 1.5rem;
   font-weight: 700;
   text-decoration: none;
+  margin: 0px;
+  margin-top: -50px;
+  margin-bottom: -50px;
+  padding: 0px;
+}
+
+.site-logo-img {
+  height: 90px;
+  width: auto;
+  max-width: 180px;
 }
 
 /* Dashboard Styles */

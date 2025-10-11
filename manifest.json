@@ -28,7 +28,7 @@
   ],
   "icons": [
     {
-      "src": "assets/images/icons/icon-192x192.svg",
+      "src": "assets/images/icons/icon-192x192.",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

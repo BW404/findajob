@@ -47,7 +47,9 @@ if (isLoggedIn()) {
     <header class="site-header">
         <div class="container">
             <nav class="site-nav">
-                <a href="/" class="site-logo"><?php echo SITE_NAME; ?></a>
+                <a href="/" class="site-logo">
+                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
+                </a>
                 <div class="nav-actions">
                     <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
                         <a href="temp_mail.php" target="_blank" class="btn btn-secondary dev-email-btn">📧 Dev Emails</a>

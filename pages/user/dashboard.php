@@ -29,7 +29,9 @@ $user = $stmt->fetch();
     <header class="site-header">
         <div class="container">
             <nav class="site-nav">
-                <a href="/findajob" class="site-logo"><?php echo SITE_NAME; ?></a>
+                <a href="/findajob" class="site-logo">
+                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
+                </a>
                 <div>
                     <span>Welcome, <?php echo htmlspecialchars($user['first_name']); ?>!</span>
                     <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>

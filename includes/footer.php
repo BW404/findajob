@@ -13,7 +13,7 @@ $base_path = $is_auth_page ? '../../' : '/findajob/';
         <div class="footer-content">
             <div class="footer-section">
                 <div class="footer-brand">
-                    <img src="<?php echo $base_path; ?>assets/images/icons/icon-192x192.svg" alt="FindAJob Nigeria" class="footer-logo">
+                    <img src="<?php echo $base_path; ?>assets/images/logo_full.png" alt="FindAJob Nigeria" class="footer-logo">
                     <h3>FindAJob Nigeria</h3>
                     <p>Connecting talent with opportunity across Nigeria. Find your dream job or hire the best talent.</p>
                 </div>
@@ -142,8 +142,9 @@ $base_path = $is_auth_page ? '../../' : '/findajob/';
 }
 
 .footer-logo {
-    width: 40px;
-    height: 40px;
+    height: 50px;
+    width: auto;
+    max-width: 200px;
     margin-bottom: 0.5rem;
 }
 
