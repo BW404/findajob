@@ -1,0 +1,120 @@
+[2025-10-10 07:44:29] [ERROR] [database.php:56] Database connection failed
+Data: Array
+(
+    [error] => SQLSTATE[HY000] [1049] Unknown database 'findajob_ng_dev'
+    [host] => localhost
+    [database] => findajob_ng_dev
+    [user] => root
+)
+
+--------------------------------------------------------------------------------
+[2025-10-10 07:45:01] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(logs.php): Failed to open stream: No such file or directory
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 225
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:01 Europe/Berlin] PHP Warning:  include(logs.php): Failed to open stream: No such file or directory in E:\XAMPP\htdocs\findajob\dev\index.php on line 225
+[2025-10-10 07:45:01] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(): Failed opening 'logs.php' for inclusion (include_path='E:\XAMPP\php\PEAR')
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 225
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:01 Europe/Berlin] PHP Warning:  include(): Failed opening 'logs.php' for inclusion (include_path='E:\XAMPP\php\PEAR') in E:\XAMPP\htdocs\findajob\dev\index.php on line 225
+[2025-10-10 07:45:02] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(queries.php): Failed to open stream: No such file or directory
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 228
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:02 Europe/Berlin] PHP Warning:  include(queries.php): Failed to open stream: No such file or directory in E:\XAMPP\htdocs\findajob\dev\index.php on line 228
+[2025-10-10 07:45:02] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(): Failed opening 'queries.php' for inclusion (include_path='E:\XAMPP\php\PEAR')
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 228
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:02 Europe/Berlin] PHP Warning:  include(): Failed opening 'queries.php' for inclusion (include_path='E:\XAMPP\php\PEAR') in E:\XAMPP\htdocs\findajob\dev\index.php on line 228
+[2025-10-10 07:45:03] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(emails.php): Failed to open stream: No such file or directory
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 231
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:03 Europe/Berlin] PHP Warning:  include(emails.php): Failed to open stream: No such file or directory in E:\XAMPP\htdocs\findajob\dev\index.php on line 231
+[2025-10-10 07:45:03] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(): Failed opening 'emails.php' for inclusion (include_path='E:\XAMPP\php\PEAR')
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 231
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:03 Europe/Berlin] PHP Warning:  include(): Failed opening 'emails.php' for inclusion (include_path='E:\XAMPP\php\PEAR') in E:\XAMPP\htdocs\findajob\dev\index.php on line 231
+[2025-10-10 07:45:03] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(database.php): Failed to open stream: No such file or directory
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 234
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:03 Europe/Berlin] PHP Warning:  include(database.php): Failed to open stream: No such file or directory in E:\XAMPP\htdocs\findajob\dev\index.php on line 234
+[2025-10-10 07:45:03] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(): Failed opening 'database.php' for inclusion (include_path='E:\XAMPP\php\PEAR')
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 234
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:03 Europe/Berlin] PHP Warning:  include(): Failed opening 'database.php' for inclusion (include_path='E:\XAMPP\php\PEAR') in E:\XAMPP\htdocs\findajob\dev\index.php on line 234
+[2025-10-10 07:45:04] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(config.php): Failed to open stream: No such file or directory
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 237
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:04 Europe/Berlin] PHP Warning:  include(config.php): Failed to open stream: No such file or directory in E:\XAMPP\htdocs\findajob\dev\index.php on line 237
+[2025-10-10 07:45:04] [PHP_ERROR] [dev-helpers.php:306] PHP WARNING: include(): Failed opening 'config.php' for inclusion (include_path='E:\XAMPP\php\PEAR')
+Data: Array
+(
+    [file] => E:\XAMPP\htdocs\findajob\dev\index.php
+    [line] => 237
+    [severity] => 2
+)
+
+--------------------------------------------------------------------------------
+[10-Oct-2025 07:45:04 Europe/Berlin] PHP Warning:  include(): Failed opening 'config.php' for inclusion (include_path='E:\XAMPP\php\PEAR') in E:\XAMPP\htdocs\findajob\dev\index.php on line 237
+[2025-10-10 07:45:05] [ERROR] [database.php:56] Database connection failed
+Data: Array
+(
+    [error] => SQLSTATE[HY000] [1049] Unknown database 'findajob_ng_dev'
+    [host] => localhost
+    [database] => findajob_ng_dev
+    [user] => root
+)
+
+--------------------------------------------------------------------------------

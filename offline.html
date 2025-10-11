@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're Offline - FindAJob Nigeria</title>
+    <meta name="theme-color" content="#dc2626">
+    <style>
+        :root {
+            --primary: #dc2626;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --background: #f8fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .offline-container {
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+        }
+        
+        .offline-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        
+        .offline-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .retry-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .retry-btn:hover {
+            background: #991b1b;
+        }
+        
+        .cached-content {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .cached-content h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .cached-links {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .cached-links li {
+            margin: 0.5rem 0;
+        }
+        
+        .cached-links a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .cached-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱</div>
+        <h1 class="offline-title">You're Offline</h1>
+        <p class="offline-message">
+            No internet connection found. Check your connection and try again.
+        </p>
+        
+        <button class="retry-btn" onclick="window.location.reload()">
+            Try Again
+        </button>
+        
+        <div class="cached-content">
+            <h3>Available Offline:</h3>
+            <ul class="cached-links">
+                <li><a href="/findajob/">Homepage</a></li>
+                <li><a href="/findajob/pages/auth/login.php">Login</a></li>
+                <li><a href="/findajob/pages/jobs/browse.php">Browse Jobs</a></li>
+                <li><a href="/findajob/pages/user/dashboard.php">Dashboard</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Check connection status
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+        
+        // Show connection status
+        if (navigator.onLine) {
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
