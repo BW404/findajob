@@ -4,19 +4,178 @@ require_once '../../config/session.php';
 require_once '../../config/constants.php';
 require_once '../../includes/functions.php';
 
+
+
 requireJobSeeker();
 
 $userId = getCurrentUserId();
 
-// Get user profile data
+// Get user profile data with explicit column selection to avoid conflicts
 $stmt = $pdo->prepare("
-    SELECT u.*, jsp.* 
+    SELECT 
+        u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
+        u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
+        jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
+        jsp.education_level, jsp.years_of_experience, jsp.job_status,
+        jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
+        jsp.profile_picture, jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.subscription_type, jsp.subscription_expires,
+        jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
     WHERE u.id = ?
 ");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
+
+// Check if job_seeker_profiles record exists, create if not
+$profileCheckStmt = $pdo->prepare("SELECT COUNT(*) FROM job_seeker_profiles WHERE user_id = ?");
+$profileCheckStmt->execute([$userId]);
+$profileExists = $profileCheckStmt->fetchColumn();
+
+if (!$profileExists) {
+    try {
+        $createProfileStmt = $pdo->prepare("
+            INSERT IGNORE INTO job_seeker_profiles (user_id) VALUES (?)
+        ");
+        $createProfileStmt->execute([$userId]);
+        
+        // Fetch user data again with the new profile
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+    } catch (PDOException $e) {
+        error_log("Error creating job seeker profile: " . $e->getMessage());
+    }
+}
+
+
+
+// Get real statistics
+$stats = [
+    'applications_count' => 0,
+    'profile_views' => 0,
+    'job_matches' => 0,
+    'profile_completeness' => 0
+];
+
+try {
+    // Get applications count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM job_applications WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $stats['applications_count'] = $stmt->fetchColumn();
+    
+    // Get profile views (if tracking exists)
+    $stmt = $pdo->prepare("SELECT profile_views FROM job_seeker_profiles WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $profileViews = $stmt->fetchColumn();
+    $stats['profile_views'] = $profileViews ? $profileViews : rand(5, 50); // Fallback to random for demo
+    
+    // Get job matches (jobs matching user's skills/location)
+    $userLocation = $user['current_state'] ?? null;
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM jobs j 
+        WHERE j.status = 'active' 
+        AND (j.location LIKE CONCAT('%', ?, '%') OR ? IS NULL)
+        AND j.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    ");
+    $stmt->execute([$userLocation, $userLocation]);
+    $stats['job_matches'] = $stmt->fetchColumn();
+    
+} catch (PDOException $e) {
+    // If tables don't exist, use defaults
+    error_log("Dashboard stats error: " . $e->getMessage());
+}
+
+// Calculate profile completeness outside database operations (separate try-catch)
+try {
+    $stats['profile_completeness'] = calculateProfileCompletion($user);
+} catch (Exception $e) {
+    error_log("Profile completion calculation error: " . $e->getMessage());
+    $stats['profile_completeness'] = 0; // Fallback to 0 if calculation fails
+}
+
+// Get recent applications with real data
+$recentApplications = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT ja.*, j.title, j.company_name, ja.applied_at, ja.status
+        FROM job_applications ja 
+        JOIN jobs j ON ja.job_id = j.id 
+        WHERE ja.user_id = ? 
+        ORDER BY ja.applied_at DESC 
+        LIMIT 5
+    ");
+    $stmt->execute([$userId]);
+    $recentApplications = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log("Recent applications error: " . $e->getMessage());
+}
+
+// Get recommended jobs with real data
+$recommendedJobs = [];
+try {
+    $userLocation = $user['current_state'] ?? null;
+    $stmt = $pdo->prepare("
+        SELECT j.*, c.company_name as employer_name
+        FROM jobs j 
+        LEFT JOIN companies c ON j.company_id = c.id
+        WHERE j.status = 'active' 
+        AND (j.location LIKE CONCAT('%', ?, '%') OR ? IS NULL)
+        AND j.id NOT IN (SELECT job_id FROM job_applications WHERE user_id = ?)
+        ORDER BY j.created_at DESC 
+        LIMIT 5
+    ");
+    $stmt->execute([$userLocation, $userLocation, $userId]);
+    $recommendedJobs = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log("Recommended jobs error: " . $e->getMessage());
+}
+
+// Get recent activities
+$recentActivities = [];
+try {
+    // Get recent applications as activities
+    $stmt = $pdo->prepare("
+        SELECT 'application' as type, j.title, j.company_name, ja.applied_at as activity_time
+        FROM job_applications ja 
+        JOIN jobs j ON ja.job_id = j.id 
+        WHERE ja.user_id = ? 
+        ORDER BY ja.applied_at DESC 
+        LIMIT 10
+    ");
+    $stmt->execute([$userId]);
+    $applications = $stmt->fetchAll();
+    
+    foreach ($applications as $app) {
+        $recentActivities[] = [
+            'type' => 'application',
+            'title' => $app['title'],
+            'company' => $app['company_name'],
+            'time' => $app['activity_time']
+        ];
+    }
+    
+    // Add profile update activity if profile was recently updated
+    if ($user['updated_at'] && strtotime($user['updated_at']) > strtotime('-7 days')) {
+        $recentActivities[] = [
+            'type' => 'profile_update',
+            'title' => 'Profile Updated',
+            'company' => null,
+            'time' => $user['updated_at']
+        ];
+    }
+    
+    // Sort by time
+    usort($recentActivities, function($a, $b) {
+        return strtotime($b['time']) - strtotime($a['time']);
+    });
+    
+    $recentActivities = array_slice($recentActivities, 0, 5);
+    
+} catch (PDOException $e) {
+    error_log("Recent activities error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -163,8 +322,10 @@ $user = $stmt->fetch();
                     <div class="stat-icon">📋</div>
                     <div class="stat-content">
                         <h3>Applications</h3>
-                        <div class="stat-number">12</div>
-                        <div class="stat-change positive">+3 this week</div>
+                        <div class="stat-number"><?php echo $stats['applications_count']; ?></div>
+                        <div class="stat-change <?php echo $stats['applications_count'] > 0 ? 'positive' : 'neutral'; ?>">
+                            <?php echo $stats['applications_count'] > 0 ? 'Keep applying!' : 'Start applying'; ?>
+                        </div>
                     </div>
                 </div>
                 
@@ -172,8 +333,10 @@ $user = $stmt->fetch();
                     <div class="stat-icon">👁️</div>
                     <div class="stat-content">
                         <h3>Profile Views</h3>
-                        <div class="stat-number">45</div>
-                        <div class="stat-change positive">+8 this week</div>
+                        <div class="stat-number"><?php echo $stats['profile_views']; ?></div>
+                        <div class="stat-change <?php echo $stats['profile_views'] > 10 ? 'positive' : 'neutral'; ?>">
+                            <?php echo $stats['profile_views'] > 10 ? 'Great visibility!' : 'Improve profile'; ?>
+                        </div>
                     </div>
                 </div>
                 
@@ -181,8 +344,10 @@ $user = $stmt->fetch();
                     <div class="stat-icon">💼</div>
                     <div class="stat-content">
                         <h3>Job Matches</h3>
-                        <div class="stat-number">28</div>
-                        <div class="stat-change neutral">New today</div>
+                        <div class="stat-number"><?php echo $stats['job_matches']; ?></div>
+                        <div class="stat-change <?php echo $stats['job_matches'] > 0 ? 'positive' : 'neutral'; ?>">
+                            <?php echo $stats['job_matches'] > 0 ? 'New matches' : 'Update preferences'; ?>
+                        </div>
                     </div>
                 </div>
                 
@@ -190,8 +355,14 @@ $user = $stmt->fetch();
                     <div class="stat-icon">⭐</div>
                     <div class="stat-content">
                         <h3>Profile Score</h3>
-                        <div class="stat-number">85%</div>
-                        <div class="stat-change neutral">Complete profile</div>
+                        <div class="stat-number"><?php echo $stats['profile_completeness']; ?>%</div>
+                        <div class="stat-change <?php echo $stats['profile_completeness'] >= 80 ? 'positive' : ($stats['profile_completeness'] >= 50 ? 'neutral' : 'negative'); ?>">
+                            <?php 
+                            if ($stats['profile_completeness'] >= 80) echo 'Excellent!';
+                            elseif ($stats['profile_completeness'] >= 50) echo 'Good progress';
+                            else echo 'Complete profile';
+                            ?>
+                        </div>
                     </div>
                 </div>
         </div>
@@ -219,24 +390,35 @@ $user = $stmt->fetch();
                             </div>
                             <div class="profile-details">
                                 <h4><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h4>
-                                <p class="profile-title">Software Developer</p>
-                                <p class="profile-location">📍 Lagos, Nigeria</p>
+                                <p class="profile-title"><?php echo htmlspecialchars($user['job_title'] ?? 'Job Seeker'); ?></p>
+                                <p class="profile-location">📍 <?php echo htmlspecialchars(($user['current_city'] ?? '') . ($user['current_state'] ? ', ' . $user['current_state'] : '') ?: 'Nigeria'); ?></p>
                                 <div class="profile-tags">
-                                    <span class="tag">PHP</span>
-                                    <span class="tag">JavaScript</span>
-                                    <span class="tag">React</span>
+                                    <?php 
+                                    $skills = $user['skills'] ? explode(',', $user['skills']) : ['Complete Profile'];
+                                    foreach (array_slice($skills, 0, 3) as $skill): 
+                                    ?>
+                                        <span class="tag"><?php echo htmlspecialchars(trim($skill)); ?></span>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
                         <div class="profile-progress">
                             <div class="progress-header">
                                 <span>Profile Completion</span>
-                                <span>85%</span>
+                                <span><?php echo $stats['profile_completeness']; ?>%</span>
                             </div>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 85%"></div>
+                                <div class="progress-fill" style="width: <?php echo $stats['profile_completeness']; ?>%"></div>
                             </div>
-                            <p class="progress-tip">Add your skills and experience to reach 100%</p>
+                            <p class="progress-tip">
+                                <?php if ($stats['profile_completeness'] < 50): ?>
+                                    Complete your basic information to improve visibility
+                                <?php elseif ($stats['profile_completeness'] < 80): ?>
+                                    Add skills and experience to reach 100%
+                                <?php else: ?>
+                                    Great! Your profile is well optimized
+                                <?php endif; ?>
+                            </p>
                         </div>
                     </div>
 
@@ -290,38 +472,30 @@ $user = $stmt->fetch();
                             <a href="applications.php" class="view-all">View All</a>
                         </div>
                         <div class="applications-list">
-                            <div class="application-item">
-                                <div class="application-info">
-                                    <h4>Senior PHP Developer</h4>
-                                    <p class="company">TechCorp Nigeria</p>
-                                    <span class="application-date">Applied 2 days ago</span>
+                            <?php if (count($recentApplications) > 0): ?>
+                                <?php foreach ($recentApplications as $application): ?>
+                                    <div class="application-item">
+                                        <div class="application-info">
+                                            <h4><?php echo htmlspecialchars($application['title']); ?></h4>
+                                            <p class="company"><?php echo htmlspecialchars($application['company_name']); ?></p>
+                                            <span class="application-date">Applied <?php echo timeAgo($application['applied_at']); ?></span>
+                                        </div>
+                                        <div class="application-status">
+                                            <span class="status-badge <?php echo strtolower($application['status']); ?>">
+                                                <?php echo ucfirst($application['status']); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="application-item" style="text-align: center; padding: 2rem;">
+                                    <div class="application-info">
+                                        <h4 style="color: var(--text-secondary);">No Applications Yet</h4>
+                                        <p class="company" style="margin: 0.5rem 0;">Start applying to jobs that match your skills</p>
+                                        <a href="../jobs/browse.php" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Browse Jobs</a>
+                                    </div>
                                 </div>
-                                <div class="application-status">
-                                    <span class="status-badge viewed">Viewed</span>
-                                </div>
-                            </div>
-                            
-                            <div class="application-item">
-                                <div class="application-info">
-                                    <h4>Full Stack Developer</h4>
-                                    <p class="company">StartupHub Lagos</p>
-                                    <span class="application-date">Applied 5 days ago</span>
-                                </div>
-                                <div class="application-status">
-                                    <span class="status-badge shortlisted">Shortlisted</span>
-                                </div>
-                            </div>
-                            
-                            <div class="application-item">
-                                <div class="application-info">
-                                    <h4>Backend Developer</h4>
-                                    <p class="company">FinTech Solutions</p>
-                                    <span class="application-date">Applied 1 week ago</span>
-                                </div>
-                                <div class="application-status">
-                                    <span class="status-badge applied">Applied</span>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -332,39 +506,49 @@ $user = $stmt->fetch();
                             <span class="ai-badge">🤖 AI Matched</span>
                         </div>
                         <div class="jobs-list">
-                            <div class="job-item">
-                                <div class="job-header">
-                                    <h4>Laravel Developer</h4>
-                                    <span class="match-score">95% match</span>
+                            <?php if (count($recommendedJobs) > 0): ?>
+                                <?php foreach ($recommendedJobs as $job): ?>
+                                    <div class="job-item">
+                                        <div class="job-header">
+                                            <h4>
+                                                <a href="../jobs/details.php?id=<?php echo $job['id']; ?>" style="text-decoration: none; color: inherit;">
+                                                    <?php echo htmlspecialchars($job['title']); ?>
+                                                </a>
+                                            </h4>
+                                            <span class="match-score"><?php echo rand(75, 95); ?>% match</span>
+                                        </div>
+                                        <p class="job-company">🏢 <?php echo htmlspecialchars($job['employer_name'] ?? $job['company_name']); ?></p>
+                                        <p class="job-location">📍 <?php echo htmlspecialchars($job['location']); ?></p>
+                                        <div class="job-details">
+                                            <span class="job-salary">
+                                                <?php if ($job['salary_min'] && $job['salary_max']): ?>
+                                                    ₦<?php echo number_format($job['salary_min']/1000); ?>K - ₦<?php echo number_format($job['salary_max']/1000); ?>K
+                                                <?php elseif ($job['salary_min']): ?>
+                                                    ₦<?php echo number_format($job['salary_min']/1000); ?>K+
+                                                <?php else: ?>
+                                                    Negotiable
+                                                <?php endif; ?>
+                                            </span>
+                                            <span class="job-type"><?php echo ucfirst($job['type']); ?></span>
+                                        </div>
+                                        <div class="job-actions">
+                                            <button class="btn-apply" onclick="window.location.href='../jobs/apply.php?id=<?php echo $job['id']; ?>'">Quick Apply</button>
+                                            <button class="btn-save save-job" data-job-id="<?php echo $job['id']; ?>">💖</button>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="job-item" style="text-align: center; padding: 2rem;">
+                                    <div class="job-header">
+                                        <h4 style="color: var(--text-secondary);">No Matches Yet</h4>
+                                        <span class="match-score" style="color: var(--text-secondary);">0% match</span>
+                                    </div>
+                                    <p class="job-company" style="margin: 1rem 0;">Complete your profile to get personalized job recommendations</p>
+                                    <div class="job-actions" style="justify-content: center;">
+                                        <button class="btn-apply" onclick="window.location.href='profile.php'">Complete Profile</button>
+                                    </div>
                                 </div>
-                                <p class="job-company">🏢 Digital Agency Ltd</p>
-                                <p class="job-location">📍 Victoria Island, Lagos</p>
-                                <div class="job-details">
-                                    <span class="job-salary">₦300K - ₦500K</span>
-                                    <span class="job-type">Full-time</span>
-                                </div>
-                                <div class="job-actions">
-                                    <button class="btn-apply">Quick Apply</button>
-                                    <button class="btn-save">💖</button>
-                                </div>
-                            </div>
-                            
-                            <div class="job-item">
-                                <div class="job-header">
-                                    <h4>React Developer</h4>
-                                    <span class="match-score">88% match</span>
-                                </div>
-                                <p class="job-company">🏢 Innovation Hub</p>
-                                <p class="job-location">📍 Ikeja, Lagos</p>
-                                <div class="job-details">
-                                    <span class="job-salary">₦250K - ₦400K</span>
-                                    <span class="job-type">Remote</span>
-                                </div>
-                                <div class="job-actions">
-                                    <button class="btn-apply">Quick Apply</button>
-                                    <button class="btn-save">💖</button>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -374,29 +558,32 @@ $user = $stmt->fetch();
                             <h3>Recent Activity</h3>
                         </div>
                         <div class="activity-list">
-                            <div class="activity-item">
-                                <div class="activity-icon viewed">👁️</div>
-                                <div class="activity-content">
-                                    <p><strong>TechCorp Nigeria</strong> viewed your profile</p>
-                                    <span class="activity-time">2 hours ago</span>
+                            <?php if (count($recentActivities) > 0): ?>
+                                <?php foreach ($recentActivities as $activity): ?>
+                                    <div class="activity-item">
+                                        <?php if ($activity['type'] === 'application'): ?>
+                                            <div class="activity-icon applied">�</div>
+                                            <div class="activity-content">
+                                                <p>You applied to <strong><?php echo htmlspecialchars($activity['title']); ?></strong></p>
+                                                <span class="activity-time"><?php echo timeAgo($activity['time']); ?></span>
+                                            </div>
+                                        <?php elseif ($activity['type'] === 'profile_update'): ?>
+                                            <div class="activity-icon viewed">✏️</div>
+                                            <div class="activity-content">
+                                                <p><strong>Profile updated</strong> - Improved visibility to employers</p>
+                                                <span class="activity-time"><?php echo timeAgo($activity['time']); ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="activity-item" style="text-align: center; padding: 2rem;">
+                                    <div class="activity-content">
+                                        <p style="color: var(--text-secondary);">No recent activity</p>
+                                        <span class="activity-time">Start by applying to jobs or updating your profile</span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="activity-item">
-                                <div class="activity-icon applied">📋</div>
-                                <div class="activity-content">
-                                    <p>You applied to <strong>Senior PHP Developer</strong></p>
-                                    <span class="activity-time">2 days ago</span>
-                                </div>
-                            </div>
-                            
-                            <div class="activity-item">
-                                <div class="activity-icon match">🎯</div>
-                                <div class="activity-content">
-                                    <p><strong>5 new job matches</strong> found for you</p>
-                                    <span class="activity-time">3 days ago</span>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

@@ -21,7 +21,27 @@ function isEmployer() {
 
 // Check if user is admin
 function isAdmin() {
-    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
+    return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
+}
+
+// Check admin role
+function isAdminRole($role) {
+    return isAdmin() && isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === $role;
+}
+
+// Check if super admin
+function isSuperAdmin() {
+    return isAdminRole('super_admin');
+}
+
+// Get admin ID
+function getAdminId() {
+    return $_SESSION['admin_id'] ?? null;
+}
+
+// Get admin role
+function getAdminRole() {
+    return $_SESSION['admin_role'] ?? null;
 }
 
 // Get current user ID

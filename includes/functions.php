@@ -361,4 +361,89 @@ function isDevelopmentMode() {
            preg_match('/^192\.168\.\d+\.\d+/', $http_host) ||
            preg_match('/^10\.\d+\.\d+\.\d+/', $http_host);
 }
+
+/**
+ * Calculate profile completion percentage
+ * @param array $user User data array (combined from users and job_seeker_profiles tables)
+ * @return int Profile completion percentage (0-100)
+ */
+function calculateProfileCompletion($user) {
+    // Essential fields from users table
+    $userFields = [
+        'first_name',
+        'last_name', 
+        'phone'
+    ];
+    
+    // Profile fields from job_seeker_profiles table
+    $profileFields = [
+        'date_of_birth',
+        'gender',
+        'state_of_origin',
+        'current_state',
+        'current_city',
+        'years_of_experience',
+        'job_status',
+        'skills',
+        'bio'
+    ];
+    
+    $allFields = array_merge($userFields, $profileFields);
+    $completed = 0;
+    
+    foreach ($allFields as $field) {
+        $value = $user[$field] ?? null;
+        $isValid = false;
+        
+        // Special validation for specific fields
+        if ($field === 'date_of_birth') {
+            // Check if it's a valid date (not 0000-00-00 or empty)
+            $isValid = !empty($value) && $value !== '0000-00-00' && $value !== '1970-01-01';
+        } elseif ($field === 'years_of_experience') {
+            // Accept 0 or positive numbers for experience
+            $isValid = isset($value) && is_numeric($value) && $value >= 0;
+        } elseif (in_array($field, ['salary_expectation_min', 'salary_expectation_max'])) {
+            // Accept 0 or positive numbers for salary expectations
+            $isValid = isset($value) && is_numeric($value) && $value > 0;
+        } else {
+            // Standard validation: not empty, not null, not just whitespace
+            $isValid = isset($value) && !empty(trim($value)) && $value !== '' && $value !== null;
+        }
+        
+        if ($isValid) {
+            $completed++;
+        }
+    }
+    
+    $percentage = round(($completed / count($allFields)) * 100);
+    
+    // Debug logging in development mode
+    if (defined('DEV_MODE') && DEV_MODE) {
+        error_log("Profile Completion Calculation:");
+        error_log("Total fields: " . count($allFields));
+        error_log("Completed fields: " . $completed);
+        error_log("Percentage: " . $percentage . "%");
+        
+        foreach ($allFields as $field) {
+            $value = $user[$field] ?? 'NOT_SET';
+            
+            // Apply same validation logic as main calculation
+            $isValid = false;
+            if ($field === 'date_of_birth') {
+                $isValid = !empty($value) && $value !== '0000-00-00' && $value !== '1970-01-01';
+            } elseif ($field === 'years_of_experience') {
+                $isValid = isset($value) && is_numeric($value) && $value >= 0;
+            } elseif (in_array($field, ['salary_expectation_min', 'salary_expectation_max'])) {
+                $isValid = isset($value) && is_numeric($value) && $value > 0;
+            } else {
+                $isValid = isset($value) && !empty(trim($value)) && $value !== '' && $value !== null;
+            }
+            
+            $status = $isValid ? 'COMPLETED' : 'EMPTY';
+            error_log("  $field: [$status] = " . (is_string($value) ? substr($value, 0, 50) : $value));
+        }
+    }
+    
+    return $percentage;
+}
 ?>

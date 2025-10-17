@@ -49,27 +49,64 @@ if (isLoggedIn()) {
     <main>
         <!-- Hero Section -->
         <section class="hero-section">
-            <div class="container text-center">
-                <h1 class="hero-title">
-                    Find Your Dream Job in Nigeria
-                </h1>
-                <p class="hero-subtitle">
-                    Connect with top employers, discover opportunities, and build your career
-                </p>
-                
-                <!-- Job Search Form -->
-                <div class="search-form-container">
-                    <form action="pages/jobs/browse.php" method="GET" class="job-search-form">
-                        <div class="search-inputs">
-                            <input type="text" name="q" placeholder="Job title, keywords, or company" 
-                                   class="search-input">
-                            <input type="text" name="location" placeholder="Location" 
-                                   class="search-input">
+            <div class="hero-background"></div>
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <h1 class="hero-title">
+                            Find Your Dream Job in <span class="hero-highlight">Nigeria</span>
+                        </h1>
+                        <p class="hero-subtitle">
+                            Connect with top employers, discover amazing opportunities, and build the career you've always wanted. Join thousands of successful job seekers today.
+                        </p>
+                        <div class="hero-stats">
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">10K+</div>
+                                <div class="hero-stat-label">Active Jobs</div>
+                            </div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">5K+</div>
+                                <div class="hero-stat-label">Companies</div>
+                            </div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">50K+</div>
+                                <div class="hero-stat-label">Job Seekers</div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn search-btn">
-                            🔍 Search Jobs
-                        </button>
-                    </form>
+                    </div>
+                    
+                    <!-- Job Search Form -->
+                    <div class="search-form-container">
+                        <div class="search-form-header">
+                            <h2>Start Your Job Search</h2>
+                            <p>Find opportunities that match your skills and interests</p>
+                        </div>
+                        <form action="pages/jobs/browse.php" method="GET" class="job-search-form">
+                            <div class="search-inputs">
+                                <div class="search-input-group">
+                                    <div class="search-input-icon">🔍</div>
+                                    <input type="text" name="keywords" placeholder="Job title, keywords, or company name" 
+                                           class="search-input" aria-label="Job search">
+                                </div>
+                                <div class="search-input-group">
+                                    <div class="search-input-icon">📍</div>
+                                    <input type="text" name="location" placeholder="City or state (e.g., Lagos, Abuja)" 
+                                           class="search-input location-input" aria-label="Location">
+                                </div>
+                            </div>
+                            <button type="submit" class="search-btn">
+                                <span class="search-btn-icon">🚀</span>
+                                <span class="search-btn-text">Find My Dream Job</span>
+                            </button>
+                        </form>
+                        <div class="popular-searches">
+                            <span class="popular-label">Popular:</span>
+                            <a href="pages/jobs/browse.php?keywords=Software+Engineer" class="popular-tag">Software Engineer</a>
+                            <a href="pages/jobs/browse.php?keywords=Marketing" class="popular-tag">Marketing</a>
+                            <a href="pages/jobs/browse.php?keywords=Banking" class="popular-tag">Banking</a>
+                            <a href="pages/jobs/browse.php?keywords=Remote" class="popular-tag">Remote Jobs</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -142,14 +179,6 @@ if (isLoggedIn()) {
         </section>
     </main>
 
-    <footer style="background: var(--text-primary); color: white; padding: 2rem 0;">
-        <div class="container text-center">
-            <p>&copy; 2025 <?php echo SITE_NAME; ?>. All rights reserved.</p>
-            <p style="margin-top: 0.5rem; opacity: 0.8;">
-                Connecting Nigerian talent with opportunities
-            </p>
-        </div>
-    </footer>
     
     <!-- PWA Install Prompt -->
     <div id="pwa-install-prompt" class="pwa-install-prompt">
@@ -188,6 +217,7 @@ if (isLoggedIn()) {
     
     <!-- PWA Scripts -->
     <script src="assets/js/pwa.js"></script>
+    <script src="assets/js/location-autocomplete.js"></script>
     <script>
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
@@ -198,6 +228,19 @@ if (isLoggedIn()) {
                 window.pwaManager.installApp();
             }
         }
+        
+        // Initialize location autocomplete for homepage
+        document.addEventListener('DOMContentLoaded', () => {
+            const locationInput = document.querySelector('input[name="location"]');
+            if (locationInput) {
+                new LocationAutocomplete(locationInput, {
+                    placeholder: 'City or state (e.g., Lagos, Abuja)',
+                    onSelect: (location) => {
+                        console.log('Selected location:', location);
+                    }
+                });
+            }
+        });
     </script>
 
     <?php include 'includes/footer.php'; ?>

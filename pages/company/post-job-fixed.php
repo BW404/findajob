@@ -1,27 +1,7 @@
 <?php 
-// Enable error reporting for debugging
-if (isset($_GET['debug']) || isset($_POST['debug_mode'])) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-}
-
-try {
-    require_once '../../includes/functions.php';
-} catch (Exception $e) {
-    die("Error loading functions: " . $e->getMessage());
-}
-
-try {
-    require_once '../../config/database.php';
-} catch (Exception $e) {
-    die("Error loading database config: " . $e->getMessage());
-}
-
-try {
-    require_once '../../config/session.php';
-} catch (Exception $e) {
-    die("Error loading session config: " . $e->getMessage());
-}
+require_once '../../includes/functions.php';
+require_once '../../config/database.php';
+require_once '../../config/session.php';
 
 // Start session if not already started
 if (session_status() == PHP_SESSION_NONE) {
@@ -38,13 +18,6 @@ $userId = getCurrentUserId();
 $success_message = '';
 $error_message = '';
 $job_id = null;
-$debug_mode = isset($_GET['debug']) || isset($_POST['debug_mode']);
-$debug_info = [];
-
-// Initialize variables with defaults
-$current_jobs = 0;
-$is_premium = false;
-$job_limit = 5;
 
 // Double-check user is actually an employer in database
 try {
@@ -52,63 +25,13 @@ try {
     $stmt->execute([$userId]);
     $userInfo = $stmt->fetch();
 
-    if ($debug_mode) {
-        $debug_info[] = "User ID: $userId";
-        $debug_info[] = "User Info: " . json_encode($userInfo);
-    }
-
     if (!$userInfo || $userInfo['user_type'] !== 'employer') {
-        if ($debug_mode) {
-            $debug_info[] = "ERROR: User verification failed - not employer or user not found";
-        }
         header('Location: ../auth/login-employer.php?error=not_employer');
         exit;
     }
-    
-    if ($debug_mode) {
-        $debug_info[] = "✅ User verified as employer: " . $userInfo['email'];
-    }
-    
-    // Check for premium plan restrictions
-    $stmt = $pdo->prepare("SELECT COUNT(*) as job_count FROM jobs WHERE employer_id = ? AND STATUS = 'active'");
-    $stmt->execute([$userId]);
-    $current_jobs = $stmt->fetchColumn();
-    
-    // Check if user has premium subscription (table may not exist yet)
-    $is_premium = false;
-    $subscription = null;
-    
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND end_date > NOW() ORDER BY end_date DESC LIMIT 1");
-        $stmt->execute([$userId]);
-        $subscription = $stmt->fetch();
-        $is_premium = $subscription ? true : false;
-    } catch (PDOException $sub_e) {
-        // user_subscriptions table doesn't exist yet - treat as free user
-        if ($debug_mode) {
-            $debug_info[] = "⚠️ user_subscriptions table not found - treating as free user";
-            $debug_info[] = "Subscription error: " . $sub_e->getMessage();
-        }
-        $is_premium = false;
-    }
-    
-    $job_limit = $is_premium ? 999 : 5; // Free users can post up to 5 jobs, premium unlimited
-    
-    if ($debug_mode) {
-        $debug_info[] = "Premium status: " . ($is_premium ? 'YES' : 'NO');
-        $debug_info[] = "Current active jobs: $current_jobs";
-        $debug_info[] = "Job limit: $job_limit";
-        $debug_info[] = "Subscription info: " . json_encode($subscription);
-    }
-    
 } catch (PDOException $e) {
     error_log("User verification error: " . $e->getMessage());
-    if ($debug_mode) {
-        $debug_info[] = "❌ Database error during user verification: " . $e->getMessage();
-        $debug_info[] = "Error code: " . $e->getCode();
-        $debug_info[] = "SQL State: " . $e->errorInfo[0] ?? 'N/A';
-    }
-    $error_message = "System error during user verification. Please try again. (Error: " . substr(md5($e->getMessage()), 0, 8) . ")";
+    $error_message = "System error. Please try again.";
 }
 
 // Get job categories for dropdown
@@ -117,52 +40,13 @@ try {
     $stmt = $pdo->prepare("SELECT id, name FROM job_categories WHERE is_active = 1 ORDER BY name");
     $stmt->execute();
     $categories = $stmt->fetchAll();
-    
-    if ($debug_mode) {
-        $debug_info[] = "Categories loaded: " . count($categories) . " active categories";
-        $debug_info[] = "Categories: " . json_encode(array_map(function($cat) { return ['id' => $cat['id'], 'name' => $cat['name']]; }, $categories));
-    }
 } catch (PDOException $e) {
     error_log("Categories fetch error: " . $e->getMessage());
-    if ($debug_mode) {
-        $debug_info[] = "ERROR: Failed to load categories: " . $e->getMessage();
-    }
 }
 
-// Debug: Check what's being submitted (debug mode only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $debug_mode) {
-    $debug_info[] = "=== POST REQUEST RECEIVED ===";
-    $debug_info[] = "POST keys: " . implode(', ', array_keys($_POST));
-    $debug_info[] = "Looking for submit_job: " . (isset($_POST['submit_job']) ? 'FOUND' : 'NOT FOUND');
-}
-
-// Handle form submission - improved detection for reliability
-$is_job_submission = ($_SERVER['REQUEST_METHOD'] === 'POST' && 
-                      (isset($_POST['submit_job']) || 
-                       (isset($_POST['job_title']) && isset($_POST['category']) && isset($_POST['description']))));
-
-if ($is_job_submission) {
-    if ($debug_mode) {
-        $debug_info[] = "=== JOB POSTING FORM SUBMISSION ===";
-        $debug_info[] = "POST data received: " . json_encode($_POST);
-        $debug_info[] = "Form validation starting...";
-    }
-    
-    // Check premium plan limits first
-    if ($current_jobs >= $job_limit) {
-        $error_message = "❌ Job posting limit reached! " . ($is_premium ? "Please contact support." : "Free accounts can post up to $job_limit active jobs. Upgrade to Premium for unlimited job postings.");
-        if ($debug_mode) {
-            $debug_info[] = "❌ Job posting blocked: Limit reached ($current_jobs >= $job_limit)";
-            $debug_info[] = "Premium status: " . ($is_premium ? 'YES' : 'NO');
-            $debug_info[] = "❌ FORM PROCESSING STOPPED - Job limit exceeded";
-        }
-    } else {
-        if ($debug_mode) {
-            $debug_info[] = "✅ Job posting limit check passed ($current_jobs < $job_limit)";
-            $debug_info[] = "✅ Proceeding with job creation...";
-        }
-    
-        try {
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_job'])) {
+    try {
         // Comprehensive validation
         $errors = [];
         
@@ -179,38 +63,20 @@ if ($is_job_submission) {
         foreach ($required_fields as $field => $label) {
             if (empty(trim($_POST[$field] ?? ''))) {
                 $errors[] = $label . ' is required';
-                if ($debug_mode) {
-                    $debug_info[] = "❌ Validation error: $label is required (field: $field)";
-                }
-            } else if ($debug_mode) {
-                $debug_info[] = "✅ $label validation passed";
             }
         }
         
         // Length validations
         if (!empty($_POST['job_title']) && strlen(trim($_POST['job_title'])) < 5) {
             $errors[] = 'Job title must be at least 5 characters';
-            if ($debug_mode) {
-                $debug_info[] = "❌ Job title too short: " . strlen(trim($_POST['job_title'])) . " characters";
-            }
         }
         
         if (!empty($_POST['description']) && strlen(trim($_POST['description'])) < 50) {
             $errors[] = 'Job description must be at least 50 characters';
-            if ($debug_mode) {
-                $debug_info[] = "❌ Description too short: " . strlen(trim($_POST['description'])) . " characters";
-            }
         }
         
         if (!empty($_POST['requirements']) && strlen(trim($_POST['requirements'])) < 10) {
             $errors[] = 'Requirements must be at least 10 characters';
-            if ($debug_mode) {
-                $debug_info[] = "❌ Requirements too short: " . strlen(trim($_POST['requirements'])) . " characters";
-            }
-        }
-        
-        if ($debug_mode && empty($errors)) {
-            $debug_info[] = "✅ All length validations passed";
         }
         
         // Salary validation
@@ -219,30 +85,16 @@ if ($is_job_submission) {
             $salary_max = (int)$_POST['salary_max'];
             if ($salary_min > $salary_max) {
                 $errors[] = 'Minimum salary cannot be higher than maximum salary';
-                if ($debug_mode) {
-                    $debug_info[] = "❌ Salary validation failed: min($salary_min) > max($salary_max)";
-                }
-            } else if ($debug_mode) {
-                $debug_info[] = "✅ Salary validation passed: ₦$salary_min - ₦$salary_max";
             }
         }
         
         // Email validation if provided
         if (!empty($_POST['application_email']) && !filter_var($_POST['application_email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Please enter a valid application email address';
-            if ($debug_mode) {
-                $debug_info[] = "❌ Invalid email: " . $_POST['application_email'];
-            }
-        } else if (!empty($_POST['application_email']) && $debug_mode) {
-            $debug_info[] = "✅ Email validation passed: " . $_POST['application_email'];
         }
         
         // If no errors, proceed with job creation
         if (empty($errors)) {
-            if ($debug_mode) {
-                $debug_info[] = "✅ All validations passed, proceeding with job creation...";
-            }
-            
             // Generate unique slug
             $base_slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($_POST['job_title'])));
             $base_slug = trim($base_slug, '-');
@@ -260,18 +112,10 @@ if ($is_job_submission) {
                 $counter++;
             }
             
-            if ($debug_mode) {
-                $debug_info[] = "✅ Generated unique slug: $slug";
-            }
-            
             // Get company name
             $company_name = trim(($userInfo['first_name'] ?? '') . ' ' . ($userInfo['last_name'] ?? ''));
             if (empty(trim($company_name))) {
                 $company_name = 'Employer Company';
-            }
-            
-            if ($debug_mode) {
-                $debug_info[] = "✅ Company name: $company_name";
             }
             
             // Map form job types to database enum values
@@ -285,10 +129,6 @@ if ($is_job_submission) {
             ];
             
             $db_job_type = $job_type_mapping[$_POST['job_type']] ?? 'permanent';
-            
-            if ($debug_mode) {
-                $debug_info[] = "✅ Job type mapping: " . $_POST['job_type'] . " -> $db_job_type";
-            }
             
             // Prepare job data
             $job_data = [
@@ -324,11 +164,6 @@ if ($is_job_submission) {
                 'STATUS' => 'active'  // Jobs go live immediately
             ];
             
-            if ($debug_mode) {
-                $debug_info[] = "✅ Job data prepared:";
-                $debug_info[] = json_encode($job_data, JSON_PRETTY_PRINT);
-            }
-            
             // Insert job into database
             $sql = "INSERT INTO jobs (
                 employer_id, title, slug, category_id, job_type, employment_type,
@@ -353,35 +188,9 @@ if ($is_job_submission) {
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute($job_data);
             
-            if ($debug_mode) {
-                $debug_info[] = "Database insertion attempt...";
-                $debug_info[] = "SQL: $sql";
-                $debug_info[] = "Result: " . ($result ? 'SUCCESS' : 'FAILED');
-                if (!$result) {
-                    $debug_info[] = "SQL Error: " . json_encode($stmt->errorInfo());
-                }
-            }
-            
             if ($result) {
                 $job_id = $pdo->lastInsertId();
-                $success_message = "🎉 Job posted successfully! Your job (#$job_id) is now live and visible to candidates.";
-                
-                if ($debug_mode) {
-                    $debug_info[] = "✅ SUCCESS: Job ID $job_id created";
-                    
-                    // Verify the job was actually inserted
-                    $verify_stmt = $pdo->prepare("SELECT * FROM jobs WHERE id = ?");
-                    $verify_stmt->execute([$job_id]);
-                    $inserted_job = $verify_stmt->fetch();
-                    
-                    if ($inserted_job) {
-                        $debug_info[] = "✅ Job verification successful in database";
-                        $debug_info[] = "Job title in DB: " . $inserted_job['title'];
-                        $debug_info[] = "Job status in DB: " . $inserted_job['STATUS'];
-                    } else {
-                        $debug_info[] = "❌ Job verification FAILED - not found in database";
-                    }
-                }
+                $success_message = "Job posted successfully! Your job is now live and visible to candidates.";
                 
                 // Log successful job posting
                 error_log("Job posted successfully: ID $job_id, Title: " . $job_data['title'] . ", Employer: $userId");
@@ -389,53 +198,21 @@ if ($is_job_submission) {
                 // Clear form data after successful submission
                 $_POST = [];
             } else {
-                $error_message = "❌ Failed to post job. Database insertion error. Please try again.";
-                if ($debug_mode) {
-                    $debug_info[] = "❌ Database insertion failed";
-                    $debug_info[] = "Error info: " . json_encode($stmt->errorInfo());
-                }
+                $error_message = "Failed to post job. Please try again.";
                 error_log("Job insertion failed: " . print_r($stmt->errorInfo(), true));
             }
         } else {
-            $error_message = "❌ Please fix the following errors:";
-            foreach ($errors as $error) {
-                $error_message .= "\n• " . $error;
-            }
-            
-            if ($debug_mode) {
-                $debug_info[] = "❌ Validation failed with " . count($errors) . " errors:";
-                foreach ($errors as $error) {
-                    $debug_info[] = "   • $error";
-                }
-            }
+            $error_message = "Please fix the following errors:\n• " . implode("\n• ", $errors);
         }
         
     } catch (PDOException $e) {
-        $error_message = "❌ Database error occurred. Please try again. (Error code: " . substr(md5($e->getMessage()), 0, 8) . ")";
+        $error_message = "Database error occurred. Please try again.";
         error_log("Job posting PDO error: " . $e->getMessage());
         error_log("Posted data: " . print_r($_POST, true));
-        
-        if ($debug_mode) {
-            $debug_info[] = "❌ PDO Exception: " . $e->getMessage();
-            $debug_info[] = "Error code: " . $e->getCode();
-            $debug_info[] = "File: " . $e->getFile() . " Line: " . $e->getLine();
-        }
     } catch (Exception $e) {
-        $error_message = "❌ System error occurred. Please try again. (Error code: " . substr(md5($e->getMessage()), 0, 8) . ")";
+        $error_message = "System error occurred. Please try again.";
         error_log("Job posting general error: " . $e->getMessage());
-        
-        if ($debug_mode) {
-            $debug_info[] = "❌ General Exception: " . $e->getMessage();
-            $debug_info[] = "Error code: " . $e->getCode();
-            $debug_info[] = "File: " . $e->getFile() . " Line: " . $e->getLine();
-        }
     }
-    } // End of premium limit check
-} else if ($_SERVER['REQUEST_METHOD'] === 'POST' && $debug_mode) {
-    // Debug: Form was submitted but submit_job button not found
-    $debug_info[] = "❌ Form submitted but 'submit_job' button not detected";
-    $debug_info[] = "This suggests a JavaScript or form structure issue";
-    $debug_info[] = "Try submitting with debug mode to bypass JavaScript validation";
 }
 
 // Get user info for display
@@ -735,45 +512,6 @@ if (empty($user_display_name)) {
             </div>
         </div>
 
-        <!-- Job Usage Status -->
-        <div style="max-width: 800px; margin: 0 auto 2rem;">
-            <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; padding: 1.5rem; border: 1px solid #cbd5e1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div>
-                        <h4 style="margin: 0 0 0.5rem; color: #1e293b; font-size: 1.1rem;">
-                            <i class="fas fa-chart-pie" style="margin-right: 0.5rem; color: #dc2626;"></i>
-                            Job Posting Usage
-                        </h4>
-                        <p style="margin: 0; color: #64748b; font-size: 0.95rem;">
-                            You have used <strong><?php echo $current_jobs; ?></strong> of <strong><?php echo $job_limit; ?></strong> available job slots
-                            <?php if (!$is_premium): ?>
-                                (Free Plan)
-                            <?php else: ?>
-                                (Premium Plan)
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <!-- Progress Bar -->
-                        <div style="width: 120px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                            <div style="width: <?php echo ($current_jobs / $job_limit) * 100; ?>%; height: 100%; background: <?php echo ($current_jobs >= $job_limit) ? '#ef4444' : '#10b981'; ?>; transition: width 0.3s ease;"></div>
-                        </div>
-                        
-                        <?php if ($current_jobs < $job_limit): ?>
-                            <span style="color: #10b981; font-weight: 600; font-size: 0.9rem;">
-                                <i class="fas fa-check-circle"></i> <?php echo $job_limit - $current_jobs; ?> slots available
-                            </span>
-                        <?php else: ?>
-                            <span style="color: #ef4444; font-weight: 600; font-size: 0.9rem;">
-                                <i class="fas fa-exclamation-circle"></i> Limit reached
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Form Container -->
         <div style="max-width: 800px; margin: 0 auto;">
             <?php if ($success_message): ?>
@@ -800,108 +538,9 @@ if (empty($user_display_name)) {
                     <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; margin-top: 0.25rem;"></i>
                     <div>
                         <strong>Error!</strong><br>
-                        <?php echo nl2br(htmlspecialchars($error_message)); ?>
-                        
-                        <?php if ($current_jobs >= $job_limit && !$is_premium): ?>
-                            <div style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #dc2626;">
-                                <h4 style="margin: 0 0 1rem; color: #dc2626;">💡 Solutions:</h4>
-                                
-                                <div style="display: grid; gap: 1rem; margin-bottom: 1rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <i class="fas fa-crown" style="color: #f59e0b; font-size: 1.2rem;"></i>
-                                        <div>
-                                            <strong>Upgrade to Premium</strong>
-                                            <div style="font-size: 0.9rem; color: #6b7280;">Unlimited job postings + advanced features</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <i class="fas fa-tachometer-alt" style="color: #3b82f6; font-size: 1.2rem;"></i>
-                                        <div>
-                                            <strong>Manage Existing Jobs</strong>
-                                            <div style="font-size: 0.9rem; color: #6b7280;">Deactivate completed positions to free up slots</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <i class="fas fa-trash-alt" style="color: #ef4444; font-size: 1.2rem;"></i>
-                                        <div>
-                                            <strong>Delete Old Jobs</strong>
-                                            <div style="font-size: 0.9rem; color: #6b7280;">Remove outdated job postings permanently</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    <a href="dashboard.php" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                        <i class="fas fa-tachometer-alt"></i> Manage Jobs
-                                    </a>
-                                    <a href="#" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                        <i class="fas fa-crown"></i> Upgrade to Premium
-                                    </a>
-                                </div>
-                            </div>
-                        <?php endif; ?>
+                        <?php echo htmlspecialchars($error_message); ?>
                     </div>
                 </div>
-            <?php endif; ?>
-            
-            <!-- Debug Panel -->
-            <?php if ($debug_mode): ?>
-                <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 10px; padding: 1.5rem; margin-bottom: 2rem; font-family: 'Courier New', monospace; font-size: 0.85rem;">
-                    <h4 style="color: #dc2626; margin: 0 0 1rem; display: flex; align-items: center;">
-                        <i class="fas fa-bug" style="margin-right: 0.5rem;"></i>
-                        DEBUG MODE ACTIVE
-                    </h4>
-                    <div style="max-height: 400px; overflow-y: auto; background: white; padding: 1rem; border-radius: 5px; border: 1px solid #dee2e6;">
-                        <?php foreach ($debug_info as $info): ?>
-                            <div style="margin-bottom: 0.5rem; padding: 0.25rem; border-left: 3px solid #dc2626; padding-left: 0.75rem;">
-                                <?php echo htmlspecialchars($info); ?>
-                            </div>
-                        <?php endforeach; ?>
-                        
-                        <?php if (empty($debug_info)): ?>
-                            <div style="color: #6c757d; font-style: italic;">No debug information available yet. Submit a form to see debug data.</div>
-                        <?php endif; ?>
-                    </div>
-                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #6c757d;">
-                        <strong>Debug Mode:</strong> Add ?debug=1 to URL or check the Debug Mode checkbox below to enable detailed logging.
-                    </div>
-                </div>
-            <?php endif; ?>
-            
-            <!-- Debug Toggle -->
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; text-align: center;">
-                <label style="display: inline-flex; align-items: center; cursor: pointer; font-weight: 500;">
-                    <input type="checkbox" name="debug_mode" value="1" <?php echo $debug_mode ? 'checked' : ''; ?> style="margin-right: 0.5rem;">
-                    <i class="fas fa-code" style="margin-right: 0.5rem; color: #dc2626;"></i>
-                    Enable Debug Mode (Shows detailed posting process)
-                </label>
-                <div style="font-size: 0.85rem; color: #856404; margin-top: 0.5rem;">
-                    Check this box to see exactly what happens during job posting - useful for troubleshooting issues.
-                </div>
-            </div>
-            
-            <!-- Quick Submit Test (Bypass JavaScript) -->
-            <?php if ($debug_mode): ?>
-            <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; text-align: center;">
-                <h4 style="margin: 0 0 1rem; color: #1976d2;">🚀 Quick Submit Test</h4>
-                <form method="POST" style="display: inline-block;">
-                    <input type="hidden" name="job_title" value="Debug Test Job">
-                    <input type="hidden" name="category" value="1">
-                    <input type="hidden" name="job_type" value="full-time">
-                    <input type="hidden" name="location" value="Lagos">
-                    <input type="hidden" name="description" value="This is a debug test job to verify the backend processing works correctly.">
-                    <input type="hidden" name="requirements" value="Basic requirements for testing purposes.">
-                    <input type="hidden" name="debug_mode" value="1">
-                    <button type="submit" name="submit_job" style="background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
-                        🧪 Test Backend Directly (Bypass JS)
-                    </button>
-                </form>
-                <div style="font-size: 0.85rem; color: #1976d2; margin-top: 0.5rem;">
-                    This bypasses all JavaScript validation and tests the PHP backend directly.
-                </div>
-            </div>
             <?php endif; ?>
             
             <form class="job-form" method="POST" style="background: var(--surface); border-radius: 20px; padding: 3rem; box-shadow: 0 20px 50px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05);">
@@ -1154,7 +793,7 @@ if (empty($user_display_name)) {
                         
                         <!-- Free Boost -->
                         <div class="boost-option selected" onclick="selectBoost('free')">
-                            <div class="boost-badge">Free</div>
+                            <div class="boost-badge">Selected</div>
                             <input type="radio" name="boost_type" value="free" id="boost-free" checked style="display: none;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
                                 <h5 style="margin: 0; color: var(--text-primary); font-size: 1.2rem;">📝 Standard Post</h5>
@@ -1371,39 +1010,44 @@ if (empty($user_display_name)) {
         }
 
         function selectBoost(type) {
-            // Remove selected class from all options and reset badges to default
+            // Remove selected class from all options
             document.querySelectorAll('.boost-option').forEach(option => {
                 option.classList.remove('selected');
+                const badge = option.querySelector('.boost-badge');
+                if (type === 'free') {
+                    badge.innerHTML = 'Selected';
+                    badge.style.background = 'var(--primary)';
+                    badge.style.color = 'white';
+                } else if (type === 'premium') {
+                    badge.innerHTML = 'Popular';
+                    badge.style.background = 'var(--border-color)';
+                    badge.style.color = 'var(--text-secondary)';
+                } else if (type === 'super') {
+                    badge.innerHTML = 'Best Value';
+                    badge.style.background = 'var(--border-color)';
+                    badge.style.color = 'var(--text-secondary)';
+                }
             });
-            
-            // Reset all badges to their default state
-            const freeOption = document.querySelector('#boost-free').closest('.boost-option');
-            const freeBadge = freeOption.querySelector('.boost-badge');
-            freeBadge.innerHTML = 'Free';
-            freeBadge.style.background = 'var(--border-color)';
-            freeBadge.style.color = 'var(--text-secondary)';
-            
-            const premiumOption = document.querySelector('#boost-premium').closest('.boost-option');
-            const premiumBadge = premiumOption.querySelector('.boost-badge');
-            premiumBadge.innerHTML = 'Popular';
-            premiumBadge.style.background = 'var(--border-color)';
-            premiumBadge.style.color = 'var(--text-secondary)';
-            
-            const superOption = document.querySelector('#boost-super').closest('.boost-option');
-            const superBadge = superOption.querySelector('.boost-badge');
-            superBadge.innerHTML = 'Best Value';
-            superBadge.style.background = 'var(--border-color)';
-            superBadge.style.color = 'var(--text-secondary)';
             
             // Add selected class to clicked option
             const selectedOption = document.querySelector(`#boost-${type}`).closest('.boost-option');
             selectedOption.classList.add('selected');
             
-            // Update badge for selected option to show "Selected"
+            // Update badge for selected option
             const selectedBadge = selectedOption.querySelector('.boost-badge');
-            selectedBadge.innerHTML = 'Selected';
-            selectedBadge.style.background = 'var(--primary)';
-            selectedBadge.style.color = 'white';
+            if (type === 'free') {
+                selectedBadge.innerHTML = 'Selected';
+                selectedBadge.style.background = 'var(--primary)';
+                selectedBadge.style.color = 'white';
+            } else if (type === 'premium') {
+                selectedBadge.innerHTML = 'Selected';
+                selectedBadge.style.background = 'var(--primary)';
+                selectedBadge.style.color = 'white';
+            } else if (type === 'super') {
+                selectedBadge.innerHTML = 'Selected';
+                selectedBadge.style.background = 'var(--primary)';
+                selectedBadge.style.color = 'white';
+            }
             
             // Update radio button
             document.getElementById(`boost-${type}`).checked = true;
@@ -1415,52 +1059,14 @@ if (empty($user_display_name)) {
 
         // Form submission handling
         document.querySelector('.job-form').addEventListener('submit', function(e) {
-            // Check if debug mode is enabled (bypass validation)
-            const urlParams = new URLSearchParams(window.location.search);
-            const isDebugMode = urlParams.has('debug') || document.querySelector('input[name="debug_mode"]:checked');
-            
-            if (isDebugMode) {
-                // Show loading state
-                const submitBtn = this.querySelector('button[type="submit"]');
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-                submitBtn.disabled = true;
-                return; // Allow submission without validation
-            }
-            
-            // For normal mode, validate only if we're on the last step
-            if (currentStep === 3) {
-                // Validate all steps before final submission
-                let allValid = true;
-                for (let step = 1; step <= 3; step++) {
-                    const stepElement = document.getElementById(`step-${step}`);
-                    if (step === 1) {
-                        const fields = ['job_title', 'job_type', 'category', 'location'];
-                        fields.forEach(field => {
-                            const input = stepElement.querySelector(`[name="${field}"]`);
-                            if (input && !input.value.trim()) {
-                                allValid = false;
-                            }
-                        });
-                    } else if (step === 2) {
-                        const fields = ['description', 'requirements'];
-                        fields.forEach(field => {
-                            const input = stepElement.querySelector(`[name="${field}"]`);
-                            if (input && !input.value.trim()) {
-                                allValid = false;
-                            }
-                        });
-                    }
-                }
-                
-                if (!allValid) {
-                    alert('Please fill in all required fields in all steps before submitting.');
-                    e.preventDefault();
-                    return;
-                }
+            if (!validateCurrentStep()) {
+                e.preventDefault();
+                return;
             }
             
             // Show loading state
             const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
             submitBtn.disabled = true;
             

@@ -2,20 +2,50 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/functions.php';
 
 requireJobSeeker();
 
 $userId = getCurrentUserId();
 
-// Get user profile data
+// Get user profile data with explicit column selection to avoid conflicts
 $stmt = $pdo->prepare("
-    SELECT u.*, jsp.* 
+    SELECT 
+        u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
+        u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
+        jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
+        jsp.education_level, jsp.years_of_experience, jsp.job_status,
+        jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
+        jsp.profile_picture, jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.subscription_type, jsp.subscription_expires,
+        jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
     WHERE u.id = ?
 ");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
+
+// Check if job_seeker_profiles record exists, create if not
+$profileCheckStmt = $pdo->prepare("SELECT COUNT(*) FROM job_seeker_profiles WHERE user_id = ?");
+$profileCheckStmt->execute([$userId]);
+$profileExists = $profileCheckStmt->fetchColumn();
+
+if (!$profileExists) {
+    try {
+        $createProfileStmt = $pdo->prepare("
+            INSERT IGNORE INTO job_seeker_profiles (user_id) VALUES (?)
+        ");
+        $createProfileStmt->execute([$userId]);
+        
+        // Fetch user data again with the new profile
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+    } catch (PDOException $e) {
+        error_log("Error creating job seeker profile: " . $e->getMessage());
+    }
+}
 
 // Get Nigerian states for dropdown
 $statesStmt = $pdo->prepare("SELECT * FROM nigeria_states ORDER BY name");
@@ -208,24 +238,7 @@ if ($_POST) {
     }
 }
 
-// Calculate profile completion percentage
-function calculateProfileCompletion($user) {
-    $fields = [
-        'first_name', 'last_name', 'phone', 'date_of_birth', 'gender',
-        'state_of_origin', 'current_state', 'current_city',
-        'years_of_experience', 'job_status', 'skills', 'bio'
-    ];
-    
-    $completed = 0;
-    foreach ($fields as $field) {
-        if (!empty($user[$field])) {
-            $completed++;
-        }
-    }
-    
-    return round(($completed / count($fields)) * 100);
-}
-
+// Calculate profile completion percentage using shared function
 $profileCompletion = calculateProfileCompletion($user);
 ?>
 <!DOCTYPE html>

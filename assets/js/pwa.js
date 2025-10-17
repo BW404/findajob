@@ -68,7 +68,7 @@ class FindAJobPWA {
 
         const banner = document.createElement('div');
         banner.id = 'installBanner';
-        banner.className = 'install-banner';
+        banner.className = 'install-banner install-banner-top';
         banner.innerHTML = `
             <div class="install-banner-content">
                 <div class="install-banner-icon">
@@ -82,6 +82,7 @@ class FindAJobPWA {
                     <button id="installBtn" class="btn btn-primary btn-sm">Install</button>
                     <button id="dismissBtn" class="btn btn-secondary btn-sm">Later</button>
                 </div>
+                <button class="install-banner-close" id="closeBtn">×</button>
             </div>
         `;
 
@@ -93,6 +94,10 @@ class FindAJobPWA {
         });
 
         document.getElementById('dismissBtn').addEventListener('click', () => {
+            this.dismissInstallBanner();
+        });
+
+        document.getElementById('closeBtn').addEventListener('click', () => {
             this.dismissInstallBanner();
         });
 
