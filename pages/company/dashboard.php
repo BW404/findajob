@@ -82,10 +82,17 @@ try {
                 <a href="/findajob" class="site-logo">
                     <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
                 </a>
-                <div>
-                    <span>Welcome, <?php echo htmlspecialchars($user['company_name'] ?? $user['first_name']); ?>!</span>
+                <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <a href="dashboard.php" class="nav-link" style="text-decoration: none; color: var(--primary); font-weight: 600;">Dashboard</a>
+                    <a href="post-job.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Post Job</a>
+                    <a href="active-jobs.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Active Jobs</a>
+                    <a href="all-applications.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Applications</a>
+                    <a href="applicants.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Applicants</a>
+                    <a href="analytics.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Analytics</a>
+                    <a href="profile.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Profile</a>
+                    <span style="margin-left: 1rem;">Welcome, <?php echo htmlspecialchars($user['company_name'] ?? $user['first_name']); ?>!</span>
                     <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
-                        <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-secondary" style="margin-right: 1rem;">📧 Dev Emails</a>
+                        <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-secondary" style="margin-left: 1rem;">📧 Dev Emails</a>
                     <?php endif; ?>
                     <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
                 </div>
@@ -146,6 +153,7 @@ try {
 
             <!-- Dashboard Stats Grid -->
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+                <a href="active-jobs.php" style="text-decoration: none; color: inherit;">
                 <div class="stat-card" style="
                     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
                     color: white; 
@@ -156,7 +164,10 @@ try {
                     transition: all 0.3s ease;
                     position: relative;
                     overflow: hidden;
-                ">
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(220, 38, 38, 0.25)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(220, 38, 38, 0.15)';">
+                
                     <div style="position: absolute; top: -20px; right: -20px; opacity: 0.1; font-size: 6rem;">
                         <i class="fas fa-briefcase"></i>
                     </div>
@@ -189,7 +200,9 @@ try {
                         </div>
                     </div>
                 </div>
+                </a>
 
+                <a href="all-applications.php" style="text-decoration: none; color: inherit;">
                 <div class="stat-card" style="
                     background: linear-gradient(135deg, #059669 0%, #047857 100%);
                     color: white; 
@@ -200,7 +213,10 @@ try {
                     transition: all 0.3s ease;
                     position: relative;
                     overflow: hidden;
-                ">
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(5, 150, 105, 0.25)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(5, 150, 105, 0.15)';">
+                
                     <div style="position: absolute; top: -20px; right: -20px; opacity: 0.1; font-size: 6rem;">
                         <i class="fas fa-users"></i>
                     </div>
@@ -229,7 +245,9 @@ try {
                         </div>
                     </div>
                 </div>
+                </a>
 
+                <a href="analytics.php" style="text-decoration: none; color: inherit;">
                 <div class="stat-card" style="
                     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
                     color: white; 
@@ -240,7 +258,10 @@ try {
                     transition: all 0.3s ease;
                     position: relative;
                     overflow: hidden;
-                ">
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(99, 102, 241, 0.25)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(99, 102, 241, 0.15)';">
+                
                     <div style="position: absolute; top: -20px; right: -20px; opacity: 0.1; font-size: 6rem;">
                         <i class="fas fa-eye"></i>
                     </div>
@@ -269,7 +290,9 @@ try {
                         </div>
                     </div>
                 </div>
+                </a>
 
+                <a href="profile.php#subscription" style="text-decoration: none; color: inherit;">
                 <div class="stat-card" style="
                     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                     color: white; 
@@ -280,7 +303,10 @@ try {
                     transition: all 0.3s ease;
                     position: relative;
                     overflow: hidden;
-                ">
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(245, 158, 11, 0.25)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(245, 158, 11, 0.15)';">
+                
                     <div style="position: absolute; top: -20px; right: -20px; opacity: 0.1; font-size: 6rem;">
                         <i class="fas fa-crown"></i>
                     </div>
@@ -307,13 +333,14 @@ try {
                         <div style="font-size: 0.85rem; opacity: 0.8; line-height: 1.4;">
                             <?php if (($user['subscription_type'] ?? 'free') === 'free'): ?>
                                 <i class="fas fa-arrow-up" style="margin-right: 0.5rem;"></i>
-                                <a href="#" style="color: white; text-decoration: underline; font-weight: 500;">Upgrade to Pro</a>
+                                Upgrade to unlock premium features
                             <?php else: ?>
                                 <i class="fas fa-check" style="margin-right: 0.5rem;"></i>Premium features active
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
+                </a>
             </div>
 
             <!-- Dashboard Content Grid -->
@@ -365,7 +392,7 @@ try {
                                         <div style="display: flex; justify-content: space-between; align-items: start;">
                                             <div style="flex: 1;">
                                                 <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 600;">
-                                                    <a href="job-details.php?id=<?php echo $job['id']; ?>" style="color: var(--text-primary); text-decoration: none;">
+                                                    <a href="../jobs/details.php?id=<?php echo $job['id']; ?>" style="color: var(--text-primary); text-decoration: none;">
                                                         <?php echo htmlspecialchars($job['title']); ?>
                                                     </a>
                                                 </h4>
@@ -635,7 +662,7 @@ try {
                             ">
                                 <i class="fas fa-users" style="color: var(--primary);"></i> View Applicants
                             </a>
-                            <a href="#" class="action-btn" style="
+                            <a href="profile.php" class="action-btn" style="
                                 text-decoration: none; 
                                 padding: 0.875rem 1.5rem; 
                                 border-radius: 12px; 
@@ -647,7 +674,8 @@ try {
                                 display: flex; 
                                 align-items: center;
                                 gap: 0.75rem;
-                                opacity: 0.7;
+                            ">
+                                <i class="fas fa-building" style="color: var(--primary);"></i> Company Profile
                             ">
                                 <i class="fas fa-search" style="color: var(--primary);"></i> Search CVs <span style="font-size: 0.75rem; color: var(--text-secondary);">(Coming Soon)</span>
                             </a>

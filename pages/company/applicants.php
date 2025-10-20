@@ -35,11 +35,13 @@ $stmt = $pdo->prepare("
            j.title as job_title,
            u.first_name, u.last_name, u.email, u.phone,
            jsp.years_of_experience, jsp.job_status, jsp.education_level,
-           ja.application_status as status
+           ja.application_status as status,
+           cv.file_path as cv_file
     FROM job_applications ja
     JOIN jobs j ON ja.job_id = j.id
     JOIN users u ON ja.job_seeker_id = u.id
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
+    LEFT JOIN cvs cv ON ja.cv_id = cv.id
     WHERE {$whereClause}
     ORDER BY ja.applied_at DESC
 ");
@@ -278,10 +280,15 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
 
                                         <!-- Action Buttons -->
                                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                            <?php if ($application['cv_file']): ?>
-                                                <a href="../../uploads/cvs/<?php echo htmlspecialchars($application['cv_file']); ?>" 
+                                            <?php if (!empty($application['cv_file'])): ?>
+                                                <a href="../../<?php echo htmlspecialchars($application['cv_file']); ?>" 
                                                    target="_blank" class="btn btn-outline btn-sm">
                                                     <i class="fas fa-file-pdf"></i> View CV
+                                                </a>
+                                            <?php elseif (!empty($application['cv_id'])): ?>
+                                                <a href="../user/cv-download.php?id=<?php echo $application['cv_id']; ?>" 
+                                                   target="_blank" class="btn btn-outline btn-sm">
+                                                    <i class="fas fa-file-pdf"></i> Download CV
                                                 </a>
                                             <?php endif; ?>
                                             
