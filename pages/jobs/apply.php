@@ -35,23 +35,38 @@ try {
         exit;
     }
 
-    // Create application record if table exists
+    // Check if user has already applied
     try {
-        $insert = $pdo->prepare("INSERT INTO job_applications (job_id, user_id, created_at) VALUES (?, ?, NOW())");
+        $check = $pdo->prepare("SELECT id FROM job_applications WHERE job_id = ? AND job_seeker_id = ? LIMIT 1");
+        $check->execute([$jobId, $userId]);
+        if ($check->fetch()) {
+            // Already applied
+            header('Location: /findajob/pages/jobs/details.php?id=' . $jobId . '&applied=already');
+            exit;
+        }
+    } catch (PDOException $e) {
+        // Table might not exist, continue with application
+        error_log('Job application check error: ' . $e->getMessage());
+    }
+
+    // Create application record
+    try {
+        $insert = $pdo->prepare("INSERT INTO job_applications (job_id, job_seeker_id, application_status) VALUES (?, ?, 'applied')");
         $insert->execute([$jobId, $userId]);
-        // Increment applications_count on jobs if column exists
+        
+        // Increment applications_count on jobs
         try {
             $pdo->prepare("UPDATE jobs SET applications_count = COALESCE(applications_count,0) + 1 WHERE id = ?")->execute([$jobId]);
         } catch (Exception $e) {
-            // ignore
+            error_log('Failed to update applications_count: ' . $e->getMessage());
         }
 
-        header('Location: /findajob/pages/jobs/details.php?id=' . $jobId . '&applied=1');
+        header('Location: /findajob/pages/jobs/details.php?id=' . $jobId . '&applied=success');
         exit;
     } catch (PDOException $e) {
-        // Table might not exist - fallback: redirect back with info
+        // Application failed
         error_log('Job application error: ' . $e->getMessage());
-        header('Location: /findajob/pages/jobs/details.php?id=' . $jobId . '&applied=0');
+        header('Location: /findajob/pages/jobs/details.php?id=' . $jobId . '&applied=error&msg=' . urlencode('Failed to submit application. Please try again.'));
         exit;
     }
 

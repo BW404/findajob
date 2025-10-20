@@ -106,6 +106,18 @@ try {
     // ignore
 }
 
+// Check if current user has already applied (if logged in)
+$hasApplied = false;
+if (isLoggedIn() && isJobSeeker()) {
+    try {
+        $checkApplied = $pdo->prepare("SELECT id FROM job_applications WHERE job_id = ? AND job_seeker_id = ? LIMIT 1");
+        $checkApplied->execute([$jobId, getCurrentUserId()]);
+        $hasApplied = $checkApplied->fetch() ? true : false;
+    } catch (Exception $e) {
+        // Ignore if table doesn't exist
+    }
+}
+
 // Render simple page using existing assets
 if (isset($_GET['debug']) && $_GET['debug']) {
     echo "<div style='padding:12px;background:#eef; border:1px solid #cce; margin:12px; font-family:monospace; white-space:pre-wrap;'>Fetched job:\n" . htmlspecialchars(print_r($job, true)) . "</div>";
@@ -143,6 +155,22 @@ if (isset($_GET['debug']) && $_GET['debug']) {
 
     <div class="container">
         <main class="main-content" style="padding:2rem 0;">
+            <?php if (isset($_GET['applied'])): ?>
+                <?php if ($_GET['applied'] === 'success'): ?>
+                    <div class="alert alert-success" style="margin-bottom:1.5rem; padding:1rem; background:#dcfce7; color:#166534; border:1px solid #bbf7d0; border-radius:8px;">
+                        <strong>✓ Application Submitted!</strong> Your application has been sent successfully. The employer will review your profile and contact you if you're a good fit.
+                    </div>
+                <?php elseif ($_GET['applied'] === 'already'): ?>
+                    <div class="alert alert-info" style="margin-bottom:1.5rem; padding:1rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:8px;">
+                        <strong>ℹ Already Applied</strong> You have already applied for this position. Check your dashboard for application status.
+                    </div>
+                <?php elseif ($_GET['applied'] === 'error'): ?>
+                    <div class="alert alert-error" style="margin-bottom:1.5rem; padding:1rem; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; border-radius:8px;">
+                        <strong>✗ Application Failed</strong> <?php echo isset($_GET['msg']) ? htmlspecialchars($_GET['msg']) : 'Something went wrong. Please try again.'; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+            
             <div class="job-detail">
                 <div class="job-main">
                     <div class="card" style="padding:1.5rem; border-radius:10px; background:var(--surface);">
@@ -210,15 +238,35 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                         </div>
 
                         <div style="display:flex; flex-direction:column; gap:8px;">
-                            <?php if (!empty($job['application_email'])): ?>
+                            <?php if (isset($_GET['debug']) && $_GET['debug']): ?>
+                                <div style="padding:8px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; font-size:0.85rem; margin-bottom:8px;">
+                                    <strong>Debug:</strong> Logged In: <?php echo isLoggedIn() ? 'YES' : 'NO'; ?> | 
+                                    Job Seeker: <?php echo isJobSeeker() ? 'YES' : 'NO'; ?> | 
+                                    Has Applied: <?php echo $hasApplied ? 'YES' : 'NO'; ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($hasApplied): ?>
+                                <button class="btn btn-secondary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; cursor:not-allowed;" disabled>
+                                    ✓ Already Applied
+                                </button>
+                                <a href="/findajob/pages/user/dashboard.php" class="btn btn-outline btn-block" style="text-align:center; padding:0.65rem 1rem; font-size:0.9rem;">
+                                    View Application Status
+                                </a>
+                            <?php elseif (!empty($job['application_email'])): ?>
                                 <a class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;" href="mailto:<?php echo htmlspecialchars($job['application_email']); ?>">Apply via Email</a>
                             <?php elseif (!empty($job['application_url'])): ?>
                                 <a class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;" href="<?php echo htmlspecialchars($job['application_url']); ?>" target="_blank">Apply on Company Site</a>
                             <?php else: ?>
-                                <form method="post" action="/findajob/pages/jobs/apply.php" style="width:100%;">
-                                    <input type="hidden" name="job_id" value="<?php echo (int)$jobId; ?>">
-                                    <button class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; width:100%;" type="submit">Apply Now</button>
-                                </form>
+                                <?php if (isLoggedIn() && isJobSeeker()): ?>
+                                    <form method="post" action="/findajob/pages/jobs/apply.php" style="width:100%;" id="applyForm" onsubmit="console.log('Form submitting...'); return true;">
+                                        <input type="hidden" name="job_id" value="<?php echo (int)$jobId; ?>">
+                                        <button class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; width:100%; cursor:pointer;" type="submit" onclick="console.log('Button clicked!');">Apply Now</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href="/findajob/pages/auth/login-jobseeker.php?return=<?php echo urlencode('/findajob/pages/jobs/details.php?id=' . $jobId); ?>" class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
+                                        Login to Apply
+                                    </a>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>

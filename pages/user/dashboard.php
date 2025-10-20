@@ -61,7 +61,7 @@ $stats = [
 
 try {
     // Get applications count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM job_applications WHERE user_id = ?");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM job_applications WHERE job_seeker_id = ?");
     $stmt->execute([$userId]);
     $stats['applications_count'] = $stmt->fetchColumn();
     
@@ -99,10 +99,10 @@ try {
 $recentApplications = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT ja.*, j.title, j.company_name, ja.applied_at, ja.status
+        SELECT ja.*, j.title, j.company_name, ja.applied_at, ja.application_status as status
         FROM job_applications ja 
         JOIN jobs j ON ja.job_id = j.id 
-        WHERE ja.user_id = ? 
+        WHERE ja.job_seeker_id = ? 
         ORDER BY ja.applied_at DESC 
         LIMIT 5
     ");
@@ -122,7 +122,7 @@ try {
         LEFT JOIN companies c ON j.company_id = c.id
         WHERE j.status = 'active' 
         AND (j.location LIKE CONCAT('%', ?, '%') OR ? IS NULL)
-        AND j.id NOT IN (SELECT job_id FROM job_applications WHERE user_id = ?)
+        AND j.id NOT IN (SELECT job_id FROM job_applications WHERE job_seeker_id = ?)
         ORDER BY j.created_at DESC 
         LIMIT 5
     ");
@@ -140,7 +140,7 @@ try {
         SELECT 'application' as type, j.title, j.company_name, ja.applied_at as activity_time
         FROM job_applications ja 
         JOIN jobs j ON ja.job_id = j.id 
-        WHERE ja.user_id = ? 
+        WHERE ja.job_seeker_id = ? 
         ORDER BY ja.applied_at DESC 
         LIMIT 10
     ");
@@ -157,12 +157,12 @@ try {
     }
     
     // Add profile update activity if profile was recently updated
-    if ($user['updated_at'] && strtotime($user['updated_at']) > strtotime('-7 days')) {
+    if (!empty($user['profile_updated_at']) && strtotime($user['profile_updated_at']) > strtotime('-7 days')) {
         $recentActivities[] = [
             'type' => 'profile_update',
             'title' => 'Profile Updated',
             'company' => null,
-            'time' => $user['updated_at']
+            'time' => $user['profile_updated_at']
         ];
     }
     
@@ -227,6 +227,10 @@ try {
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        a.stat-card:hover {
+            box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
         }
         
         .dashboard-content {
@@ -318,7 +322,7 @@ try {
 
         <!-- Dashboard Stats Cards -->
         <div class="dashboard-stats">
-                <div class="stat-card">
+                <a href="applications.php" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
                     <div class="stat-icon">📋</div>
                     <div class="stat-content">
                         <h3>Applications</h3>
@@ -327,7 +331,7 @@ try {
                             <?php echo $stats['applications_count'] > 0 ? 'Keep applying!' : 'Start applying'; ?>
                         </div>
                     </div>
-                </div>
+                </a>
                 
                 <div class="stat-card">
                     <div class="stat-icon">👁️</div>

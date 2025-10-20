@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apply Button Test Instructions</title>
+    <style>
+        body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .step { background: #f0f9ff; padding: 1rem; margin: 1rem 0; border-left: 4px solid #3b82f6; }
+        .success { background: #dcfce7; border-left-color: #10b981; }
+        .warning { background: #fff3cd; border-left-color: #ffc107; }
+        code { background: #e5e7eb; padding: 0.2rem 0.4rem; border-radius: 3px; }
+        pre { background: #1f2937; color: #f3f4f6; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Apply Button Troubleshooting</h1>
+    
+    <h2>Test Steps:</h2>
+    
+    <div class="step">
+        <h3>Step 1: Check if you're logged in</h3>
+        <p>Visit: <a href="/findajob/debug-apply.php" target="_blank">Debug Page</a></p>
+        <p>This will show your login status and user type.</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 2: Login as Job Seeker (if not logged in)</h3>
+        <p>Visit: <a href="/findajob/pages/auth/login-jobseeker.php" target="_blank">Job Seeker Login</a></p>
+        <p><strong>Test credentials:</strong></p>
+        <pre>Email: test1@gmail.com
+Password: (your test password)</pre>
+    </div>
+    
+    <div class="step">
+        <h3>Step 3: Visit Job Details with Debug Mode</h3>
+        <p>Visit: <a href="/findajob/pages/jobs/details.php?id=1&debug=1" target="_blank">Job Details (Debug Mode)</a></p>
+        <p>Look for the yellow debug box above the apply button. It will show:</p>
+        <ul>
+            <li>Logged In: YES/NO</li>
+            <li>Job Seeker: YES/NO</li>
+            <li>Has Applied: YES/NO</li>
+        </ul>
+    </div>
+    
+    <div class="step warning">
+        <h3>Step 4: Open Browser Console</h3>
+        <p>Press <code>F12</code> to open Developer Tools, then go to the <strong>Console</strong> tab.</p>
+        <p>Keep it open while you click the Apply Now button.</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 5: Click "Apply Now"</h3>
+        <p>When you click the button, you should see in the console:</p>
+        <pre>Button clicked!
+Form submitting...</pre>
+        <p>If you see these messages but nothing happens, there's a form submission issue.</p>
+        <p>If you don't see these messages, there's a JavaScript/CSS blocking issue.</p>
+    </div>
+    
+    <div class="step success">
+        <h3>Expected Behavior:</h3>
+        <p>After clicking "Apply Now", you should be redirected to the same page with a success message:</p>
+        <pre>✓ Application Submitted! Your application has been sent successfully...</pre>
+    </div>
+    
+    <h2>Common Issues:</h2>
+    
+    <div class="step warning">
+        <h4>Issue 1: Button says "Login to Apply"</h4>
+        <p><strong>Cause:</strong> You're not logged in as a job seeker.</p>
+        <p><strong>Solution:</strong> Go to Step 2 and login.</p>
+    </div>
+    
+    <div class="step warning">
+        <h4>Issue 2: Button says "Already Applied"</h4>
+        <p><strong>Cause:</strong> You've already applied for this job.</p>
+        <p><strong>Solution:</strong> Try a different job or clear the application from database.</p>
+        <p>Clear command:</p>
+        <pre>DELETE FROM job_applications WHERE job_seeker_id = 1 AND job_id = 1;</pre>
+    </div>
+    
+    <div class="step warning">
+        <h4>Issue 3: Nothing happens when clicking</h4>
+        <p><strong>Possible causes:</strong></p>
+        <ul>
+            <li>JavaScript error (check console)</li>
+            <li>CSS z-index issue (something is overlaying the button)</li>
+            <li>Form action URL is incorrect</li>
+        </ul>
+        <p><strong>Debug:</strong> Check console messages when clicking</p>
+    </div>
+    
+    <h2>Direct Tests:</h2>
+    
+    <div class="step">
+        <h3>Test the apply.php directly:</h3>
+        <p>After logging in, click this button:</p>
+        <form method="POST" action="/findajob/pages/jobs/apply.php" style="margin-top:1rem;">
+            <input type="hidden" name="job_id" value="1">
+            <button type="submit" style="padding:0.75rem 1.5rem; background:#3b82f6; color:white; border:none; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:600;">
+                Direct Test: Apply to Job #1
+            </button>
+        </form>
+        <p><small>This bypasses the details page and submits directly to apply.php</small></p>
+    </div>
+    
+    <hr style="margin: 2rem 0;">
+    
+    <p><strong>Need more help?</strong> Share:</p>
+    <ol>
+        <li>What you see in the debug box (yellow box on job details page)</li>
+        <li>What you see in browser console when clicking</li>
+        <li>What button text you see ("Apply Now", "Login to Apply", or "Already Applied")</li>
+    </ol>
+    
+</body>
+</html>

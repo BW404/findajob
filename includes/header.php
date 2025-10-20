@@ -55,7 +55,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
                                 <li><a href="<?php echo $is_auth_page ? '../user/profile.php' : '/findajob/pages/user/profile.php'; ?>">Settings</a></li>
                                 <li><a href="<?php echo $is_auth_page ? '../user/subscription.php' : '/findajob/pages/user/subscription.php'; ?>">Subscription</a></li>
                                 <li class="dropdown-divider"></li>
-                                <li><a href="<?php echo $is_auth_page ? '../../api/auth.php?action=logout' : '/findajob/api/auth.php?action=logout'; ?>">Logout</a></li>
+                                <li><a href="<?php echo $is_auth_page ? 'logout.php' : '/findajob/pages/auth/logout.php'; ?>">Logout</a></li>
                             </ul>
                         </li>
                     <?php else: ?>

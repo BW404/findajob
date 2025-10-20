@@ -308,8 +308,8 @@ class JobSearch {
                             </span>
                         ` : ''}
                     </div>
-                    <button class="apply-btn" onclick="event.stopPropagation(); window.location.href='apply.php?id=${job.id}'">
-                        Apply Now
+                    <button class="apply-btn" onclick="event.stopPropagation(); window.location.href='details.php?id=${job.id}'">
+                        Read More
                     </button>
                 </div>
             </article>

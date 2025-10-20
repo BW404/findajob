@@ -33,15 +33,13 @@ if ($jobId) {
 $stmt = $pdo->prepare("
     SELECT ja.*, 
            j.title as job_title,
-           u.first_name, u.last_name, u.email,
-           up.phone, up.experience_level, up.current_job_title,
-           ns.name as state_name, nl.name as lga_name
+           u.first_name, u.last_name, u.email, u.phone,
+           jsp.years_of_experience, jsp.job_status, jsp.education_level,
+           ja.application_status as status
     FROM job_applications ja
     JOIN jobs j ON ja.job_id = j.id
-    JOIN users u ON ja.user_id = u.id
-    LEFT JOIN user_profiles up ON u.id = up.user_id
-    LEFT JOIN nigeria_states ns ON up.state_id = ns.id
-    LEFT JOIN nigeria_lgas nl ON up.lga_id = nl.id
+    JOIN users u ON ja.job_seeker_id = u.id
+    LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
     WHERE {$whereClause}
     ORDER BY ja.applied_at DESC
 ");
@@ -63,10 +61,10 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
     $stmt->execute([$applicationId, $userId]);
     
     if ($stmt->fetch()) {
-        $validStatuses = ['pending', 'reviewed', 'shortlisted', 'interviewed', 'rejected', 'hired'];
+        $validStatuses = ['applied', 'viewed', 'shortlisted', 'interviewed', 'offered', 'hired', 'rejected'];
         
         if (in_array($action, $validStatuses)) {
-            $stmt = $pdo->prepare("UPDATE job_applications SET status = ?, updated_at = NOW() WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE job_applications SET application_status = ?, responded_at = NOW() WHERE id = ?");
             $stmt->execute([$action, $applicationId]);
             
             // Redirect to refresh page
@@ -144,8 +142,8 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
             <div class="applications-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                 <?php
                 $totalApplications = count($applications);
-                $pendingApplications = count(array_filter($applications, fn($a) => $a['status'] === 'pending'));
-                $reviewedApplications = count(array_filter($applications, fn($a) => in_array($a['status'], ['reviewed', 'shortlisted'])));
+                $pendingApplications = count(array_filter($applications, fn($a) => $a['status'] === 'applied'));
+                $reviewedApplications = count(array_filter($applications, fn($a) => in_array($a['status'], ['viewed', 'shortlisted', 'interviewed'])));
                 $hiredApplications = count(array_filter($applications, fn($a) => $a['status'] === 'hired'));
                 ?>
                 
@@ -200,7 +198,10 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                     <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
                                                 </h4>
                                                 <p style="margin: 0.25rem 0; color: var(--text-secondary);">
-                                                    <?php echo htmlspecialchars($application['current_job_title'] ?? 'Job Seeker'); ?>
+                                                    <?php echo htmlspecialchars($application['job_status'] ?? 'Job Seeker'); ?>
+                                                    <?php if (!empty($application['years_of_experience'])): ?>
+                                                        • <?php echo $application['years_of_experience']; ?> years exp.
+                                                    <?php endif; ?>
                                                 </p>
                                                 <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
                                                     <i class="fas fa-envelope"></i> <?php echo htmlspecialchars($application['email']); ?>
@@ -220,14 +221,14 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                 <div>
                                                     <strong>Applied:</strong> <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?>
                                                 </div>
-                                                <?php if ($application['state_name']): ?>
+                                                <?php if (!empty($application['years_of_experience'])): ?>
                                                     <div>
-                                                        <strong>Location:</strong> <?php echo htmlspecialchars(($application['lga_name'] ?? '') . ', ' . $application['state_name']); ?>
+                                                        <strong>Experience:</strong> <?php echo $application['years_of_experience']; ?> years
                                                     </div>
                                                 <?php endif; ?>
-                                                <?php if ($application['experience_level']): ?>
+                                                <?php if (!empty($application['education_level'])): ?>
                                                     <div>
-                                                        <strong>Experience:</strong> <?php echo htmlspecialchars(ucfirst($application['experience_level'])); ?>
+                                                        <strong>Education:</strong> <?php echo strtoupper(htmlspecialchars($application['education_level'])); ?>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
@@ -260,12 +261,13 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                         <div style="margin-bottom: 1rem;">
                                             <?php
                                             $statusColors = [
-                                                'pending' => '#f59e0b',
-                                                'reviewed' => '#3b82f6',
+                                                'applied' => '#f59e0b',
+                                                'viewed' => '#3b82f6',
                                                 'shortlisted' => '#8b5cf6',
                                                 'interviewed' => '#06b6d4',
-                                                'rejected' => '#ef4444',
-                                                'hired' => '#10b981'
+                                                'offered' => '#10b981',
+                                                'hired' => '#10b981',
+                                                'rejected' => '#ef4444'
                                             ];
                                             $statusColor = $statusColors[$application['status']] ?? '#6b7280';
                                             ?>
@@ -290,12 +292,13 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                 <div class="dropdown-menu" id="status-dropdown-<?php echo $application['id']; ?>" style="display: none; position: absolute; right: 0; top: 100%; background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px; margin-top: 0.25rem;">
                                                     <?php
                                                     $statuses = [
-                                                        'pending' => 'Pending',
-                                                        'reviewed' => 'Reviewed',
+                                                        'applied' => 'Applied',
+                                                        'viewed' => 'Viewed',
                                                         'shortlisted' => 'Shortlisted',
                                                         'interviewed' => 'Interviewed',
-                                                        'rejected' => 'Rejected',
-                                                        'hired' => 'Hired'
+                                                        'offered' => 'Offered',
+                                                        'hired' => 'Hired',
+                                                        'rejected' => 'Rejected'
                                                     ];
                                                     
                                                     foreach ($statuses as $statusValue => $statusLabel):
