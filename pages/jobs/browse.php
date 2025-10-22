@@ -678,6 +678,35 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
             object-fit: cover;
         }
 
+        .job-actions {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .save-job-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+            transition: transform 0.2s ease;
+            line-height: 1;
+        }
+
+        .save-job-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .save-job-btn.saved .save-icon {
+            animation: heartbeat 0.3s ease;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
         .job-info {
             flex: 1;
             min-width: 0;
@@ -996,37 +1025,13 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="app-bottom-nav-icon">🔍</div>
             <div class="app-bottom-nav-label">Jobs</div>
         </a>
-        <a href="../services/cv-creator.php" class="app-bottom-nav-item">
-            <div class="app-bottom-nav-icon">📄</div>
-            <div class="app-bottom-nav-label">CV</div>
+        <a href="../user/saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
         </a>
-        <a href="../user/dashboard.php" class="app-bottom-nav-item">
-            <div class="app-bottom-nav-icon">👤</div>
-            <div class="app-bottom-nav-label">Profile</div>
-        </a>
-    </nav>
-
-    <!-- PWA Scripts -->
-    <script src="../../assets/js/pwa.js"></script>
-
-    <?php include '../../includes/footer.php'; ?>
-
-</body>
-</html>
-
-    <!-- Bottom Navigation for Mobile -->
-    <nav class="app-bottom-nav">
-        <a href="../../index.php" class="app-bottom-nav-item">
-            <div class="app-bottom-nav-icon">🏠</div>
-            <div class="app-bottom-nav-label">Home</div>
-        </a>
-        <a href="browse.php" class="app-bottom-nav-item active">
-            <div class="app-bottom-nav-icon">🔍</div>
-            <div class="app-bottom-nav-label">Jobs</div>
-        </a>
-        <a href="../services/cv-creator.php" class="app-bottom-nav-item">
-            <div class="app-bottom-nav-icon">📄</div>
-            <div class="app-bottom-nav-label">CV</div>
+        <a href="../user/applications.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">�</div>
+            <div class="app-bottom-nav-label">Applications</div>
         </a>
         <a href="../user/dashboard.php" class="app-bottom-nav-item">
             <div class="app-bottom-nav-icon">👤</div>

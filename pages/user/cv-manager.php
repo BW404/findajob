@@ -606,8 +606,35 @@ $page_title = 'CV Manager - FindAJob Nigeria';
                 fileInput.dispatchEvent(new Event('change'));
             }
         });
+
+        // Add body class for bottom nav
+        document.body.classList.add('has-bottom-nav');
     </script>
     
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="app-bottom-nav">
+        <a href="../../index.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏠</div>
+            <div class="app-bottom-nav-label">Home</div>
+        </a>
+        <a href="../jobs/browse.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🔍</div>
+            <div class="app-bottom-nav-label">Jobs</div>
+        </a>
+        <a href="saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
+        </a>
+        <a href="applications.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">📋</div>
+            <div class="app-bottom-nav-label">Applications</div>
+        </a>
+        <a href="dashboard.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">👤</div>
+            <div class="app-bottom-nav-label">Profile</div>
+        </a>
+    </nav>
+
     <?php include '../../includes/footer.php'; ?>
 </body>
 </html>

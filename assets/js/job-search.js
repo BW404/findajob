@@ -262,6 +262,11 @@ class JobSearch {
             logoSrc = `../../uploads/logos/${job.company_logo}`;
         }
         
+        // Check if job is saved (will be populated from server or localStorage)
+        const isSaved = job.is_saved || false;
+        const saveIcon = isSaved ? '❤️' : '🤍';
+        const savedClass = isSaved ? 'saved' : '';
+        
         return `
             <article class="job-card" data-job-id="${job.id}" onclick="window.location.href='details.php?id=${job.id}'">
                 <div class="job-card-header">
@@ -277,8 +282,8 @@ class JobSearch {
                         <p class="job-location">📍 ${job.location_formatted}</p>
                     </div>
                     <div class="job-actions">
-                        <button class="save-job-btn" data-job-id="${job.id}" title="Save job">
-                            <span class="save-icon">🤍</span>
+                        <button class="save-job-btn ${savedClass}" data-job-id="${job.id}" title="${isSaved ? 'Unsave job' : 'Save job'}" onclick="event.stopPropagation();">
+                            <span class="save-icon">${saveIcon}</span>
                         </button>
                     </div>
                 </div>
@@ -318,18 +323,63 @@ class JobSearch {
     
     bindJobCardEvents() {
         // Save job buttons
-        document.querySelectorAll('.save-job-btn').forEach(btn => {
+        const saveButtons = document.querySelectorAll('.save-job-btn');
+        console.log('Binding events to', saveButtons.length, 'save buttons');
+        
+        saveButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.toggleSaveJob(btn.dataset.jobId);
+                e.preventDefault();
+                console.log('Save button clicked for job ID:', btn.dataset.jobId);
+                
+                const jobId = btn.dataset.jobId;
+                const isSaved = btn.classList.contains('saved');
+                this.toggleSaveJob(jobId, isSaved, btn);
             });
         });
     }
     
-    toggleSaveJob(jobId) {
-        // Implement save job functionality
-        console.log('Toggle save job:', jobId);
-        // This would make an API call to save/unsave the job
+    async toggleSaveJob(jobId, isSaved, buttonElement) {
+        const action = isSaved ? 'unsave' : 'save';
+        console.log('Toggle save job:', jobId, 'Action:', action);
+        
+        try {
+            // Optimistic UI update
+            const icon = buttonElement.querySelector('.save-icon');
+            const originalIcon = icon.textContent;
+            icon.textContent = isSaved ? '🤍' : '❤️';
+            buttonElement.classList.toggle('saved');
+            
+            console.log('Making API call to:', '../../api/jobs.php');
+            const response = await fetch('../../api/jobs.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=${action}&job_id=${jobId}`
+            });
+            
+            console.log('API response status:', response.status);
+            const data = await response.json();
+            console.log('API response data:', data);
+            
+            if (!data.success) {
+                // Revert on error
+                icon.textContent = originalIcon;
+                buttonElement.classList.toggle('saved');
+                alert(data.message || 'Failed to ' + action + ' job');
+            } else {
+                // Update title
+                buttonElement.title = isSaved ? 'Save job' : 'Unsave job';
+            }
+        } catch (error) {
+            // Revert on error
+            const icon = buttonElement.querySelector('.save-icon');
+            icon.textContent = isSaved ? '❤️' : '🤍';
+            buttonElement.classList.toggle('saved');
+            console.error('Error toggling save job:', error);
+            alert('An error occurred. Please try again.');
+        }
     }
     
     displayPagination() {

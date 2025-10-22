@@ -287,9 +287,13 @@ if (isset($_GET['debug']) && $_GET['debug']) {
             <div class="app-bottom-nav-icon">🔍</div>
             <div class="app-bottom-nav-label">Jobs</div>
         </a>
-        <a href="../services/cv-creator.php" class="app-bottom-nav-item">
-            <div class="app-bottom-nav-icon">📄</div>
-            <div class="app-bottom-nav-label">CV</div>
+        <a href="../user/saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
+        </a>
+        <a href="../user/applications.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">�</div>
+            <div class="app-bottom-nav-label">Applications</div>
         </a>
         <a href="../user/dashboard.php" class="app-bottom-nav-item">
             <div class="app-bottom-nav-icon">👤</div>

@@ -54,6 +54,7 @@ if (!$profileExists) {
 // Get real statistics
 $stats = [
     'applications_count' => 0,
+    'saved_jobs_count' => 0,
     'profile_views' => 0,
     'job_matches' => 0,
     'profile_completeness' => 0
@@ -64,6 +65,16 @@ try {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM job_applications WHERE job_seeker_id = ?");
     $stmt->execute([$userId]);
     $stats['applications_count'] = $stmt->fetchColumn();
+    
+    // Get saved jobs count
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM saved_jobs WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $stats['saved_jobs_count'] = $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        // Table might not exist yet
+        $stats['saved_jobs_count'] = 0;
+    }
     
     // Get profile views (if tracking exists)
     $stmt = $pdo->prepare("SELECT profile_views FROM job_seeker_profiles WHERE user_id = ?");
@@ -110,6 +121,31 @@ try {
     $recentApplications = $stmt->fetchAll();
 } catch (PDOException $e) {
     error_log("Recent applications error: " . $e->getMessage());
+}
+
+// Get recent saved jobs
+$savedJobs = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT j.*, sj.saved_at
+        FROM saved_jobs sj 
+        JOIN jobs j ON sj.job_id = j.id 
+        WHERE sj.user_id = ? 
+        ORDER BY sj.saved_at DESC 
+        LIMIT 5
+    ");
+    $stmt->execute([$userId]);
+    $savedJobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Debug logging
+    error_log("Dashboard - User ID: " . $userId);
+    error_log("Dashboard - Saved jobs count: " . count($savedJobs));
+    if (count($savedJobs) > 0) {
+        error_log("Dashboard - First saved job: " . print_r($savedJobs[0], true));
+    }
+} catch (PDOException $e) {
+    error_log("Saved jobs error: " . $e->getMessage());
+    error_log("Saved jobs SQL error: " . $e->getTraceAsString());
 }
 
 // Get recommended jobs with real data
@@ -333,6 +369,17 @@ try {
                     </div>
                 </a>
                 
+                <a href="saved-jobs.php" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+                    <div class="stat-icon">❤️</div>
+                    <div class="stat-content">
+                        <h3>Saved Jobs</h3>
+                        <div class="stat-number"><?php echo $stats['saved_jobs_count']; ?></div>
+                        <div class="stat-change <?php echo $stats['saved_jobs_count'] > 0 ? 'positive' : 'neutral'; ?>">
+                            <?php echo $stats['saved_jobs_count'] > 0 ? 'View saved' : 'Save jobs'; ?>
+                        </div>
+                    </div>
+                </a>
+                
                 <div class="stat-card">
                     <div class="stat-icon">👁️</div>
                     <div class="stat-content">
@@ -503,6 +550,44 @@ try {
                         </div>
                     </div>
 
+                    <!-- Saved Jobs -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>❤️ Saved Jobs</h3>
+                            <a href="saved-jobs.php" class="view-all">View All</a>
+                        </div>
+                        <div class="applications-list">
+                            <?php if (count($savedJobs) > 0): ?>
+                                <?php foreach ($savedJobs as $job): ?>
+                                    <div class="application-item">
+                                        <div class="application-info">
+                                            <h4>
+                                                <a href="../jobs/details.php?id=<?php echo $job['id']; ?>" style="text-decoration: none; color: inherit;">
+                                                    <?php echo htmlspecialchars($job['title']); ?>
+                                                </a>
+                                            </h4>
+                                            <p class="company"><?php echo htmlspecialchars($job['company_name']); ?></p>
+                                            <span class="application-date">Saved <?php echo timeAgo($job['saved_at']); ?></span>
+                                        </div>
+                                        <div class="application-status">
+                                            <span class="status-badge <?php echo strtolower($job['STATUS'] ?? 'active'); ?>">
+                                                <?php echo ucfirst($job['STATUS'] ?? 'Active'); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="application-item" style="text-align: center; padding: 2rem;">
+                                    <div class="application-info">
+                                        <h4 style="color: var(--text-secondary);">No Saved Jobs Yet</h4>
+                                        <p class="company" style="margin: 0.5rem 0;">Save jobs you're interested in by clicking the heart ❤️ icon</p>
+                                        <a href="../jobs/browse.php" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Browse Jobs</a>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <!-- Recommended Jobs -->
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -633,11 +718,15 @@ try {
             <div class="app-bottom-nav-icon">🔍</div>
             <div class="app-bottom-nav-label">Jobs</div>
         </a>
-        <a href="dashboard.php" class="app-bottom-nav-item active">
-            <div class="app-bottom-nav-icon">📊</div>
-            <div class="app-bottom-nav-label">Dashboard</div>
+        <a href="saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
         </a>
-        <a href="profile.php" class="app-bottom-nav-item">
+        <a href="applications.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">�</div>
+            <div class="app-bottom-nav-label">Applications</div>
+        </a>
+        <a href="dashboard.php" class="app-bottom-nav-item active">
             <div class="app-bottom-nav-icon">👤</div>
             <div class="app-bottom-nav-label">Profile</div>
         </a>

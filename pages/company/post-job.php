@@ -693,7 +693,7 @@ if (empty($user_display_name)) {
         }
     </style>
 </head>
-<body>
+<body class="has-bottom-nav">
     <div class="container">
         <!-- Header -->
         <div style="text-align: center; margin-bottom: 3rem;">
@@ -1480,5 +1480,25 @@ if (empty($user_display_name)) {
             }
         });
     </script>
+    
+    <!-- Bottom Navigation for PWA -->
+    <nav class="app-bottom-nav">
+        <a href="../../index.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏠</div>
+            <div class="app-bottom-nav-label">Home</div>
+        </a>
+        <a href="post-job.php" class="app-bottom-nav-item active">
+            <div class="app-bottom-nav-icon">📝</div>
+            <div class="app-bottom-nav-label">Post Job</div>
+        </a>
+        <a href="dashboard.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">📊</div>
+            <div class="app-bottom-nav-label">Dashboard</div>
+        </a>
+        <a href="profile.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏢</div>
+            <div class="app-bottom-nav-label">Company</div>
+        </a>
+    </nav>
 </body>
 </html>

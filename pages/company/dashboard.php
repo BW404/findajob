@@ -75,7 +75,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
+<body class="has-bottom-nav">
     <header class="site-header">
         <div class="container">
             <nav class="site-nav">
@@ -891,5 +891,25 @@ try {
             });
         });
     </script>
+    
+    <!-- Bottom Navigation for PWA -->
+    <nav class="app-bottom-nav">
+        <a href="../../index.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏠</div>
+            <div class="app-bottom-nav-label">Home</div>
+        </a>
+        <a href="post-job.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">📝</div>
+            <div class="app-bottom-nav-label">Post Job</div>
+        </a>
+        <a href="dashboard.php" class="app-bottom-nav-item active">
+            <div class="app-bottom-nav-icon">📊</div>
+            <div class="app-bottom-nav-label">Dashboard</div>
+        </a>
+        <a href="profile.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏢</div>
+            <div class="app-bottom-nav-label">Company</div>
+        </a>
+    </nav>
 </body>
 </html>

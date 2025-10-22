@@ -616,6 +616,10 @@ foreach ($statResults as $stat) {
             <div class="app-bottom-nav-icon">🔍</div>
             <div class="app-bottom-nav-label">Jobs</div>
         </a>
+        <a href="saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
+        </a>
         <a href="applications.php" class="app-bottom-nav-item active">
             <div class="app-bottom-nav-icon">📋</div>
             <div class="app-bottom-nav-label">Applications</div>

@@ -11,7 +11,13 @@ try {
             handleGetJobs();
             break;
         case 'POST':
-            handleCreateJob();
+            // Check if this is a save/unsave action
+            $action = $_POST['action'] ?? '';
+            if ($action === 'save' || $action === 'unsave') {
+                handleSaveJob($action);
+            } else {
+                handleCreateJob();
+            }
             break;
         default:
             http_response_code(405);
@@ -21,6 +27,65 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+}
+
+function handleSaveJob($action) {
+    global $pdo;
+    
+    if (!isLoggedIn()) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'You must be logged in to save jobs']);
+        return;
+    }
+    
+    if (!isJobSeeker()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only job seekers can save jobs']);
+        return;
+    }
+    
+    $user_id = getCurrentUserId();
+    $job_id = intval($_POST['job_id'] ?? 0);
+    
+    if ($job_id <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid job ID']);
+        return;
+    }
+    
+    try {
+        if ($action === 'save') {
+            // Check if job exists and is active
+            $checkJob = $pdo->prepare("SELECT id FROM jobs WHERE id = ? AND STATUS = 'active'");
+            $checkJob->execute([$job_id]);
+            if (!$checkJob->fetch()) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Job not found or not active']);
+                return;
+            }
+            
+            // Insert (will fail silently if already exists due to UNIQUE constraint)
+            $stmt = $pdo->prepare("INSERT IGNORE INTO saved_jobs (user_id, job_id) VALUES (?, ?)");
+            $stmt->execute([$user_id, $job_id]);
+            
+            echo json_encode(['success' => true, 'message' => 'Job saved successfully', 'action' => 'saved']);
+            
+        } else if ($action === 'unsave') {
+            // Remove from saved jobs
+            $stmt = $pdo->prepare("DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?");
+            $stmt->execute([$user_id, $job_id]);
+            
+            echo json_encode(['success' => true, 'message' => 'Job removed from saved list', 'action' => 'unsaved']);
+        }
+    } catch (PDOException $e) {
+        // Handle case where saved_jobs table doesn't exist yet
+        if (strpos($e->getMessage(), "doesn't exist") !== false) {
+            http_response_code(503);
+            echo json_encode(['success' => false, 'message' => 'Saved jobs feature is not yet available. Please run the database migration.']);
+        } else {
+            throw $e;
+        }
+    }
 }
 
 function handleGetJobs() {

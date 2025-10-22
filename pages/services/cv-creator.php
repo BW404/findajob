@@ -36,7 +36,7 @@ if (isLoggedIn()) {
     
     <link rel="stylesheet" href="../../assets/css/main.css">
 </head>
-<body>
+<body class="has-bottom-nav">
     <?php include '../../includes/header.php'; ?>
 
     <div class="cv-creator-container">
@@ -2450,5 +2450,45 @@ if (isLoggedIn()) {
     </script>
 
     <?php include '../../includes/footer.php'; ?>
+    
+    <!-- Bottom Navigation for PWA -->
+    <nav class="app-bottom-nav">
+        <a href="../../index.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏠</div>
+            <div class="app-bottom-nav-label">Home</div>
+        </a>
+        <a href="../jobs/browse.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🔍</div>
+            <div class="app-bottom-nav-label">Jobs</div>
+        </a>
+        <?php if (isLoggedIn() && isJobSeeker()): ?>
+        <a href="../user/saved-jobs.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">❤️</div>
+            <div class="app-bottom-nav-label">Saved</div>
+        </a>
+        <?php endif; ?>
+        <a href="cv-creator.php" class="app-bottom-nav-item active">
+            <div class="app-bottom-nav-icon">📄</div>
+            <div class="app-bottom-nav-label">CV</div>
+        </a>
+        <?php if (isLoggedIn()): ?>
+            <?php if (isJobSeeker()): ?>
+        <a href="../user/dashboard.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">👤</div>
+            <div class="app-bottom-nav-label">Profile</div>
+        </a>
+            <?php else: ?>
+        <a href="../company/dashboard.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">🏢</div>
+            <div class="app-bottom-nav-label">Company</div>
+        </a>
+            <?php endif; ?>
+        <?php else: ?>
+        <a href="../auth/login.php" class="app-bottom-nav-item">
+            <div class="app-bottom-nav-icon">👤</div>
+            <div class="app-bottom-nav-label">Login</div>
+        </a>
+        <?php endif; ?>
+    </nav>
 </body>
 </html>
