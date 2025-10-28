@@ -41,6 +41,56 @@ $job_id = null;
 $debug_mode = isset($_GET['debug']) || isset($_POST['debug_mode']);
 $debug_info = [];
 
+// Check if we're editing an existing job
+$isEditing = false;
+$editJobId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
+$existingJob = null;
+
+if ($editJobId) {
+    // Fetch the job to edit - verify it belongs to current employer
+    $stmt = $pdo->prepare("SELECT * FROM jobs WHERE id = ? AND employer_id = ?");
+    $stmt->execute([$editJobId, $userId]);
+    $existingJob = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($existingJob) {
+        $isEditing = true;
+        if ($debug_mode) {
+            $debug_info[] = "✅ Editing job ID: $editJobId";
+            $debug_info[] = "Job title: " . $existingJob['title'];
+        }
+    } else {
+        $error_message = "Job not found or you don't have permission to edit it.";
+        if ($debug_mode) {
+            $debug_info[] = "❌ Job ID $editJobId not found or doesn't belong to user $userId";
+        }
+    }
+}
+
+// Helper function to get field value: POST > existing job > default
+function getFieldValue($fieldName, $default = '') {
+    global $existingJob;
+    if (isset($_POST[$fieldName])) {
+        return $_POST[$fieldName];
+    }
+    if ($existingJob && isset($existingJob[$fieldName])) {
+        return $existingJob[$fieldName];
+    }
+    return $default;
+}
+
+// Map database job_type back to form values
+function mapJobTypeToForm($dbJobType) {
+    $mapping = [
+        'permanent' => 'full-time',
+        'part_time' => 'part-time',
+        'contract' => 'contract',
+        'temporary' => 'temporary',
+        'internship' => 'internship',
+        'nysc' => 'nysc'
+    ];
+    return $mapping[$dbJobType] ?? 'full-time';
+}
+
 // Initialize variables with defaults
 $current_jobs = 0;
 $is_premium = false;
@@ -313,8 +363,10 @@ if ($is_job_submission) {
                 'experience_level' => $_POST['experience'] ?? 'entry',
                 'education_level' => $_POST['education'] ?? 'any',
                 'application_deadline' => !empty($_POST['application_deadline']) ? $_POST['application_deadline'] : null,
-                'application_email' => !empty($_POST['application_email']) ? $_POST['application_email'] : null,
-                'application_url' => trim($_POST['application_url'] ?? ''),
+                'application_type' => $_POST['application_type'] ?? 'easy',
+                'application_email' => !empty($_POST['application_email']) ? trim($_POST['application_email']) : null,
+                'application_url' => !empty($_POST['application_url']) ? trim($_POST['application_url']) : null,
+                'application_instructions' => !empty($_POST['application_instructions']) ? trim($_POST['application_instructions']) : null,
                 'company_name' => $company_name,
                 'is_featured' => isset($_POST['boost_type']) && $_POST['boost_type'] !== 'free' ? 1 : 0,
                 'is_urgent' => isset($_POST['is_urgent']) ? 1 : 0,
@@ -329,32 +381,112 @@ if ($is_job_submission) {
                 $debug_info[] = json_encode($job_data, JSON_PRETTY_PRINT);
             }
             
-            // Insert job into database
-            $sql = "INSERT INTO jobs (
-                employer_id, title, slug, category_id, job_type, employment_type,
-                description, requirements, responsibilities, benefits,
-                salary_min, salary_max, salary_currency, salary_period,
-                location_type, state, city, address,
-                experience_level, education_level, application_deadline,
-                application_email, application_url, company_name,
-                is_featured, is_urgent, is_remote_friendly,
-                views_count, applications_count, STATUS, created_at, updated_at
-            ) VALUES (
-                :employer_id, :title, :slug, :category_id, :job_type, :employment_type,
-                :description, :requirements, :responsibilities, :benefits,
-                :salary_min, :salary_max, :salary_currency, :salary_period,
-                :location_type, :state, :city, :address,
-                :experience_level, :education_level, :application_deadline,
-                :application_email, :application_url, :company_name,
-                :is_featured, :is_urgent, :is_remote_friendly,
-                :views_count, :applications_count, :STATUS, NOW(), NOW()
-            )";
-            
-            $stmt = $pdo->prepare($sql);
-            $result = $stmt->execute($job_data);
+            // Check if we're editing or creating new job
+            if ($isEditing && $editJobId) {
+                // UPDATE existing job
+                $sql = "UPDATE jobs SET
+                    title = :title, slug = :slug, category_id = :category_id,
+                    job_type = :job_type, employment_type = :employment_type,
+                    description = :description, requirements = :requirements,
+                    responsibilities = :responsibilities, benefits = :benefits,
+                    salary_min = :salary_min, salary_max = :salary_max,
+                    salary_currency = :salary_currency, salary_period = :salary_period,
+                    location_type = :location_type, state = :state, city = :city, address = :address,
+                    experience_level = :experience_level, education_level = :education_level,
+                    application_deadline = :application_deadline,
+                    application_type = :application_type, application_email = :application_email,
+                    application_url = :application_url, application_instructions = :application_instructions,
+                    company_name = :company_name, is_featured = :is_featured,
+                    is_urgent = :is_urgent, is_remote_friendly = :is_remote_friendly,
+                    updated_at = NOW()
+                WHERE id = :job_id AND employer_id = :employer_id";
+                
+                // Create update data array with only the fields in the UPDATE query
+                $update_data = [
+                    'title' => $job_data['title'],
+                    'slug' => $job_data['slug'],
+                    'category_id' => $job_data['category_id'],
+                    'job_type' => $job_data['job_type'],
+                    'employment_type' => $job_data['employment_type'],
+                    'description' => $job_data['description'],
+                    'requirements' => $job_data['requirements'],
+                    'responsibilities' => $job_data['responsibilities'],
+                    'benefits' => $job_data['benefits'],
+                    'salary_min' => $job_data['salary_min'],
+                    'salary_max' => $job_data['salary_max'],
+                    'salary_currency' => $job_data['salary_currency'],
+                    'salary_period' => $job_data['salary_period'],
+                    'location_type' => $job_data['location_type'],
+                    'state' => $job_data['state'],
+                    'city' => $job_data['city'],
+                    'address' => $job_data['address'],
+                    'experience_level' => $job_data['experience_level'],
+                    'education_level' => $job_data['education_level'],
+                    'application_deadline' => $job_data['application_deadline'],
+                    'application_type' => $job_data['application_type'],
+                    'application_email' => $job_data['application_email'],
+                    'application_url' => $job_data['application_url'],
+                    'application_instructions' => $job_data['application_instructions'],
+                    'company_name' => $job_data['company_name'],
+                    'is_featured' => $job_data['is_featured'],
+                    'is_urgent' => $job_data['is_urgent'],
+                    'is_remote_friendly' => $job_data['is_remote_friendly'],
+                    'job_id' => $editJobId,
+                    'employer_id' => $userId
+                ];
+                
+                $stmt = $pdo->prepare($sql);
+                $result = $stmt->execute($update_data);
+                
+                if ($result) {
+                    $job_id = $editJobId;
+                    $success_message = "✅ Job updated successfully! Your changes are now live.";
+                    
+                    if ($debug_mode) {
+                        $debug_info[] = "✅ SUCCESS: Job ID $job_id updated";
+                    }
+                    
+                    error_log("Job updated successfully: ID $job_id, Title: " . $job_data['title'] . ", Employer: $userId");
+                }
+            } else {
+                // INSERT new job
+                $sql = "INSERT INTO jobs (
+                    employer_id, title, slug, category_id, job_type, employment_type,
+                    description, requirements, responsibilities, benefits,
+                    salary_min, salary_max, salary_currency, salary_period,
+                    location_type, state, city, address,
+                    experience_level, education_level, application_deadline,
+                    application_type, application_email, application_url, application_instructions,
+                    company_name, is_featured, is_urgent, is_remote_friendly,
+                    views_count, applications_count, STATUS, created_at, updated_at
+                ) VALUES (
+                    :employer_id, :title, :slug, :category_id, :job_type, :employment_type,
+                    :description, :requirements, :responsibilities, :benefits,
+                    :salary_min, :salary_max, :salary_currency, :salary_period,
+                    :location_type, :state, :city, :address,
+                    :experience_level, :education_level, :application_deadline,
+                    :application_type, :application_email, :application_url, :application_instructions,
+                    :company_name, :is_featured, :is_urgent, :is_remote_friendly,
+                    :views_count, :applications_count, :STATUS, NOW(), NOW()
+                )";
+                
+                $stmt = $pdo->prepare($sql);
+                $result = $stmt->execute($job_data);
+                
+                if ($result) {
+                    $job_id = $pdo->lastInsertId();
+                    $success_message = "🎉 Job posted successfully! Your job (#$job_id) is now live and visible to candidates.";
+                    
+                    if ($debug_mode) {
+                        $debug_info[] = "✅ SUCCESS: Job ID $job_id created";
+                    }
+                    
+                    error_log("Job posted successfully: ID $job_id, Title: " . $job_data['title'] . ", Employer: $userId");
+                }
+            }
             
             if ($debug_mode) {
-                $debug_info[] = "Database insertion attempt...";
+                $debug_info[] = "Database operation attempt...";
                 $debug_info[] = "SQL: $sql";
                 $debug_info[] = "Result: " . ($result ? 'SUCCESS' : 'FAILED');
                 if (!$result) {
@@ -363,31 +495,9 @@ if ($is_job_submission) {
             }
             
             if ($result) {
-                $job_id = $pdo->lastInsertId();
-                $success_message = "🎉 Job posted successfully! Your job (#$job_id) is now live and visible to candidates.";
-                
-                if ($debug_mode) {
-                    $debug_info[] = "✅ SUCCESS: Job ID $job_id created";
-                    
-                    // Verify the job was actually inserted
-                    $verify_stmt = $pdo->prepare("SELECT * FROM jobs WHERE id = ?");
-                    $verify_stmt->execute([$job_id]);
-                    $inserted_job = $verify_stmt->fetch();
-                    
-                    if ($inserted_job) {
-                        $debug_info[] = "✅ Job verification successful in database";
-                        $debug_info[] = "Job title in DB: " . $inserted_job['title'];
-                        $debug_info[] = "Job status in DB: " . $inserted_job['STATUS'];
-                    } else {
-                        $debug_info[] = "❌ Job verification FAILED - not found in database";
-                    }
-                }
-                
-                // Log successful job posting
-                error_log("Job posted successfully: ID $job_id, Title: " . $job_data['title'] . ", Employer: $userId");
-                
                 // Clear form data after successful submission
                 $_POST = [];
+                $existingJob = null; // Clear existing job data
             } else {
                 $error_message = "❌ Failed to post job. Database insertion error. Please try again.";
                 if ($debug_mode) {
@@ -698,14 +808,14 @@ if (empty($user_display_name)) {
         <!-- Header -->
         <div style="text-align: center; margin-bottom: 3rem;">
             <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; padding: 1rem 2rem; border-radius: 50px; margin-bottom: 1.5rem; box-shadow: 0 8px 25px rgba(220, 38, 38, 0.25);">
-                <i class="fas fa-plus-circle" style="font-size: 1.5rem; margin-right: 0.75rem;"></i>
-                <span style="font-size: 1.1rem; font-weight: 600;">Post New Job</span>
+                <i class="fas fa-<?php echo $isEditing ? 'edit' : 'plus-circle'; ?>" style="font-size: 1.5rem; margin-right: 0.75rem;"></i>
+                <span style="font-size: 1.1rem; font-weight: 600;"><?php echo $isEditing ? 'Edit Job' : 'Post New Job'; ?></span>
             </div>
             <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0 0 1rem; line-height: 1.2;">
-                Find Your Next Great Hire
+                <?php echo $isEditing ? 'Update Your Job Posting' : 'Find Your Next Great Hire'; ?>
             </h1>
             <p style="font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto; line-height: 1.6;">
-                Reach thousands of qualified professionals across Nigeria with our comprehensive job posting platform.
+                <?php echo $isEditing ? 'Make changes to your job posting and update it to reflect current requirements.' : 'Reach thousands of qualified professionals across Nigeria with our comprehensive job posting platform.'; ?>
             </p>
         </div>
 
@@ -923,7 +1033,7 @@ if (empty($user_display_name)) {
                             Job Title <span style="color: var(--primary);">*</span>
                         </label>
                         <input type="text" id="job-title" name="job_title" required 
-                               value="<?php echo htmlspecialchars($_POST['job_title'] ?? ''); ?>"
+                               value="<?php echo htmlspecialchars(getFieldValue('job_title', getFieldValue('title', ''))); ?>"
                                placeholder="e.g. Senior Software Developer, Digital Marketing Manager">
                     </div>
 
@@ -935,13 +1045,16 @@ if (empty($user_display_name)) {
                                 Job Type <span style="color: var(--primary);">*</span>
                             </label>
                             <select id="job-type" name="job_type" required>
+                                <?php 
+                                $selectedJobType = isset($_POST['job_type']) ? $_POST['job_type'] : ($existingJob ? mapJobTypeToForm($existingJob['job_type']) : '');
+                                ?>
                                 <option value="">Select job type</option>
-                                <option value="full-time" <?php echo ($_POST['job_type'] ?? '') === 'full-time' ? 'selected' : ''; ?>>🕘 Full-time</option>
-                                <option value="part-time" <?php echo ($_POST['job_type'] ?? '') === 'part-time' ? 'selected' : ''; ?>>🕐 Part-time</option>
-                                <option value="contract" <?php echo ($_POST['job_type'] ?? '') === 'contract' ? 'selected' : ''; ?>>📋 Contract</option>
-                                <option value="temporary" <?php echo ($_POST['job_type'] ?? '') === 'temporary' ? 'selected' : ''; ?>>⏰ Temporary</option>
-                                <option value="internship" <?php echo ($_POST['job_type'] ?? '') === 'internship' ? 'selected' : ''; ?>>🎓 Internship</option>
-                                <option value="nysc" <?php echo ($_POST['job_type'] ?? '') === 'nysc' ? 'selected' : ''; ?>>🏛️ NYSC Placement</option>
+                                <option value="full-time" <?php echo $selectedJobType === 'full-time' ? 'selected' : ''; ?>>🕘 Full-time</option>
+                                <option value="part-time" <?php echo $selectedJobType === 'part-time' ? 'selected' : ''; ?>>🕐 Part-time</option>
+                                <option value="contract" <?php echo $selectedJobType === 'contract' ? 'selected' : ''; ?>>📋 Contract</option>
+                                <option value="temporary" <?php echo $selectedJobType === 'temporary' ? 'selected' : ''; ?>>⏰ Temporary</option>
+                                <option value="internship" <?php echo $selectedJobType === 'internship' ? 'selected' : ''; ?>>🎓 Internship</option>
+                                <option value="nysc" <?php echo $selectedJobType === 'nysc' ? 'selected' : ''; ?>>🏛️ NYSC Placement</option>
                             </select>
                         </div>
 
@@ -953,7 +1066,7 @@ if (empty($user_display_name)) {
                             <select id="category" name="category" required>
                                 <option value="">Select category</option>
                                 <?php foreach ($categories as $category): ?>
-                                    <option value="<?php echo $category['id']; ?>" <?php echo ($_POST['category'] ?? '') == $category['id'] ? 'selected' : ''; ?>>
+                                    <option value="<?php echo $category['id']; ?>" <?php echo getFieldValue('category', getFieldValue('category_id', '')) == $category['id'] ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($category['name']); ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -968,22 +1081,23 @@ if (empty($user_display_name)) {
                         </label>
                         <select id="location" name="location" required>
                             <option value="">Select location</option>
-                            <option value="Lagos" <?php echo ($_POST['location'] ?? '') === 'Lagos' ? 'selected' : ''; ?>>🏙️ Lagos</option>
-                            <option value="Abuja" <?php echo ($_POST['location'] ?? '') === 'Abuja' ? 'selected' : ''; ?>>🏛️ Abuja (FCT)</option>
-                            <option value="Port Harcourt" <?php echo ($_POST['location'] ?? '') === 'Port Harcourt' ? 'selected' : ''; ?>>⛽ Port Harcourt</option>
-                            <option value="Kano" <?php echo ($_POST['location'] ?? '') === 'Kano' ? 'selected' : ''; ?>>🕌 Kano</option>
-                            <option value="Ibadan" <?php echo ($_POST['location'] ?? '') === 'Ibadan' ? 'selected' : ''; ?>>🌳 Ibadan</option>
-                            <option value="Kaduna" <?php echo ($_POST['location'] ?? '') === 'Kaduna' ? 'selected' : ''; ?>>🏭 Kaduna</option>
-                            <option value="Benin City" <?php echo ($_POST['location'] ?? '') === 'Benin City' ? 'selected' : ''; ?>>👑 Benin City</option>
-                            <option value="Jos" <?php echo ($_POST['location'] ?? '') === 'Jos' ? 'selected' : ''; ?>>🏔️ Jos</option>
-                            <option value="Enugu" <?php echo ($_POST['location'] ?? '') === 'Enugu' ? 'selected' : ''; ?>>🌄 Enugu</option>
-                            <option value="Remote" <?php echo ($_POST['location'] ?? '') === 'Remote' ? 'selected' : ''; ?>>🌐 Remote</option>
+                            <?php $selectedLoc = getFieldValue('location', ''); ?>
+                            <option value="Lagos" <?php echo $selectedLoc === 'Lagos' ? 'selected' : ''; ?>>🏙️ Lagos</option>
+                            <option value="Abuja" <?php echo $selectedLoc === 'Abuja' ? 'selected' : ''; ?>>🏛️ Abuja (FCT)</option>
+                            <option value="Port Harcourt" <?php echo $selectedLoc === 'Port Harcourt' ? 'selected' : ''; ?>>⛽ Port Harcourt</option>
+                            <option value="Kano" <?php echo $selectedLoc === 'Kano' ? 'selected' : ''; ?>>🕌 Kano</option>
+                            <option value="Ibadan" <?php echo $selectedLoc === 'Ibadan' ? 'selected' : ''; ?>>🌳 Ibadan</option>
+                            <option value="Kaduna" <?php echo $selectedLoc === 'Kaduna' ? 'selected' : ''; ?>>🏭 Kaduna</option>
+                            <option value="Benin City" <?php echo $selectedLoc === 'Benin City' ? 'selected' : ''; ?>>👑 Benin City</option>
+                            <option value="Jos" <?php echo $selectedLoc === 'Jos' ? 'selected' : ''; ?>>🏔️ Jos</option>
+                            <option value="Enugu" <?php echo $selectedLoc === 'Enugu' ? 'selected' : ''; ?>>🌄 Enugu</option>
+                            <option value="Remote" <?php echo $selectedLoc === 'Remote' ? 'selected' : ''; ?>>🌐 Remote</option>
                         </select>
                     </div>
 
                     <div class="checkbox-group">
                         <input type="checkbox" id="remote-friendly" name="remote_friendly" 
-                               <?php echo isset($_POST['remote_friendly']) ? 'checked' : ''; ?>>
+                               <?php echo getFieldValue('remote_friendly', '') ? 'checked' : ''; ?>>
                         <label for="remote-friendly" style="margin: 0; color: var(--primary); font-weight: 500;">Remote OK</label>
                     </div>
 
@@ -994,13 +1108,13 @@ if (empty($user_display_name)) {
                             <div class="form-group">
                                 <label for="salary-min">Minimum Salary (₦)</label>
                                 <input type="number" id="salary-min" name="salary_min" min="0"
-                                       value="<?php echo htmlspecialchars($_POST['salary_min'] ?? ''); ?>"
+                                       value="<?php echo htmlspecialchars(getFieldValue('salary_min', '')); ?>"
                                        placeholder="e.g. 150000">
                             </div>
                             <div class="form-group">
                                 <label for="salary-max">Maximum Salary (₦)</label>
                                 <input type="number" id="salary-max" name="salary_max" min="0"
-                                       value="<?php echo htmlspecialchars($_POST['salary_max'] ?? ''); ?>"
+                                       value="<?php echo htmlspecialchars(getFieldValue('salary_max', '')); ?>"
                                        placeholder="e.g. 300000">
                             </div>
                         </div>
@@ -1008,18 +1122,19 @@ if (empty($user_display_name)) {
                         <div class="form-group">
                             <label for="salary-period">Pay Period</label>
                             <select id="salary-period" name="salary_period">
-                                <option value="monthly" <?php echo ($_POST['salary_period'] ?? 'monthly') === 'monthly' ? 'selected' : ''; ?>>Monthly</option>
-                                <option value="yearly" <?php echo ($_POST['salary_period'] ?? '') === 'yearly' ? 'selected' : ''; ?>>Yearly</option>
-                                <option value="weekly" <?php echo ($_POST['salary_period'] ?? '') === 'weekly' ? 'selected' : ''; ?>>Weekly</option>
-                                <option value="daily" <?php echo ($_POST['salary_period'] ?? '') === 'daily' ? 'selected' : ''; ?>>Daily</option>
-                                <option value="hourly" <?php echo ($_POST['salary_period'] ?? '') === 'hourly' ? 'selected' : ''; ?>>Hourly</option>
+                                <?php $selectedPeriod = getFieldValue('salary_period', 'monthly'); ?>
+                                <option value="monthly" <?php echo $selectedPeriod === 'monthly' ? 'selected' : ''; ?>>Monthly</option>
+                                <option value="yearly" <?php echo $selectedPeriod === 'yearly' ? 'selected' : ''; ?>>Yearly</option>
+                                <option value="weekly" <?php echo $selectedPeriod === 'weekly' ? 'selected' : ''; ?>>Weekly</option>
+                                <option value="daily" <?php echo $selectedPeriod === 'daily' ? 'selected' : ''; ?>>Daily</option>
+                                <option value="hourly" <?php echo $selectedPeriod === 'hourly' ? 'selected' : ''; ?>>Hourly</option>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="benefits">Benefits & Perks</label>
                             <textarea id="benefits" name="benefits" rows="3"
-                                      placeholder="e.g. Health insurance, Transport allowance, Remote work, Learning budget"><?php echo htmlspecialchars($_POST['benefits'] ?? ''); ?></textarea>
+                                      placeholder="e.g. Health insurance, Transport allowance, Remote work, Learning budget"><?php echo htmlspecialchars(getFieldValue('benefits', '')); ?></textarea>
                         </div>
                     </div>
 
@@ -1049,7 +1164,7 @@ if (empty($user_display_name)) {
                             Job Description <span style="color: var(--primary);">*</span>
                         </label>
                         <textarea id="description" name="description" required rows="6"
-                                  placeholder="Describe the job responsibilities, company culture, day-to-day activities, and what makes this role exciting..."><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                                  placeholder="Describe the job responsibilities, company culture, day-to-day activities, and what makes this role exciting..."><?php echo htmlspecialchars(getFieldValue('description', '')); ?></textarea>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
                             <i class="fas fa-lightbulb" style="margin-right: 0.25rem;"></i>
                             Tip: Be specific about daily tasks and company culture to attract the right candidates
@@ -1063,7 +1178,7 @@ if (empty($user_display_name)) {
                             Requirements <span style="color: var(--primary);">*</span>
                         </label>
                         <textarea id="requirements" name="requirements" required rows="4"
-                                  placeholder="List the required qualifications, skills, experience, and any mandatory certifications..."><?php echo htmlspecialchars($_POST['requirements'] ?? ''); ?></textarea>
+                                  placeholder="List the required qualifications, skills, experience, and any mandatory certifications..."><?php echo htmlspecialchars(getFieldValue('requirements', '')); ?></textarea>
                     </div>
 
                     <!-- Responsibilities -->
@@ -1073,7 +1188,7 @@ if (empty($user_display_name)) {
                             Key Responsibilities
                         </label>
                         <textarea id="responsibilities" name="responsibilities" rows="4"
-                                  placeholder="Describe the main duties and responsibilities for this position..."><?php echo htmlspecialchars($_POST['responsibilities'] ?? ''); ?></textarea>
+                                  placeholder="Describe the main duties and responsibilities for this position..."><?php echo htmlspecialchars(getFieldValue('responsibilities', '')); ?></textarea>
                     </div>
 
                     <!-- Experience & Education Grid -->
@@ -1084,10 +1199,11 @@ if (empty($user_display_name)) {
                                 Experience Level
                             </label>
                             <select id="experience" name="experience">
-                                <option value="entry" <?php echo ($_POST['experience'] ?? 'entry') === 'entry' ? 'selected' : ''; ?>>🌱 Entry Level (0-2 years)</option>
-                                <option value="mid" <?php echo ($_POST['experience'] ?? '') === 'mid' ? 'selected' : ''; ?>>💼 Mid Level (2-5 years)</option>
-                                <option value="senior" <?php echo ($_POST['experience'] ?? '') === 'senior' ? 'selected' : ''; ?>>👨‍💼 Senior Level (5+ years)</option>
-                                <option value="executive" <?php echo ($_POST['experience'] ?? '') === 'executive' ? 'selected' : ''; ?>>🎯 Executive Level</option>
+                                <?php $selectedExp = getFieldValue('experience', getFieldValue('experience_level', 'entry')); ?>
+                                <option value="entry" <?php echo $selectedExp === 'entry' ? 'selected' : ''; ?>>🌱 Entry Level (0-2 years)</option>
+                                <option value="mid" <?php echo $selectedExp === 'mid' ? 'selected' : ''; ?>>💼 Mid Level (2-5 years)</option>
+                                <option value="senior" <?php echo $selectedExp === 'senior' ? 'selected' : ''; ?>>👨‍💼 Senior Level (5+ years)</option>
+                                <option value="executive" <?php echo $selectedExp === 'executive' ? 'selected' : ''; ?>>🎯 Executive Level</option>
                             </select>
                         </div>
 
@@ -1097,32 +1213,128 @@ if (empty($user_display_name)) {
                                 Education Level
                             </label>
                             <select id="education" name="education">
-                                <option value="any" <?php echo ($_POST['education'] ?? 'any') === 'any' ? 'selected' : ''; ?>>Any qualification</option>
-                                <option value="ssce" <?php echo ($_POST['education'] ?? '') === 'ssce' ? 'selected' : ''; ?>>SSCE/WAEC</option>
-                                <option value="ond" <?php echo ($_POST['education'] ?? '') === 'ond' ? 'selected' : ''; ?>>OND</option>
-                                <option value="hnd" <?php echo ($_POST['education'] ?? '') === 'hnd' ? 'selected' : ''; ?>>HND</option>
-                                <option value="bsc" <?php echo ($_POST['education'] ?? '') === 'bsc' ? 'selected' : ''; ?>>Bachelor's Degree</option>
-                                <option value="msc" <?php echo ($_POST['education'] ?? '') === 'msc' ? 'selected' : ''; ?>>Master's Degree</option>
-                                <option value="phd" <?php echo ($_POST['education'] ?? '') === 'phd' ? 'selected' : ''; ?>>PhD</option>
+                                <?php $selectedEdu = getFieldValue('education', getFieldValue('education_level', 'any')); ?>
+                                <option value="any" <?php echo $selectedEdu === 'any' ? 'selected' : ''; ?>>Any qualification</option>
+                                <option value="ssce" <?php echo $selectedEdu === 'ssce' ? 'selected' : ''; ?>>SSCE/WAEC</option>
+                                <option value="ond" <?php echo $selectedEdu === 'ond' ? 'selected' : ''; ?>>OND</option>
+                                <option value="hnd" <?php echo $selectedEdu === 'hnd' ? 'selected' : ''; ?>>HND</option>
+                                <option value="bsc" <?php echo $selectedEdu === 'bsc' ? 'selected' : ''; ?>>Bachelor's Degree</option>
+                                <option value="msc" <?php echo $selectedEdu === 'msc' ? 'selected' : ''; ?>>Master's Degree</option>
+                                <option value="phd" <?php echo $selectedEdu === 'phd' ? 'selected' : ''; ?>>PhD</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- Application Settings -->
                     <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border-color);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 1rem;">📧 Application Settings</h4>
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center;">
+                            <i class="fas fa-paper-plane" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                            Application Settings
+                        </h4>
+                        <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 0.95rem;">
+                            Choose how candidates should apply for this position
+                        </p>
                         
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="application-email">Application Email</label>
-                                <input type="email" id="application-email" name="application_email"
-                                       value="<?php echo htmlspecialchars($_POST['application_email'] ?? ''); ?>"
-                                       placeholder="jobs@company.com">
+                        <!-- Application Type Selection -->
+                        <div class="form-group">
+                            <label style="display: block; margin-bottom: 1rem; font-weight: 600; color: var(--text-primary);">
+                                How should candidates apply? <span style="color: #e74c3c;">*</span>
+                            </label>
+                            
+                            <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
+                                <!-- Easy Apply Option -->
+                                <?php $selectedAppType = getFieldValue('application_type', 'easy'); ?>
+                                
+                                <label class="application-type-option" data-type="easy" style="position: relative; display: flex; align-items: flex-start; padding: 1.25rem; border: 2px solid <?php echo $selectedAppType === 'easy' ? 'var(--primary)' : 'var(--border-color)'; ?>; background: <?php echo $selectedAppType === 'easy' ? 'rgba(0, 123, 255, 0.05)' : '#fff'; ?>; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <input type="radio" name="application_type" value="easy" 
+                                           <?php echo $selectedAppType === 'easy' ? 'checked' : ''; ?>
+                                           style="width: 20px; height: 20px; margin-right: 1rem; margin-top: 0.15rem; cursor: pointer; accent-color: var(--primary);">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="font-size: 1.5rem;">✨</span>
+                                            <strong style="color: var(--text-primary); font-size: 1.1rem;">Easy Apply</strong>
+                                            <span style="background: #28a745; color: white; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">RECOMMENDED</span>
+                                        </div>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                            Candidates can apply instantly with one click. Their CV, profile, and message are sent directly to your dashboard. Fastest and easiest for both you and job seekers.
+                                        </p>
+                                    </div>
+                                </label>
+                                
+                                <!-- Manual Apply Option -->
+                                <label class="application-type-option" data-type="manual" style="position: relative; display: flex; align-items: flex-start; padding: 1.25rem; border: 2px solid <?php echo $selectedAppType === 'manual' ? 'var(--primary)' : 'var(--border-color)'; ?>; background: <?php echo $selectedAppType === 'manual' ? 'rgba(0, 123, 255, 0.05)' : '#fff'; ?>; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <input type="radio" name="application_type" value="manual"
+                                           <?php echo $selectedAppType === 'manual' ? 'checked' : ''; ?>
+                                           style="width: 20px; height: 20px; margin-right: 1rem; margin-top: 0.15rem; cursor: pointer; accent-color: var(--primary);">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="font-size: 1.5rem;">📧</span>
+                                            <strong style="color: var(--text-primary); font-size: 1.1rem;">Manual Apply</strong>
+                                        </div>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                            Provide your email address, company website, or application link. Candidates will apply directly through your preferred method.
+                                        </p>
+                                    </div>
+                                </label>
+                                
+                                <!-- Both Options -->
+                                <label class="application-type-option" data-type="both" style="position: relative; display: flex; align-items: flex-start; padding: 1.25rem; border: 2px solid <?php echo $selectedAppType === 'both' ? 'var(--primary)' : 'var(--border-color)'; ?>; background: <?php echo $selectedAppType === 'both' ? 'rgba(0, 123, 255, 0.05)' : '#fff'; ?>; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <input type="radio" name="application_type" value="both"
+                                           <?php echo $selectedAppType === 'both' ? 'checked' : ''; ?>
+                                           style="width: 20px; height: 20px; margin-right: 1rem; margin-top: 0.15rem; cursor: pointer; accent-color: var(--primary);">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="font-size: 1.5rem;">🔄</span>
+                                            <strong style="color: var(--text-primary); font-size: 1.1rem;">Both Methods</strong>
+                                        </div>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                            Allow candidates to choose between Easy Apply or manual application. Maximum flexibility for applicants.
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
-                            <div class="form-group">
-                                <label for="application-deadline">Application Deadline</label>
-                                <input type="date" id="application-deadline" name="application_deadline"
-                                       value="<?php echo htmlspecialchars($_POST['application_deadline'] ?? ''); ?>">
+                        </div>
+                        
+                        <!-- Manual Apply Fields (shown when manual or both is selected) -->
+                        <div id="manual-apply-fields" style="display: none;">
+                            <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid var(--primary);">
+                                <p style="margin: 0 0 1rem; color: var(--text-secondary); font-size: 0.95rem;">
+                                    <i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>
+                                    Provide at least one of the following for manual applications:
+                                </p>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="application-email">Application Email</label>
+                                        <input type="email" id="application-email" name="application_email"
+                                               value="<?php echo htmlspecialchars(getFieldValue('application_email', '')); ?>"
+                                               placeholder="careers@company.com">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="application-url">Application URL/Website</label>
+                                        <input type="url" id="application-url" name="application_url"
+                                               value="<?php echo htmlspecialchars(getFieldValue('application_url', '')); ?>"
+                                               placeholder="https://company.com/careers/apply">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                                    <label for="application-instructions">Application Instructions (Optional)</label>
+                                    <textarea id="application-instructions" name="application_instructions" rows="2"
+                                              placeholder="e.g., Send your CV and portfolio to the email above with the subject line 'Application for [Position]'"><?php echo htmlspecialchars(getFieldValue('application_instructions', '')); ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Application Deadline (always shown) -->
+                        <div class="form-group">
+                            <label for="application-deadline">Application Deadline (Optional)</label>
+                            <input type="date" id="application-deadline" name="application_deadline"
+                                   value="<?php echo htmlspecialchars(getFieldValue('application_deadline', '')); ?>"
+                                   min="<?php echo date('Y-m-d'); ?>">
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                <i class="fas fa-clock" style="margin-right: 0.25rem;"></i>
+                                Set a deadline to create urgency and receive applications faster
                             </div>
                         </div>
                     </div>
@@ -1478,6 +1690,39 @@ if (empty($user_display_name)) {
                 futureDate.setDate(futureDate.getDate() + 30);
                 deadlineInput.value = futureDate.toISOString().split('T')[0];
             }
+            
+            // Handle application type selection
+            const applicationTypeRadios = document.querySelectorAll('input[name="application_type"]');
+            const manualFieldsDiv = document.getElementById('manual-apply-fields');
+            
+            function updateApplicationFields() {
+                const selectedType = document.querySelector('input[name="application_type"]:checked').value;
+                
+                // Update visual styles for radio options
+                document.querySelectorAll('.application-type-option').forEach(option => {
+                    option.style.borderColor = 'var(--border-color)';
+                    option.style.background = 'transparent';
+                });
+                
+                const selectedOption = document.querySelector('input[name="application_type"]:checked').closest('.application-type-option');
+                selectedOption.style.borderColor = 'var(--primary)';
+                selectedOption.style.background = 'rgba(220, 38, 38, 0.05)';
+                
+                // Show/hide manual apply fields
+                if (selectedType === 'manual' || selectedType === 'both') {
+                    manualFieldsDiv.style.display = 'block';
+                } else {
+                    manualFieldsDiv.style.display = 'none';
+                }
+            }
+            
+            // Initialize on page load
+            updateApplicationFields();
+            
+            // Listen for changes
+            applicationTypeRadios.forEach(radio => {
+                radio.addEventListener('change', updateApplicationFields);
+            });
         });
     </script>
     

@@ -128,7 +128,7 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
             </div>
 
             <!-- Jobs List -->
-            <div class="jobs-container" style="background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="jobs-container" style="background: var(--surface); border-radius: 12px; overflow: visible; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                 <?php if (empty($jobs)): ?>
                     <div style="padding: 4rem; text-align: center; color: var(--text-secondary);">
                         <i class="fas fa-briefcase" style="font-size: 4rem; margin-bottom: 2rem; color: var(--text-secondary); opacity: 0.5;"></i>
@@ -151,7 +151,7 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
                     </div>
 
                     <!-- Jobs List -->
-                    <div class="jobs-list">
+                    <div class="jobs-list" style="overflow: visible;">
                         <?php foreach ($jobs as $index => $job): ?>
                             <?php if ($job['STATUS'] === 'deleted') continue; ?>
                             
@@ -160,7 +160,7 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
                                     <!-- Job Details -->
                                     <div>
                                         <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 600;">
-                                            <a href="job-details.php?id=<?php echo $job['id']; ?>" style="color: var(--text-primary); text-decoration: none;">
+                                            <a href="../jobs/details.php?id=<?php echo $job['id']; ?>" style="color: var(--text-primary); text-decoration: none;">
                                                 <?php echo htmlspecialchars($job['title']); ?>
                                             </a>
                                         </h4>
@@ -208,39 +208,51 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
 
                                     <!-- Actions -->
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <div class="dropdown" style="position: relative;">
-                                            <button class="btn btn-outline btn-sm dropdown-toggle" onclick="toggleDropdown(<?php echo $job['id']; ?>)">
-                                                <i class="fas fa-ellipsis-v"></i>
+                                        <div class="dropdown" style="position: relative; z-index: 100;">
+                                            <button class="btn btn-outline btn-sm dropdown-toggle" onclick="toggleDropdown(<?php echo $job['id']; ?>)" 
+                                                    style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 0; border: 2px solid var(--border-color); background: white; cursor: pointer; transition: all 0.2s ease;">
+                                                <i class="fas fa-ellipsis-v" style="color: var(--text-secondary);"></i>
                                             </button>
-                                            <div class="dropdown-menu" id="dropdown-<?php echo $job['id']; ?>" style="display: none; position: absolute; right: 0; top: 100%; background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px;">
-                                                <a href="edit-job.php?id=<?php echo $job['id']; ?>" class="dropdown-item" style="display: block; padding: 0.75rem 1rem; color: var(--text-primary); text-decoration: none;">
-                                                    <i class="fas fa-edit"></i> Edit
+                                            <div class="dropdown-menu" id="dropdown-<?php echo $job['id']; ?>" 
+                                                 style="display: none; position: absolute; right: 0; top: calc(100% + 0.5rem); background: white; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05); z-index: 9999; min-width: 180px; overflow: hidden; animation: slideDown 0.2s ease;">
+                                                <a href="post-job.php?edit=<?php echo $job['id']; ?>" class="dropdown-item" 
+                                                   style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; color: var(--text-primary); text-decoration: none; transition: all 0.2s ease; border-bottom: 1px solid #f3f4f6;">
+                                                    <i class="fas fa-edit" style="width: 16px; color: #3b82f6;"></i>
+                                                    <span style="font-size: 0.95rem; font-weight: 500;">Edit</span>
                                                 </a>
-                                                <a href="job-applicants.php?id=<?php echo $job['id']; ?>" class="dropdown-item" style="display: block; padding: 0.75rem 1rem; color: var(--text-primary); text-decoration: none;">
-                                                    <i class="fas fa-users"></i> View Applicants
+                                                <a href="applicants.php?job_id=<?php echo $job['id']; ?>" class="dropdown-item" 
+                                                   style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; color: var(--text-primary); text-decoration: none; transition: all 0.2s ease; border-bottom: 1px solid #f3f4f6;">
+                                                    <i class="fas fa-users" style="width: 16px; color: #8b5cf6;"></i>
+                                                    <span style="font-size: 0.95rem; font-weight: 500;">View Applicants</span>
                                                 </a>
                                                 <?php if ($job['STATUS'] === 'active'): ?>
                                                     <form method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to deactivate this job?')">
                                                         <input type="hidden" name="job_id" value="<?php echo $job['id']; ?>">
                                                         <input type="hidden" name="action" value="deactivate">
-                                                        <button type="submit" class="dropdown-item" style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; color: var(--warning);">
-                                                            <i class="fas fa-pause"></i> Deactivate
+                                                        <button type="submit" class="dropdown-item" 
+                                                                style="width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; background: none; border: none; text-align: left; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f3f4f6;">
+                                                            <i class="fas fa-pause" style="width: 16px; color: #f59e0b;"></i>
+                                                            <span style="font-size: 0.95rem; font-weight: 500; color: #f59e0b;">Deactivate</span>
                                                         </button>
                                                     </form>
                                                 <?php else: ?>
                                                     <form method="POST" style="margin: 0;">
                                                         <input type="hidden" name="job_id" value="<?php echo $job['id']; ?>">
                                                         <input type="hidden" name="action" value="activate">
-                                                        <button type="submit" class="dropdown-item" style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; color: var(--accent);">
-                                                            <i class="fas fa-play"></i> Activate
+                                                        <button type="submit" class="dropdown-item" 
+                                                                style="width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; background: none; border: none; text-align: left; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f3f4f6;">
+                                                            <i class="fas fa-play" style="width: 16px; color: #10b981;"></i>
+                                                            <span style="font-size: 0.95rem; font-weight: 500; color: #10b981;">Activate</span>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
                                                 <form method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this job? This action cannot be undone.')">
                                                     <input type="hidden" name="job_id" value="<?php echo $job['id']; ?>">
                                                     <input type="hidden" name="action" value="delete">
-                                                    <button type="submit" class="dropdown-item" style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; color: var(--error);">
-                                                        <i class="fas fa-trash"></i> Delete
+                                                    <button type="submit" class="dropdown-item" 
+                                                            style="width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; background: none; border: none; text-align: left; cursor: pointer; transition: all 0.2s ease;">
+                                                        <i class="fas fa-trash" style="width: 16px; color: #ef4444;"></i>
+                                                        <span style="font-size: 0.95rem; font-weight: 500; color: #ef4444;">Delete</span>
                                                     </button>
                                                 </form>
                                             </div>
@@ -258,6 +270,7 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
     <script>
         function toggleDropdown(jobId) {
             const dropdown = document.getElementById(`dropdown-${jobId}`);
+            const button = dropdown.previousElementSibling;
             const allDropdowns = document.querySelectorAll('.dropdown-menu');
             
             // Close all other dropdowns
@@ -268,7 +281,24 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
             });
             
             // Toggle current dropdown
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                dropdown.style.display = 'block';
+                
+                // Check if dropdown would go off-screen
+                const dropdownRect = dropdown.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                
+                // If dropdown goes below viewport, position it above the button
+                if (dropdownRect.bottom > viewportHeight - 20) {
+                    dropdown.style.top = 'auto';
+                    dropdown.style.bottom = 'calc(100% + 0.5rem)';
+                } else {
+                    dropdown.style.top = 'calc(100% + 0.5rem)';
+                    dropdown.style.bottom = 'auto';
+                }
+            } else {
+                dropdown.style.display = 'none';
+            }
         }
 
         // Close dropdowns when clicking outside
@@ -282,14 +312,59 @@ if ($_POST && isset($_POST['action']) && isset($_POST['job_id'])) {
     </script>
 
     <style>
+        /* Dropdown Menu Animations */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Dropdown Button Hover */
+        .dropdown-toggle:hover {
+            border-color: var(--primary) !important;
+            background: #f8f9fa !important;
+            transform: scale(1.05);
+        }
+
+        /* Dropdown Items Hover */
         .dropdown-item:hover {
-            background: var(--background);
+            background: #f3f4f6 !important;
+            padding-left: 1.25rem !important;
+        }
+
+        .dropdown-item:hover i {
+            transform: scale(1.1);
+            transition: transform 0.2s ease;
+        }
+
+        /* Active Button Highlight */
+        .dropdown-toggle:active {
+            transform: scale(0.95);
         }
         
+        /* Job Row Hover Effect */
         .job-row:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        /* Smooth transitions for all dropdown items */
+        .dropdown-item {
+            transition: all 0.2s ease !important;
+        }
+
+        .dropdown-item span {
             transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover span {
+            transform: translateX(2px);
         }
     </style>
 </body>

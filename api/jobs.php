@@ -99,6 +99,7 @@ function handleGetJobs() {
     $salary_min = $_GET['salary_min'] ?? '';
     $salary_max = $_GET['salary_max'] ?? '';
     $experience_level = $_GET['experience_level'] ?? '';
+    $sort = $_GET['sort'] ?? 'newest';
     $page = max(1, intval($_GET['page'] ?? 1));
     $limit = min(50, max(10, intval($_GET['limit'] ?? 20)));
     $offset = ($page - 1) * $limit;
@@ -224,9 +225,38 @@ function handleGetJobs() {
         LEFT JOIN job_categories jc ON j.category_id = jc.id 
         LEFT JOIN employer_profiles ep ON j.employer_id = ep.user_id 
         WHERE $whereClause
-        ORDER BY j.is_featured DESC, j.created_at DESC
-        LIMIT $limit OFFSET $offset
     ";
+    
+    // Add sorting
+    switch ($sort) {
+        case 'oldest':
+            $query .= " ORDER BY j.created_at ASC";
+            break;
+        case 'salary_high':
+            $query .= " ORDER BY j.salary_max DESC, j.salary_min DESC, j.created_at DESC";
+            break;
+        case 'salary_low':
+            $query .= " ORDER BY 
+                CASE 
+                    WHEN j.salary_min IS NULL OR j.salary_min = 0 THEN 999999999
+                    ELSE j.salary_min 
+                END ASC,
+                CASE 
+                    WHEN j.salary_max IS NULL OR j.salary_max = 0 THEN 999999999
+                    ELSE j.salary_max 
+                END ASC,
+                j.created_at DESC";
+            break;
+        case 'featured':
+            $query .= " ORDER BY j.is_featured DESC, j.is_urgent DESC, j.created_at DESC";
+            break;
+        case 'newest':
+        default:
+            $query .= " ORDER BY j.created_at DESC";
+            break;
+    }
+    
+    $query .= " LIMIT $limit OFFSET $offset";
     
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
@@ -295,7 +325,8 @@ function handleGetJobs() {
             'job_type' => $job_type,
             'salary_min' => $salary_min,
             'salary_max' => $salary_max,
-            'experience_level' => $experience_level
+            'experience_level' => $experience_level,
+            'sort' => $sort
         ]
     ];
     

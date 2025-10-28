@@ -2,6 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/email-notifications.php';
 
 requireEmployer();
 
@@ -36,7 +37,11 @@ $stmt = $pdo->prepare("
            u.first_name, u.last_name, u.email, u.phone,
            jsp.years_of_experience, jsp.job_status, jsp.education_level,
            ja.application_status as status,
-           cv.file_path as cv_file
+           ja.applicant_name, ja.applicant_email, ja.applicant_phone,
+           ja.application_message,
+           ja.cv_id,
+           cv.file_path as cv_file,
+           cv.title as cv_title
     FROM job_applications ja
     JOIN jobs j ON ja.job_id = j.id
     JOIN users u ON ja.job_seeker_id = u.id
@@ -68,6 +73,10 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
         if (in_array($action, $validStatuses)) {
             $stmt = $pdo->prepare("UPDATE job_applications SET application_status = ?, responded_at = NOW() WHERE id = ?");
             $stmt->execute([$action, $applicationId]);
+            
+            // Send email notification to job seeker
+            $emailResult = sendApplicationStatusEmail($applicationId, $action, $pdo);
+            error_log("Email notification sent for application $applicationId, status: $action, result: " . ($emailResult ? 'success' : 'failed'));
             
             // Redirect to refresh page
             header("Location: " . $_SERVER['REQUEST_URI']);
@@ -193,11 +202,19 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                         <!-- Applicant Info -->
                                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                                             <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
-                                                <?php echo strtoupper(substr($application['first_name'], 0, 1) . substr($application['last_name'], 0, 1)); ?>
+                                                <?php 
+                                                    $displayName = !empty($application['applicant_name']) ? $application['applicant_name'] : ($application['first_name'] . ' ' . $application['last_name']);
+                                                    $nameParts = explode(' ', trim($displayName));
+                                                    $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
+                                                    echo $initials;
+                                                ?>
                                             </div>
                                             <div>
                                                 <h4 style="margin: 0; font-size: 1.3rem; font-weight: 600;">
-                                                    <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
+                                                    <?php echo htmlspecialchars($displayName); ?>
+                                                    <?php if (!empty($application['applicant_name'])): ?>
+                                                        <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; font-weight: 500;">Easy Apply</span>
+                                                    <?php endif; ?>
                                                 </h4>
                                                 <p style="margin: 0.25rem 0; color: var(--text-secondary);">
                                                     <?php echo htmlspecialchars($application['job_status'] ?? 'Job Seeker'); ?>
@@ -206,9 +223,12 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                     <?php endif; ?>
                                                 </p>
                                                 <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
-                                                    <i class="fas fa-envelope"></i> <?php echo htmlspecialchars($application['email']); ?>
-                                                    <?php if ($application['phone']): ?>
-                                                        • <i class="fas fa-phone"></i> <?php echo htmlspecialchars($application['phone']); ?>
+                                                    <i class="fas fa-envelope"></i> <?php echo htmlspecialchars(!empty($application['applicant_email']) ? $application['applicant_email'] : $application['email']); ?>
+                                                    <?php 
+                                                    $displayPhone = !empty($application['applicant_phone']) ? $application['applicant_phone'] : $application['phone'];
+                                                    if ($displayPhone): 
+                                                    ?>
+                                                        • <i class="fas fa-phone"></i> <?php echo htmlspecialchars($displayPhone); ?>
                                                     <?php endif; ?>
                                                 </p>
                                             </div>
@@ -233,19 +253,27 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                         <strong>Education:</strong> <?php echo strtoupper(htmlspecialchars($application['education_level'])); ?>
                                                     </div>
                                                 <?php endif; ?>
+                                                <?php if (!empty($application['cv_title'])): ?>
+                                                    <div>
+                                                        <strong>CV:</strong> <?php echo htmlspecialchars($application['cv_title']); ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
 
-                                        <!-- Cover Letter -->
-                                        <?php if ($application['cover_letter']): ?>
+                                        <!-- Application Message / Cover Letter -->
+                                        <?php 
+                                        $displayMessage = !empty($application['application_message']) ? $application['application_message'] : $application['cover_letter'];
+                                        if ($displayMessage): 
+                                        ?>
                                             <div>
-                                                <strong>Cover Letter:</strong>
+                                                <strong><?php echo !empty($application['application_message']) ? 'Application Message:' : 'Cover Letter:'; ?></strong>
                                                 <div style="margin-top: 0.5rem; padding: 1rem; background: var(--background); border-radius: 8px; border-left: 4px solid var(--primary);">
-                                                    <p style="margin: 0; line-height: 1.6;">
-                                                        <?php echo nl2br(htmlspecialchars(substr($application['cover_letter'], 0, 300))); ?>
-                                                        <?php if (strlen($application['cover_letter']) > 300): ?>
+                                                    <p style="margin: 0; line-height: 1.6; white-space: pre-wrap;">
+                                                        <?php echo nl2br(htmlspecialchars(substr($displayMessage, 0, 300))); ?>
+                                                        <?php if (strlen($displayMessage) > 300): ?>
                                                             <span id="more-<?php echo $application['id']; ?>" style="display: none;">
-                                                                <?php echo nl2br(htmlspecialchars(substr($application['cover_letter'], 300))); ?>
+                                                                <?php echo nl2br(htmlspecialchars(substr($displayMessage, 300))); ?>
                                                             </span>
                                                             <a href="#" onclick="toggleMore(<?php echo $application['id']; ?>); return false;" style="color: var(--primary); font-weight: 500;">
                                                                 <span id="toggle-text-<?php echo $application['id']; ?>">... Read more</span>
@@ -281,14 +309,14 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                         <!-- Action Buttons -->
                                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                             <?php if (!empty($application['cv_file'])): ?>
-                                                <a href="../../<?php echo htmlspecialchars($application['cv_file']); ?>" 
+                                                <a href="/findajob/uploads/cvs/<?php echo htmlspecialchars($application['cv_file']); ?>" 
                                                    target="_blank" class="btn btn-outline btn-sm">
                                                     <i class="fas fa-file-pdf"></i> View CV
                                                 </a>
                                             <?php elseif (!empty($application['cv_id'])): ?>
-                                                <a href="../user/cv-download.php?id=<?php echo $application['cv_id']; ?>" 
+                                                <a href="/findajob/uploads/cvs/<?php echo $application['cv_id']; ?>.pdf" 
                                                    target="_blank" class="btn btn-outline btn-sm">
-                                                    <i class="fas fa-file-pdf"></i> Download CV
+                                                    <i class="fas fa-file-pdf"></i> View CV
                                                 </a>
                                             <?php endif; ?>
                                             

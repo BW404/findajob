@@ -212,6 +212,24 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                             <strong>Posted:</strong> <?php echo date('M j, Y', strtotime($job['created_at'])); ?> &nbsp;•&nbsp;
                             <strong>Views:</strong> <?php echo (int)($job['views_count'] ?? 0) + 1; ?> &nbsp;•&nbsp;
                             <strong>Applications:</strong> <?php echo (int)($job['applications_count'] ?? 0); ?>
+                            <?php if (!empty($job['application_deadline'])): 
+                                $deadline = strtotime($job['application_deadline']);
+                                $now = time();
+                                $daysLeft = floor(($deadline - $now) / 86400);
+                                $isUrgent = $daysLeft <= 7 && $daysLeft >= 0;
+                                $isExpired = $daysLeft < 0;
+                            ?>
+                            &nbsp;•&nbsp;
+                            <strong>Deadline:</strong> 
+                            <span style="<?php echo $isExpired ? 'color:#dc2626; font-weight:600;' : ($isUrgent ? 'color:#f59e0b; font-weight:600;' : ''); ?>">
+                                <?php echo date('M j, Y', $deadline); ?>
+                                <?php if ($isExpired): ?>
+                                    (Expired)
+                                <?php elseif ($isUrgent): ?>
+                                    (<?php echo $daysLeft; ?> day<?php echo $daysLeft != 1 ? 's' : ''; ?> left)
+                                <?php endif; ?>
+                            </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -235,6 +253,27 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                             <div style="margin-bottom:8px;">
                                 <strong style="color:var(--text-primary);">Location type:</strong> <?php echo htmlspecialchars(ucfirst($job['location_type'] ?? '')); ?>
                             </div>
+                            <?php if (!empty($job['application_deadline'])): 
+                                $deadline = strtotime($job['application_deadline']);
+                                $now = time();
+                                $daysLeft = floor(($deadline - $now) / 86400);
+                                $isUrgent = $daysLeft <= 7 && $daysLeft >= 0;
+                                $isExpired = $daysLeft < 0;
+                            ?>
+                            <div style="margin-bottom:8px;">
+                                <strong style="color:var(--text-primary);">Application Deadline:</strong> 
+                                <span style="<?php echo $isExpired ? 'color:#dc2626; font-weight:600;' : ($isUrgent ? 'color:#f59e0b; font-weight:600;' : ''); ?>">
+                                    <?php echo date('M j, Y', $deadline); ?>
+                                    <?php if ($isExpired): ?>
+                                        <span style="font-size:0.85rem;">(Expired)</span>
+                                    <?php elseif ($isUrgent): ?>
+                                        <span style="font-size:0.85rem;">(<?php echo $daysLeft; ?> day<?php echo $daysLeft != 1 ? 's' : ''; ?> left)</span>
+                                    <?php else: ?>
+                                        <span style="font-size:0.85rem;">(<?php echo $daysLeft; ?> days left)</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <div style="display:flex; flex-direction:column; gap:8px;">
@@ -242,32 +281,126 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                                 <div style="padding:8px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; font-size:0.85rem; margin-bottom:8px;">
                                     <strong>Debug:</strong> Logged In: <?php echo isLoggedIn() ? 'YES' : 'NO'; ?> | 
                                     Job Seeker: <?php echo isJobSeeker() ? 'YES' : 'NO'; ?> | 
-                                    Has Applied: <?php echo $hasApplied ? 'YES' : 'NO'; ?>
+                                    Has Applied: <?php echo $hasApplied ? 'YES' : 'NO'; ?> |
+                                    App Type: <?php echo $job['application_type'] ?? 'N/A'; ?>
                                 </div>
                             <?php endif; ?>
+                            
                             <?php if ($hasApplied): ?>
+                                <!-- Already Applied -->
                                 <button class="btn btn-secondary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; cursor:not-allowed;" disabled>
                                     ✓ Already Applied
                                 </button>
                                 <a href="/findajob/pages/user/dashboard.php" class="btn btn-outline btn-block" style="text-align:center; padding:0.65rem 1rem; font-size:0.9rem;">
                                     View Application Status
                                 </a>
-                            <?php elseif (!empty($job['application_email'])): ?>
-                                <a class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;" href="mailto:<?php echo htmlspecialchars($job['application_email']); ?>">Apply via Email</a>
-                            <?php elseif (!empty($job['application_url'])): ?>
-                                <a class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;" href="<?php echo htmlspecialchars($job['application_url']); ?>" target="_blank">Apply on Company Site</a>
-                            <?php else: ?>
+                                
+                            <?php else: 
+                            // Determine application type (default to 'easy' for backward compatibility)
+                            $appType = $job['application_type'] ?? 'easy';
+                            
+                            if ($appType === 'easy'): ?>
+                                <!-- Easy Apply Only -->
                                 <?php if (isLoggedIn() && isJobSeeker()): ?>
-                                    <form method="post" action="/findajob/pages/jobs/apply.php" style="width:100%;" id="applyForm" onsubmit="console.log('Form submitting...'); return true;">
-                                        <input type="hidden" name="job_id" value="<?php echo (int)$jobId; ?>">
-                                        <button class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; width:100%; cursor:pointer;" type="submit" onclick="console.log('Button clicked!');">Apply Now</button>
-                                    </form>
+                                    <a href="/findajob/pages/jobs/apply.php?job_id=<?php echo (int)$jobId; ?>" 
+                                       class="btn btn-primary btn-block" 
+                                       style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
+                                        ✨ Easy Apply
+                                    </a>
+                                    <p style="text-align:center; font-size:0.85rem; color:var(--text-secondary); margin:0.5rem 0 0;">
+                                        Apply instantly with your profile and CV
+                                    </p>
                                 <?php else: ?>
-                                    <a href="/findajob/pages/auth/login-jobseeker.php?return=<?php echo urlencode('/findajob/pages/jobs/details.php?id=' . $jobId); ?>" class="btn btn-primary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
+                                    <a href="/findajob/pages/auth/login-jobseeker.php?return=<?php echo urlencode('/findajob/pages/jobs/details.php?id=' . $jobId); ?>" 
+                                       class="btn btn-primary btn-block" 
+                                       style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
                                         Login to Apply
                                     </a>
                                 <?php endif; ?>
+                                
+                            <?php elseif ($appType === 'manual'): ?>
+                                <!-- Manual Apply Only -->
+                                <div style="background:#f8fafc; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                    <h4 style="margin:0 0 0.75rem; font-size:1rem; color:var(--text-primary);">📧 How to Apply</h4>
+                                    
+                                    <?php if (!empty($job['application_email'])): ?>
+                                        <div style="margin-bottom:0.75rem;">
+                                            <strong style="font-size:0.9rem; color:var(--text-secondary);">Email:</strong>
+                                            <a href="mailto:<?php echo htmlspecialchars($job['application_email']); ?>" 
+                                               style="display:block; color:var(--primary); font-weight:600; margin-top:0.25rem;">
+                                                <?php echo htmlspecialchars($job['application_email']); ?>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($job['application_url'])): ?>
+                                        <div style="margin-bottom:0.75rem;">
+                                            <a href="<?php echo htmlspecialchars($job['application_url']); ?>" 
+                                               target="_blank" 
+                                               class="btn btn-primary btn-block" 
+                                               style="text-align:center; padding:0.75rem 1rem; font-weight:600;">
+                                                Apply on Company Website →
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($job['application_instructions'])): ?>
+                                        <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.5; padding-top:0.75rem; border-top:1px solid var(--border);">
+                                            <strong>Instructions:</strong>
+                                            <p style="margin:0.5rem 0 0;"><?php echo nl2br(htmlspecialchars($job['application_instructions'])); ?></p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                
+                            <?php elseif ($appType === 'both'): ?>
+                                <!-- Both Easy Apply and Manual Apply -->
+                                <?php if (isLoggedIn() && isJobSeeker()): ?>
+                                    <a href="/findajob/pages/jobs/apply.php?job_id=<?php echo (int)$jobId; ?>" 
+                                       class="btn btn-primary btn-block" 
+                                       style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
+                                        ✨ Easy Apply
+                                    </a>
+                                <?php else: ?>
+                                    <a href="/findajob/pages/auth/login-jobseeker.php?return=<?php echo urlencode('/findajob/pages/jobs/details.php?id=' . $jobId); ?>" 
+                                       class="btn btn-primary btn-block" 
+                                       style="text-align:center; padding:0.85rem 1rem; font-weight:600;">
+                                        Login for Easy Apply
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <div style="text-align:center; padding:0.5rem 0; color:var(--text-secondary); font-size:0.9rem;">
+                                    — or —
+                                </div>
+                                
+                                <div style="background:#f8fafc; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                    <h4 style="margin:0 0 0.75rem; font-size:0.95rem; color:var(--text-primary);">Apply Manually</h4>
+                                    
+                                    <?php if (!empty($job['application_email'])): ?>
+                                        <a href="mailto:<?php echo htmlspecialchars($job['application_email']); ?>" 
+                                           class="btn btn-outline btn-block" 
+                                           style="text-align:center; padding:0.65rem 1rem; font-size:0.9rem; margin-bottom:0.5rem;">
+                                            📧 Email Application
+                                        </a>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($job['application_url'])): ?>
+                                        <a href="<?php echo htmlspecialchars($job['application_url']); ?>" 
+                                           target="_blank" 
+                                           class="btn btn-outline btn-block" 
+                                           style="text-align:center; padding:0.65rem 1rem; font-size:0.9rem;">
+                                            🌐 Company Website
+                                        </a>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($job['application_instructions'])): ?>
+                                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border);">
+                                            <?php echo nl2br(htmlspecialchars($job['application_instructions'])); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             <?php endif; ?>
+                            
+                            <?php endif; // end if hasApplied ?>
                         </div>
                     </div>
                 </aside>

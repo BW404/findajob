@@ -59,10 +59,15 @@ class JobSearch {
         // Sort change
         const sortSelect = document.getElementById('sortBy');
         if (sortSelect) {
+            // Set initial sort value from filters
+            sortSelect.value = this.currentFilters.sort || 'newest';
+            
             sortSelect.addEventListener('change', () => {
+                console.log('Sort changed to:', sortSelect.value);
                 this.currentFilters.sort = sortSelect.value;
                 this.currentPage = 1;
                 this.loadJobs();
+                this.updateURL();
             });
         }
         
@@ -657,14 +662,25 @@ class JobSearch {
         const keywordsInput = document.getElementById('keywords');
         if (!keywordsInput) return;
         
+        let debounceTimer;
         keywordsInput.addEventListener('input', () => {
             const query = keywordsInput.value.trim();
-            if (query.length < 2) return;
             
-            this.debounce(() => {
-                this.fetchAutoCompleteData('jobs', query).then(suggestions => {
-                    this.showAutoComplete(keywordsInput, suggestions);
-                });
+            // Clear existing dropdown if query is too short
+            if (query.length < 2) {
+                const existingDropdown = keywordsInput.parentNode.querySelector('.autocomplete-dropdown');
+                if (existingDropdown) {
+                    existingDropdown.remove();
+                }
+                return;
+            }
+            
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                console.log('Fetching autocomplete for keywords:', query);
+                const suggestions = await this.fetchAutoCompleteData('jobs', query);
+                console.log('Got suggestions:', suggestions);
+                this.showAutoComplete(keywordsInput, suggestions);
             }, 300);
         });
     }
@@ -673,23 +689,46 @@ class JobSearch {
         const locationInput = document.getElementById('location');
         if (!locationInput) return;
         
+        let debounceTimer;
         locationInput.addEventListener('input', () => {
             const query = locationInput.value.trim();
-            if (query.length < 2) return;
             
-            this.debounce(() => {
-                this.fetchAutoCompleteData('locations', query).then(suggestions => {
-                    this.showAutoComplete(locationInput, suggestions);
-                });
+            // Clear existing dropdown if query is too short
+            if (query.length < 2) {
+                const existingDropdown = locationInput.parentNode.querySelector('.autocomplete-dropdown');
+                if (existingDropdown) {
+                    existingDropdown.remove();
+                }
+                return;
+            }
+            
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                console.log('Fetching autocomplete for location:', query);
+                const suggestions = await this.fetchAutoCompleteData('locations', query);
+                console.log('Got suggestions:', suggestions);
+                this.showAutoComplete(locationInput, suggestions);
             }, 300);
         });
     }
     
     async fetchAutoCompleteData(type, query) {
         try {
+            console.log(`Fetching ${type} autocomplete from API...`);
             const response = await fetch(`../../api/search.php?type=${type}&q=${encodeURIComponent(query)}&limit=5`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
-            return data.results[type] || [];
+            console.log('API response:', data);
+            
+            if (data.success && data.results && data.results[type]) {
+                return data.results[type];
+            }
+            
+            return [];
         } catch (error) {
             console.error('Autocomplete error:', error);
             return [];
@@ -697,13 +736,18 @@ class JobSearch {
     }
     
     showAutoComplete(input, suggestions) {
+        console.log('Showing autocomplete with', suggestions.length, 'suggestions');
+        
         // Remove existing dropdown
         const existingDropdown = input.parentNode.querySelector('.autocomplete-dropdown');
         if (existingDropdown) {
             existingDropdown.remove();
         }
         
-        if (suggestions.length === 0) return;
+        if (suggestions.length === 0) {
+            console.log('No suggestions to show');
+            return;
+        }
         
         const dropdown = document.createElement('div');
         dropdown.className = 'autocomplete-dropdown';
@@ -711,10 +755,13 @@ class JobSearch {
         suggestions.forEach(suggestion => {
             const item = document.createElement('div');
             item.className = 'autocomplete-item';
+            
+            const displayName = suggestion.display_name || suggestion.name || suggestion.title;
+            const jobCount = suggestion.job_count || '';
+            
             item.innerHTML = `
-                <span class="suggestion-text">${this.escapeHtml(suggestion.name || suggestion.title)}</span>
-                ${suggestion.type === 'location' && suggestion.job_count ? 
-                    `<span class="suggestion-meta">${suggestion.job_count} jobs</span>` : ''}
+                <span class="suggestion-text">${this.escapeHtml(displayName)}</span>
+                ${jobCount ? `<span class="suggestion-meta">${jobCount} jobs</span>` : ''}
             `;
             
             item.addEventListener('click', () => {
@@ -726,7 +773,9 @@ class JobSearch {
             dropdown.appendChild(item);
         });
         
+        input.parentNode.style.position = 'relative';
         input.parentNode.appendChild(dropdown);
+        console.log('Autocomplete dropdown added to DOM');
         
         // Close dropdown when clicking outside
         setTimeout(() => {

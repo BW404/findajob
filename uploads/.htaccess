@@ -1,15 +1,7 @@
-# Prevent direct access to uploaded files
-# Allow access only through PHP scripts with proper authentication
-
-# Deny access to all files by default
-<Files "*">
-    Require all denied
-</Files>
-
-# Allow access to PDF, DOC, and DOCX files only through authorized scripts
+# Allow access to uploaded CV files
+# Allow PDF, DOC, and DOCX files to be viewed/downloaded
 <FilesMatch "\.(pdf|doc|docx)$">
-    # This will be handled by PHP authentication
-    Require all denied
+    Require all granted
 </FilesMatch>
 
 # Prevent execution of any scripts in this directory

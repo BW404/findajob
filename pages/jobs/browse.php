@@ -1003,6 +1003,78 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
                 justify-self: stretch;
             }
         }
+        
+        /* Autocomplete Dropdown Styles */
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: -8px;
+        }
+        
+        .autocomplete-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.2s ease;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item:hover {
+            background-color: #fef2f2;
+            padding-left: 1.25rem;
+        }
+        
+        .suggestion-text {
+            font-size: 0.9rem;
+            color: #1f2937;
+            font-weight: 500;
+        }
+        
+        .suggestion-meta {
+            font-size: 0.8rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 0 0 8px 0;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb {
+            background: #dc2626;
+            border-radius: 3px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+            background: #b91c1c;
+        }
     </style>
 
     <!-- Job Search JavaScript -->
