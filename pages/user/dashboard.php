@@ -425,6 +425,7 @@ try {
                     <!-- Profile Summary Card -->
                     <div class="dashboard-card profile-summary">
                         <div class="card-header">
+                            <!-- add profile picture -->
                             <h3>Profile Summary</h3>
                             <?php if ($user['email_verified']): ?>
                                 <span class="status-badge verified">✓ Verified</span>
