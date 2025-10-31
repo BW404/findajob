@@ -662,22 +662,19 @@ try {
                             ">
                                 <i class="fas fa-users" style="color: var(--primary);"></i> View Applicants
                             </a>
-                            <a href="profile.php" class="action-btn" style="
-                                text-decoration: none; 
-                                padding: 0.875rem 1.5rem; 
-                                border-radius: 12px; 
-                                font-weight: 500; 
-                                border: 2px solid var(--border-color);
-                                color: var(--text-primary);
-                                background: var(--background);
-                                transition: all 0.3s ease;
+                            <a href="profile.php" style="
                                 display: flex; 
                                 align-items: center;
                                 gap: 0.75rem;
                             ">
                                 <i class="fas fa-building" style="color: var(--primary);"></i> Company Profile
+                            </a>
+                            <a href="search-cvs.php" style="
+                                display: flex; 
+                                align-items: center;
+                                gap: 0.75rem;
                             ">
-                                <i class="fas fa-search" style="color: var(--primary);"></i> Search CVs <span style="font-size: 0.75rem; color: var(--text-secondary);">(Coming Soon)</span>
+                                <i class="fas fa-search" style="color: var(--primary);"></i> Search CVs
                             </a>
                         </div>
                     </div>

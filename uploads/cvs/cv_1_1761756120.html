@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @page { 
+            margin: 15mm;
+            size: A4 portrait;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            height: auto;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            page-break-after: avoid;
+            min-height: 100vh;
+            height: auto;
+            padding-bottom: 50px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            margin: -15mm -15mm 20px -15mm;
+            page-break-after: avoid;
+        }
+        .name {
+            font-size: 32pt;
+            font-weight: 700;
+            margin: 0 0 5px 0;
+            letter-spacing: -0.5px;
+        }
+        .title {
+            font-size: 16pt;
+            font-weight: 300;
+            margin: 0 0 15px 0;
+            opacity: 0.95;
+        }
+        .contact {
+            font-size: 9pt;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            opacity: 0.9;
+        }
+        .contact-item {
+            display: inline-flex;
+            align-items: center;
+        }
+        .contact a {
+            color: white;
+            text-decoration: none;
+        }
+        .main-content {
+            padding: 30px 40px 50px 40px;
+            min-height: auto;
+            height: auto;
+        }
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+            width: 100%;
+            overflow: visible;
+            height: auto;
+        }
+        .section-title {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-text {
+            text-align: justify;
+            line-height: 1.7;
+            color: #4a5568;
+        }
+        .experience-item, .education-item {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        .item-header {
+            margin-bottom: 5px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .job-title, .degree {
+            color: #1a202c;
+            font-size: 12pt;
+            font-weight: 700;
+        }
+        .company, .institution {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 11pt;
+            margin-top: 2px;
+        }
+        .location {
+            color: #718096;
+            font-size: 9pt;
+            font-style: italic;
+        }
+        .dates {
+            color: #a0aec0;
+            font-size: 9pt;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .description {
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        .description ul {
+            margin: 5px 0;
+            padding-left: 18px;
+        }
+        .description li {
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+        .description li::marker {
+            color: #667eea;
+        }
+        .skills-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            overflow: visible;
+        }
+        .skill-category {
+            margin-bottom: 12px;
+            width: 100%;
+        }
+        .skill-category-title {
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 10pt;
+        }
+        .skill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            width: 100%;
+            overflow: visible;
+        }
+        .skill-tag {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            color: #5a67d8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 9pt;
+            border: 1px solid #667eea30;
+            font-weight: 500;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .gpa {
+            color: #718096;
+            font-size: 9pt;
+            margin-top: 3px;
+        }
+        
+        /* Print button - hidden in print */
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .print-button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        @media print {
+            .print-button {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" onclick="openInNewTabAndPrint()">
+        📄 Save as PDF
+    </button>
+    
+    <script>
+        function openInNewTabAndPrint() {
+            // Open current page in new tab
+            const newWindow = window.open(window.location.href, '_blank');
+            
+            // Wait for the new window to load, then trigger print
+            if (newWindow) {
+                newWindow.onload = function() {
+                    setTimeout(function() {
+                        newWindow.print();
+                    }, 500);
+                };
+            } else {
+                // If popup blocked, just print current page
+                window.print();
+            }
+        }
+    </script>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="name">Jalal Uddin Taj</h1>
+            <div class="title">dfcvasfa</div>
+            <div class="contact">
+                <span class="contact-item">✉ test1@gmail.com</span>
+                <span class="contact-item">📞 +8801928121855</span>
+                <span class="contact-item">📍 Dhaka, bangladesh</span>
+                                            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Professional Summary -->
+                        <div class="section">
+                <h2 class="section-title">Professional Summary</h2>
+                <p class="summary-text">Strategic dfcvasfa offering 3-5 of professional excellence in leading teams to achieve ambitious goals and maintain high standards. Strong analytical skills with a strategic mindset and attention to detail. Committed to fostering collaboration and achieving mutual success.</p>
+            </div>
+            
+            <!-- Work Experience -->
+                        <div class="section">
+                <h2 class="section-title">Work Experience</h2>
+                                                        <div class="experience-item">
+                        <div class="item-header">
+                            <div class="flex-between">
+                                <div class="job-title">videographer</div>
+                                <div class="dates">
+                                    Feb 2023 - Oct 2025                                </div>
+                            </div>
+                            <div class="company">xyx</div>
+                            <div class="location">Dhaka,Bangladesh</div>
+                        </div>
+                                                <div class="description">
+                            <ul>
+                                <li>Implemented lighting design across 5+ departments.</li><li>Secured camera operation within 6 months.</li><li>Researched drone filming saving $50K annually.</li><li>Supervised storyboarding.</li><li>Determined sound recording and design.</li><li>Designed color grading.</li><li>Reduced aerial cinematography.</li><li>Pioneered special effects.</li><li>Orchestrated attention to detail.</li>                            </ul>
+                        </div>
+                                            </div>
+                            </div>
+            
+            <!-- Education -->
+                        <div class="section">
+                <h2 class="section-title">Education</h2>
+                                                        <div class="education-item">
+                        <div class="flex-between">
+                            <div class="degree">Bsc in CSE</div>
+                            <div class="dates">
+                                2022 - 
+                                Present                            </div>
+                        </div>
+                        <div class="institution">Green University Of Bangladesh</div>
+                        <div class="location">Dhaka, bangladesh</div>
+                                                                            <div class="description">AACTA Award for Best Cinematography.<br />
+Academy Award for Best Cinematography.<br />
+BAFTA Award for Best Cinematography.<br />
+Canadian Screen Award for Best Cinematography.<br />
+César Award for Best Cinematography.<br />
+Golden Horse Award for Best Cinematography.<br />
+Filmfare Award for Best Cinematography.</div>
+                                            </div>
+                            </div>
+            
+            <!-- Skills -->
+            <div class="section">
+                <h2 class="section-title">Skills & Competencies</h2>
+                <div class="skills-container">
+                                        <div class="skill-category">
+                        <div class="skill-category-title">Technical Skills</div>
+                        <div class="skill-list">
+                                                            <span class="skill-tag">Lighting design
+Camera operation
+Drone filming
+Storyboarding
+Sound recording and design
+Color grading
+Aerial cinematography
+Special effects
+Attention to detail</span>
+                                                    </div>
+                    </div>
+                    
+                                        <div class="skill-category">
+                        <div class="skill-category-title">Soft Skills</div>
+                        <div class="skill-list">
+                                                            <span class="skill-tag">Communication
+Camera movement
+Lighting techniques
+Photography
+Video Editing
+Adobe Premiere
+Attention to detail
+Collaboration
+Lighting
+Oversee the camera crew
+Scouting locations
+Setting up shots
+Technical
+Technical knowledge of camera operations
+Time management
+Adaptability
+Blocking
+Equipment maintenance
+Lens selection
+Post-production
+Reviewing footage
+Special effects
+Technical skills
+Translating creative vision to film</span>
+                                                    </div>
+                    </div>
+                    
+                                        <div class="skill-category">
+                        <div class="skill-category-title">Languages</div>
+                        <div class="skill-list">
+                                                            <span class="skill-tag">English(Native)</span>
+                                                    </div>
+                    </div>
+                    
+                                        <div class="skill-category">
+                        <div class="skill-category-title">Certifications</div>
+                        <div class="skill-list">
+                                                            <span class="skill-tag">AACTA Award for Best Cinematography.
+Academy Award for Best Cinematography.
+BAFTA Award for Best Cinematography.
+Canadian Screen Award for Best Cinematography.
+César Award for Best Cinematography.
+Golden Horse Award for Best Cinematography.
+Filmfare Award for Best Cinematography.</span>
+                                                    </div>
+                    </div>
+                                    </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

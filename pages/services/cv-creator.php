@@ -46,8 +46,11 @@ if (isLoggedIn()) {
             <section class="hero-section">
                 <div class="hero-content">
                     <div class="hero-text">
-                        <h2 class="hero-title">Create Your Professional CV</h2>
-                        <p class="hero-subtitle">Choose between our free AI-powered CV builder or get a professionally crafted CV by our experts.</p>
+                        <h2 class="hero-title">Create CV with AI</h2>
+                        <p class="hero-subtitle">Generate a professional CV in minutes with our AI-powered wizard. Choose our beautiful creative template!</p>
+                    </div>
+                    <div class="hero-action">
+                        <a href="cv-generator.php" class="btn btn-hero">Start Creating</a>
                     </div>
                 </div>
             </section>
@@ -73,17 +76,17 @@ if (isLoggedIn()) {
                             </div>
                             <ul class="service-features">
                                 <li>✅ AI-powered content suggestions</li>
-                                <li>✅ 3 professional templates</li>
+                                <li>✅ Professional creative template</li>
                                 <li>✅ Step-by-step guided builder</li>
-                                <li>✅ PDF & Word download</li>
+                                <li>✅ PDF & HTML download</li>
                                 <li>✅ Mobile-friendly interface</li>
-                                <li>✅ Auto-save functionality</li>
+                                <li>✅ Edit & regenerate anytime</li>
                                 <li>✅ Nigerian job market optimized</li>
                             </ul>
                             <div class="service-actions">
-                                <button class="btn btn-primary service-select-btn" data-service="free">
+                                <a href="cv-generator.php" class="btn btn-primary service-select-btn">
                                     🚀 Start Building Now
-                                </button>
+                                </a>
                                 <p class="service-note">Perfect for getting started quickly with professional results</p>
                             </div>
                         </div>
@@ -143,415 +146,201 @@ if (isLoggedIn()) {
                 </div>
             </section>
 
-            <!-- CV Templates -->
-            <section class="templates-section">
+            <!-- Professional CV Service Booking Section (Hidden) -->
+            <section class="professional-booking-section" id="professionalBookingSection" style="display: none;">
+                <!-- Booking form will load here via JavaScript -->
+            </section>
+
+            <!-- CV Builder Features -->
+            <section class="features-section">
                 <div class="section-header">
-                    <h2>Choose Your Template</h2>
-                    <p class="section-subtitle">Select a professional template that matches your industry</p>
+                    <h2>Why Use Our CV Creator?</h2>
                 </div>
 
-                <div class="templates-grid">
-                    <div class="template-card">
-                        <div class="template-preview">
-                            <div class="template-thumb">
-                                <div class="template-mock">
-                                    <div class="mock-header"></div>
-                                    <div class="mock-content">
-                                        <div class="mock-line"></div>
-                                        <div class="mock-line short"></div>
-                                        <div class="mock-line"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="template-info">
-                            <h3 class="template-name">Professional</h3>
-                            <p class="template-desc">Clean and modern design perfect for corporate roles</p>
-                            <div class="template-tags">
-                                <span class="template-tag">Corporate</span>
-                                <span class="template-tag">Banking</span>
-                            </div>
-                            <button class="btn-select-template">Use This Template</button>
-                        </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <h3 class="feature-title">AI-Powered</h3>
+                        <p class="feature-desc">Our AI suggests content improvements and optimizes your CV for Nigerian employers</p>
                     </div>
 
-                    <div class="template-card">
-                        <div class="template-preview">
-                            <div class="template-thumb">
-                                <div class="template-mock creative">
-                                    <div class="mock-header colored"></div>
-                                    <div class="mock-content">
-                                        <div class="mock-line"></div>
-                                        <div class="mock-line short"></div>
-                                        <div class="mock-line"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="template-info">
-                            <h3 class="template-name">Creative</h3>
-                            <p class="template-desc">Eye-catching design for creative and tech professionals</p>
-                            <div class="template-tags">
-                                <span class="template-tag">Tech</span>
-                                <span class="template-tag">Design</span>
-                            </div>
-                            <button class="btn-select-template">Use This Template</button>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3 class="feature-title">Quick & Easy</h3>
+                        <p class="feature-desc">Create a professional CV in under 10 minutes with our step-by-step builder</p>
                     </div>
 
-                    <div class="template-card">
-                        <div class="template-preview">
-                            <div class="template-thumb">
-                                <div class="template-mock minimal">
-                                    <div class="mock-header"></div>
-                                    <div class="mock-content">
-                                        <div class="mock-line"></div>
-                                        <div class="mock-line short"></div>
-                                        <div class="mock-line"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="template-info">
-                            <h3 class="template-name">Minimal</h3>
-                            <p class="template-desc">Simple and elegant design that highlights your content</p>
-                            <div class="template-tags">
-                                <span class="template-tag">Education</span>
-                                <span class="template-tag">Healthcare</span>
-                            </div>
-                            <button class="btn-select-template">Use This Template</button>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📱</div>
+                        <h3 class="feature-title">Mobile Optimized</h3>
+                        <p class="feature-desc">Build and edit your CV on any device - desktop, tablet, or smartphone</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <h3 class="feature-title">Professional Template</h3>
+                        <p class="feature-desc">Creative design template that makes a great first impression</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">🇳🇬</div>
+                        <h3 class="feature-title">Nigerian Job Market</h3>
+                        <p class="feature-desc">Template designed specifically for the Nigerian job market and local employers</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3 class="feature-title">Secure & Private</h3>
+                        <p class="feature-desc">Your personal information is encrypted and never shared without permission</p>
                     </div>
                 </div>
             </section>
+        </main>
+    </div>
 
-            <!-- CV Builder Interface (Hidden by default) -->
-            <section class="cv-builder-section" id="cvBuilderSection" style="display: none;">
-                <div class="builder-header">
-                    <div class="builder-title">
-                        <h2>Build Your CV</h2>
-                        <p>Follow the steps below to create your professional CV</p>
-                    </div>
-                    <div class="builder-progress">
-                        <div class="progress-steps">
-                            <div class="step active" data-step="1">
-                                <span class="step-number">1</span>
-                                <span class="step-label">Personal Info</span>
-                            </div>
-                            <div class="step" data-step="2">
-                                <span class="step-number">2</span>
-                                <span class="step-label">Experience</span>
-                            </div>
-                            <div class="step" data-step="3">
-                                <span class="step-number">3</span>
-                                <span class="step-label">Education</span>
-                            </div>
-                            <div class="step" data-step="4">
-                                <span class="step-number">4</span>
-                                <span class="step-label">Skills</span>
-                            </div>
-                            <div class="step" data-step="5">
-                                <span class="step-number">5</span>
-                                <span class="step-label">References</span>
-                            </div>
-                            <div class="step" data-step="6">
-                                <span class="step-number">6</span>
-                                <span class="step-label">Review</span>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: 16.67%"></div>
-                        </div>
-                    </div>
-                </div>
+    </div>
 
-                <div class="builder-content">
-                    <div class="builder-form">
-                        <!-- Step 1: Personal Information -->
-                        <div class="builder-step active" id="step1">
-                            <h3>Personal Information</h3>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="firstName">First Name *</label>
-                                    <input type="text" id="firstName" name="firstName" value="<?php echo $user ? htmlspecialchars($user['first_name']) : ''; ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="lastName">Last Name *</label>
-                                    <input type="text" id="lastName" name="lastName" value="<?php echo $user ? htmlspecialchars($user['last_name']) : ''; ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="email">Email Address *</label>
-                                    <input type="email" id="email" name="email" value="<?php echo $user ? htmlspecialchars($user['email']) : ''; ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="phone">Phone Number *</label>
-                                    <input type="tel" id="phone" name="phone" placeholder="+234" required>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="address">Address</label>
-                                    <input type="text" id="address" name="address" placeholder="City, State, Nigeria">
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="professional-summary">Professional Summary</label>
-                                    <textarea id="professional-summary" name="professional-summary" rows="4" placeholder="Brief overview of your professional background and career objectives..."></textarea>
-                                </div>
-                            </div>
-                        </div>
+    <!-- CV Builder Styles -->
+    <style>
+        .cv-creator-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+        }
 
-                        <!-- Step 2: Work Experience -->
-                        <div class="builder-step" id="step2">
-                            <h3>Work Experience</h3>
-                            <div id="experience-container">
-                                <div class="experience-entry">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="job-title-1">Job Title *</label>
-                                            <input type="text" id="job-title-1" name="job-title[]" placeholder="e.g. Software Developer" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="company-1">Company Name *</label>
-                                            <input type="text" id="company-1" name="company[]" placeholder="e.g. ABC Technologies" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="start-date-1">Start Date *</label>
-                                            <input type="date" id="start-date-1" name="start-date[]" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="end-date-1">End Date</label>
-                                            <input type="date" id="end-date-1" name="end-date[]">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" name="current-job[]"> Currently working here
-                                            </label>
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <label for="job-description-1">Job Description</label>
-                                            <textarea id="job-description-1" name="job-description[]" rows="4" placeholder="Describe your key responsibilities and achievements..."></textarea>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-secondary remove-experience">Remove</button>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-outline add-experience">+ Add Another Job</button>
-                        </div>
+        .main-content {
+            padding: 2rem 1rem;
+        }
 
-                        <!-- Step 3: Education -->
-                        <div class="builder-step" id="step3">
-                            <h3>Education</h3>
-                            <div id="education-container">
-                                <div class="education-entry">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="degree-1">Degree/Certificate *</label>
-                                            <input type="text" id="degree-1" name="degree[]" placeholder="e.g. Bachelor of Science" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="field-1">Field of Study *</label>
-                                            <input type="text" id="field-1" name="field[]" placeholder="e.g. Computer Science" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="school-1">School/Institution *</label>
-                                            <input type="text" id="school-1" name="school[]" placeholder="e.g. University of Lagos" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="grad-year-1">Graduation Year</label>
-                                            <input type="number" id="grad-year-1" name="grad-year[]" min="1950" max="2030" placeholder="2023">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="gpa-1">Grade/GPA (Optional)</label>
-                                            <input type="text" id="gpa-1" name="gpa[]" placeholder="e.g. First Class, 3.8/4.0">
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-secondary remove-education">Remove</button>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-outline add-education">+ Add Another Education</button>
-                        </div>
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 2rem;
+            margin: 0;
+            border-radius: 16px;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
 
-                        <!-- Step 4: Skills -->
-                        <div class="builder-step" id="step4">
-                            <h3>Skills & Qualifications</h3>
-                            <div class="form-grid">
-                                <div class="form-group full-width">
-                                    <label for="technical-skills">Technical Skills</label>
-                                    <textarea id="technical-skills" name="technical-skills" rows="3" placeholder="e.g. JavaScript, Python, SQL, Microsoft Office, Adobe Photoshop..."></textarea>
-                                    <small>Separate skills with commas</small>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="soft-skills">Soft Skills</label>
-                                    <textarea id="soft-skills" name="soft-skills" rows="3" placeholder="e.g. Leadership, Communication, Problem Solving, Team Work..."></textarea>
-                                    <small>Separate skills with commas</small>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="languages">Languages</label>
-                                    <textarea id="languages" name="languages" rows="2" placeholder="e.g. English (Native), Yoruba (Fluent), French (Basic)..."></textarea>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="certifications">Certifications & Awards</label>
-                                    <textarea id="certifications" name="certifications" rows="3" placeholder="e.g. AWS Certified Developer (2023), Best Employee of the Year (2022)..."></textarea>
-                                </div>
-                            </div>
-                        </div>
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><path d="M0,300 Q300,100 600,300 T1200,300 L1200,600 L0,600 Z" fill="rgba(255,255,255,0.1)"/></svg>') no-repeat center bottom;
+            background-size: cover;
+            opacity: 0.3;
+        }
 
-                        <!-- Step 5: References -->
-                        <div class="builder-step" id="step5">
-                            <h3>References</h3>
-                            <p class="section-description">Add professional references who can vouch for your work experience and character. Include supervisors, colleagues, or clients who know your work well.</p>
-                            
-                            <div class="reference-options">
-                                <div class="reference-toggle">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="references-available" name="references-available" checked>
-                                        Include references section
-                                    </label>
-                                    <small>Uncheck if you prefer to provide references upon request</small>
-                                </div>
-                            </div>
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
 
-                            <div id="references-container" class="references-section">
-                                <div class="reference-entry">
-                                    <h4>Reference 1</h4>
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="ref-name-1">Full Name *</label>
-                                            <input type="text" id="ref-name-1" name="ref-name[]" placeholder="e.g. Dr. John Adebayo" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-title-1">Job Title *</label>
-                                            <input type="text" id="ref-title-1" name="ref-title[]" placeholder="e.g. Senior Manager" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-company-1">Company/Organization *</label>
-                                            <input type="text" id="ref-company-1" name="ref-company[]" placeholder="e.g. ABC Technologies Ltd" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-relationship-1">Professional Relationship *</label>
-                                            <select id="ref-relationship-1" name="ref-relationship[]" required>
-                                                <option value="">Select relationship</option>
-                                                <option value="direct-supervisor">Direct Supervisor</option>
-                                                <option value="manager">Manager</option>
-                                                <option value="colleague">Colleague</option>
-                                                <option value="client">Client</option>
-                                                <option value="mentor">Mentor</option>
-                                                <option value="hr-manager">HR Manager</option>
-                                                <option value="other">Other</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-phone-1">Phone Number *</label>
-                                            <input type="tel" id="ref-phone-1" name="ref-phone[]" placeholder="+234" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-email-1">Email Address *</label>
-                                            <input type="email" id="ref-email-1" name="ref-email[]" placeholder="john.adebayo@company.com" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-years-1">Years Known</label>
-                                            <input type="text" id="ref-years-1" name="ref-years[]" placeholder="e.g. 3 years">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-permission-1">Permission Status</label>
-                                            <select id="ref-permission-1" name="ref-permission[]">
-                                                <option value="granted">Permission granted</option>
-                                                <option value="pending">Permission pending</option>
-                                                <option value="not-asked">Not yet asked</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-secondary remove-reference">Remove Reference</button>
-                                </div>
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
 
-                                <div class="reference-entry">
-                                    <h4>Reference 2</h4>
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="ref-name-2">Full Name</label>
-                                            <input type="text" id="ref-name-2" name="ref-name[]" placeholder="e.g. Mrs. Sarah Okafor">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-title-2">Job Title</label>
-                                            <input type="text" id="ref-title-2" name="ref-title[]" placeholder="e.g. Team Lead">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-company-2">Company/Organization</label>
-                                            <input type="text" id="ref-company-2" name="ref-company[]" placeholder="e.g. XYZ Solutions">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-relationship-2">Professional Relationship</label>
-                                            <select id="ref-relationship-2" name="ref-relationship[]">
-                                                <option value="">Select relationship</option>
-                                                <option value="direct-supervisor">Direct Supervisor</option>
-                                                <option value="manager">Manager</option>
-                                                <option value="colleague">Colleague</option>
-                                                <option value="client">Client</option>
-                                                <option value="mentor">Mentor</option>
-                                                <option value="hr-manager">HR Manager</option>
-                                                <option value="other">Other</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-phone-2">Phone Number</label>
-                                            <input type="tel" id="ref-phone-2" name="ref-phone[]" placeholder="+234">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-email-2">Email Address</label>
-                                            <input type="email" id="ref-email-2" name="ref-email[]" placeholder="sarah.okafor@company.com">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-years-2">Years Known</label>
-                                            <input type="text" id="ref-years-2" name="ref-years[]" placeholder="e.g. 2 years">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ref-permission-2">Permission Status</label>
-                                            <select id="ref-permission-2" name="ref-permission[]">
-                                                <option value="granted">Permission granted</option>
-                                                <option value="pending">Permission pending</option>
-                                                <option value="not-asked">Not yet asked</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-secondary remove-reference">Remove Reference</button>
-                                </div>
-                            </div>
+        .hero-subtitle {
+            font-size: 1.125rem;
+            line-height: 1.6;
+            opacity: 0.95;
+            margin-bottom: 2rem;
+        }
 
-                            <button type="button" class="btn btn-outline add-reference">+ Add Another Reference</button>
-                            
-                            <div class="reference-note">
-                                <p><strong>💡 Reference Tips:</strong></p>
-                                <ul>
-                                    <li>Always ask permission before listing someone as a reference</li>
-                                    <li>Choose references who can speak positively about your work performance</li>
-                                    <li>Include a mix of supervisors and colleagues if possible</li>
-                                    <li>Provide current and accurate contact information</li>
-                                    <li>Consider professional references over personal ones</li>
-                                </ul>
-                            </div>
-                        </div>
+        .hero-action {
+            margin-top: 1.5rem;
+        }
 
-                        <!-- Step 6: Review -->
-                        <div class="builder-step" id="step6">
-                            <h3>Review Your CV</h3>
-                            <div class="cv-preview-container">
-                                <div class="cv-preview" id="cvPreview">
-                                    <div class="preview-loading">
-                                        <div class="spinner"></div>
-                                        <p>Generating your CV preview...</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="download-options">
-                                <button type="button" class="btn btn-primary download-pdf">📄 Download PDF</button>
-                                <button type="button" class="btn btn-outline download-docx">📄 Download Word</button>
-                                <button type="button" class="btn btn-secondary save-draft">💾 Save Draft</button>
-                            </div>
-                        </div>
-                    </div>
+        .btn-hero {
+            background: white;
+            color: #667eea;
+            padding: 1rem 2.5rem;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
 
-                    <div class="builder-navigation">
-                        <button type="button" class="btn btn-secondary prev-step" disabled>← Previous</button>
-                        <button type="button" class="btn btn-primary next-step">Next →</button>
-                    </div>
-                </div>
-            </section>
+        .btn-hero:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            background: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .cv-creator-container {
+                padding: 0;
+            }
+
+            .main-content {
+                padding: 1rem 0.5rem;
+            }
+
+            .hero-section {
+                padding: 2rem 1rem;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .section-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .service-options-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .service-content {
+                padding: 1.5rem;
+                min-height: auto;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .builder-header {
+                padding: 2rem 1rem;
+            }
+
+            .builder-title h2 {
+                font-size: 1.8rem;
+            }
+
+            .progress-steps {
+                gap: 0.25rem;
+            }
+
+            .step {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+                flex: 0 1 auto;
+            }
+        }
+    </style>
+
+
 
             <!-- Professional CV Service Booking -->
             <section class="professional-booking-section" id="professionalBookingSection" style="display: none;">
@@ -784,83 +573,6 @@ if (isLoggedIn()) {
                         <div class="feature-icon">🔒</div>
                         <h3 class="feature-title">Secure & Private</h3>
                         <p class="feature-desc">Your personal information is encrypted and never shared without permission</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Pricing Section -->
-            <section class="pricing-section">
-                <div class="section-header">
-                    <h2>Choose Your Plan</h2>
-                    <p class="section-subtitle">Start creating your professional CV today</p>
-                </div>
-
-                <div class="pricing-grid">
-                    <div class="pricing-card">
-                        <div class="pricing-header">
-                            <h3 class="plan-name">Basic CV</h3>
-                            <div class="plan-price">
-                                <span class="price-currency">₦</span>
-                                <span class="price-amount">0</span>
-                                <span class="price-period">Free</span>
-                            </div>
-                        </div>
-                        <div class="pricing-features">
-                            <ul class="features-list">
-                                <li>✅ 1 Basic Template</li>
-                                <li>✅ PDF Download</li>
-                                <li>✅ Basic Editing</li>
-                                <li>❌ Premium Templates</li>
-                                <li>❌ AI Suggestions</li>
-                                <li>❌ Multiple CVs</li>
-                            </ul>
-                        </div>
-                        <button class="btn-select-plan">Get Started Free</button>
-                    </div>
-
-                    <div class="pricing-card featured">
-                        <div class="pricing-badge">Most Popular</div>
-                        <div class="pricing-header">
-                            <h3 class="plan-name">Professional CV</h3>
-                            <div class="plan-price">
-                                <span class="price-currency">₦</span>
-                                <span class="price-amount">15,500</span>
-                                <span class="price-period">One-time</span>
-                            </div>
-                        </div>
-                        <div class="pricing-features">
-                            <ul class="features-list">
-                                <li>✅ All Premium Templates</li>
-                                <li>✅ AI Content Suggestions</li>
-                                <li>✅ Multiple CV Versions</li>
-                                <li>✅ Cover Letter Generator</li>
-                                <li>✅ LinkedIn Optimization</li>
-                                <li>✅ 1-Year Updates</li>
-                            </ul>
-                        </div>
-                        <button class="btn-select-plan primary">Choose Professional</button>
-                    </div>
-
-                    <div class="pricing-card">
-                        <div class="pricing-header">
-                            <h3 class="plan-name">Premium CV</h3>
-                            <div class="plan-price">
-                                <span class="price-currency">₦</span>
-                                <span class="price-amount">33,500</span>
-                                <span class="price-period">One-time</span>
-                            </div>
-                        </div>
-                        <div class="pricing-features">
-                            <ul class="features-list">
-                                <li>✅ Everything in Professional</li>
-                                <li>✅ Personal Career Consultant</li>
-                                <li>✅ Interview Preparation</li>
-                                <li>✅ Job Search Strategy</li>
-                                <li>✅ LinkedIn Profile Setup</li>
-                                <li>✅ Lifetime Updates</li>
-                            </ul>
-                        </div>
-                        <button class="btn-select-plan">Choose Premium</button>
                     </div>
                 </div>
             </section>

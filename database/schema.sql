@@ -260,6 +260,7 @@ CREATE TABLE cvs (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     content JSON,
+    cv_data TEXT,
     file_path VARCHAR(500),
     file_name VARCHAR(255),
     original_filename VARCHAR(255),

@@ -383,7 +383,12 @@ $page_title = 'CV Manager - FindAJob Nigeria';
                 <h1 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">📄 CV Manager</h1>
                 <p style="margin: 0; color: var(--text-secondary);">Upload and manage multiple CVs for different job applications</p>
             </div>
-            <a href="../user/dashboard.php" class="btn btn-secondary">← Back to Dashboard</a>
+            <div style="display: flex; gap: 1rem;">
+                <a href="cv-analytics.php" class="btn btn-primary">
+                    <i class="fas fa-chart-line"></i> View Analytics
+                </a>
+                <a href="../user/dashboard.php" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
         </div>
         
         <!-- Statistics -->
@@ -415,10 +420,27 @@ $page_title = 'CV Manager - FindAJob Nigeria';
             </div>
         <?php endif; ?>
         
+        <!-- AI CV Generator Promo -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
+                        <i class="fas fa-magic"></i> Create CV with AI
+                    </h3>
+                    <p style="margin: 0; opacity: 0.95; font-size: 1rem;">
+                        Generate a professional CV in minutes with our AI-powered wizard. Choose from 6 beautiful templates!
+                    </p>
+                </div>
+                <a href="../services/cv-generator.php" style="background: white; color: #667eea; padding: 0.75rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                    <i class="fas fa-sparkles"></i> Start Creating
+                </a>
+            </div>
+        </div>
+        
         <!-- Upload Section -->
         <?php if (count($user_cvs) < 5): ?>
         <div class="upload-section">
-            <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">📤 Upload New CV</h2>
+            <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">📤 Upload Existing CV</h2>
             
             <form method="POST" enctype="multipart/form-data" class="upload-form">
                 <div class="form-group">
@@ -506,13 +528,13 @@ $page_title = 'CV Manager - FindAJob Nigeria';
                         </div>
                         
                         <div class="cv-actions">
-                            <a href="cv-download.php?id=<?php echo $cv['id']; ?>&action=preview" 
-                               target="_blank" class="btn btn-blue btn-sm">
-                                👁️ Preview
+                            <a href="cv-preview.php?id=<?php echo $cv['id']; ?>" 
+                               class="btn btn-blue btn-sm">
+                                <i class="fas fa-eye"></i> Preview
                             </a>
                             <a href="cv-download.php?id=<?php echo $cv['id']; ?>&action=download" 
                                class="btn btn-teal btn-sm">
-                                💾 Download
+                                <i class="fas fa-download"></i> Download
                             </a>
                             <?php if (!$cv['is_primary']): ?>
                                 <form method="POST" style="display: inline;">

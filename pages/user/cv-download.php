@@ -51,8 +51,8 @@ if ($user_type === 'job_seeker' && $cv['user_id'] == $user_id) {
     $stmt = $pdo->prepare("
         SELECT 1 FROM job_applications ja
         JOIN jobs j ON ja.job_id = j.id
-        WHERE j.company_id = (SELECT company_id FROM users WHERE id = ?)
-        AND ja.user_id = ?
+        WHERE j.employer_id = ?
+        AND ja.job_seeker_id = ?
         LIMIT 1
     ");
     $stmt->execute([$user_id, $cv['user_id']]);
