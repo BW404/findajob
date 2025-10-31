@@ -351,23 +351,38 @@ $page_title = 'Search CVs - FindAJob Nigeria';
         }
 
         .btn-primary {
-            background: var(--primary);
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #b91c1c;
+            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
         }
 
         .btn-outline {
             background: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
+            color: #0891b2;
+            border: 2px solid #0891b2;
         }
 
         .btn-outline:hover {
-            background: var(--primary);
+            background: #0891b2;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
         }
 
         .pagination {
@@ -485,7 +500,7 @@ $page_title = 'Search CVs - FindAJob Nigeria';
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                    <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center; margin-top: 1rem;">
                         <i class="fas fa-search"></i> Apply Filters
                     </button>
 
