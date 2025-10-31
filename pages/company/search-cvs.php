@@ -351,27 +351,27 @@ $page_title = 'Search CVs - FindAJob Nigeria';
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
         }
 
         .btn-outline {
             background: white;
-            color: #0891b2;
-            border: 2px solid #0891b2;
+            color: #f59e0b;
+            border: 2px solid #f59e0b;
         }
 
         .btn-outline:hover {
-            background: #0891b2;
+            background: #f59e0b;
             color: white;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
 
         .btn-success {
