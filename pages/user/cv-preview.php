@@ -6,28 +6,48 @@ require_once '../../config/constants.php';
 requireJobSeeker();
 
 $userId = getCurrentUserId();
-$cvId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-if (!$cvId) {
-    header('Location: cv-manager.php');
-    exit();
+// Check if we have generated CV in session (from AI generator)
+if (isset($_SESSION['generated_cv'])) {
+    // Use session data for AI-generated CV
+    $cvTitle = $_SESSION['generated_cv']['title'] ?? 'My CV';
+    $htmlContent = $_SESSION['generated_cv']['html'] ?? '';
+    $isGenerated = true;
+    
+    // Clear session after retrieving
+    $cvData = $_SESSION['generated_cv'];
+    unset($_SESSION['generated_cv']);
+    
+    if (empty($htmlContent)) {
+        header('Location: ../services/cv-generator.php');
+        exit();
+    }
+} else {
+    // Fallback to database CV if ID is provided
+    $cvId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    
+    if (!$cvId) {
+        header('Location: cv-manager.php');
+        exit();
+    }
+    
+    // Fetch CV details
+    $stmt = $pdo->prepare("
+        SELECT * FROM cvs 
+        WHERE id = ? AND user_id = ?
+    ");
+    $stmt->execute([$cvId, $userId]);
+    $cv = $stmt->fetch();
+    
+    if (!$cv) {
+        header('Location: cv-manager.php');
+        exit();
+    }
+    
+    $cvPath = '../../uploads/cvs/' . $cv['file_path'];
+    $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
+    $isGenerated = false;
 }
-
-// Fetch CV details
-$stmt = $pdo->prepare("
-    SELECT * FROM cvs 
-    WHERE id = ? AND user_id = ?
-");
-$stmt->execute([$cvId, $userId]);
-$cv = $stmt->fetch();
-
-if (!$cv) {
-    header('Location: cv-manager.php');
-    exit();
-}
-
-$cvPath = '../../uploads/cvs/' . $cv['file_path'];
-$fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,6 +149,12 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
             position: relative;
         }
 
+        #cv-content {
+            padding: 40px;
+            background: white;
+            min-height: 800px;
+        }
+
         .pdf-viewer {
             width: 100%;
             height: 100vh;
@@ -195,6 +221,54 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
                 min-height: 900px;
             }
         }
+
+        /* Print styles - hide UI elements when printing */
+        @media print {
+            /* Hide everything except CV content */
+            header,
+            .site-header,
+            .preview-header,
+            .preview-actions,
+            .btn,
+            nav,
+            .app-bottom-nav,
+            div[style*="background: #fef3c7"] {
+                display: none !important;
+            }
+            
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .preview-container {
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+            
+            .preview-frame {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            #cv-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                box-shadow: none !important;
+            }
+            
+            /* Ensure page breaks work properly - CV template has its own margins */
+            @page {
+                margin: 20mm;
+                size: A4 portrait;
+            }
+        }
     </style>
 </head>
 <body>
@@ -204,53 +278,76 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
         <div class="preview-header">
             <div class="cv-info">
                 <h1>
-                    <i class="fas fa-file-<?php echo ($fileExtension === 'pdf') ? 'pdf' : (($fileExtension === 'html' || $fileExtension === 'htm') ? 'code' : 'alt'); ?>"></i> 
-                    <?php echo htmlspecialchars($cv['title']); ?>
+                    <i class="fas fa-file-alt"></i> 
+                    <?php echo htmlspecialchars($isGenerated ? $cvTitle : $cv['title']); ?>
                 </h1>
                 <div class="cv-meta">
-                    <span>
-                        <i class="fas fa-calendar"></i>
-                        Uploaded: <?php echo date('M d, Y', strtotime($cv['created_at'])); ?>
-                    </span>
-                    <span>
-                        <i class="fas fa-file"></i>
-                        <?php echo strtoupper($fileExtension); ?> File
-                    </span>
-                    <span>
-                        <i class="fas fa-download"></i>
-                        <?php echo $cv['download_count'] ?? 0; ?> downloads
-                    </span>
+                    <?php if ($isGenerated): ?>
+                        <span>
+                            <i class="fas fa-magic"></i>
+                            AI Generated CV
+                        </span>
+                        <span>
+                            <i class="fas fa-clock"></i>
+                            Just now
+                        </span>
+                    <?php else: ?>
+                        <span>
+                            <i class="fas fa-calendar"></i>
+                            Uploaded: <?php echo date('M d, Y', strtotime($cv['created_at'])); ?>
+                        </span>
+                        <span>
+                            <i class="fas fa-file"></i>
+                            <?php echo strtoupper($fileExtension); ?> File
+                        </span>
+                        <span>
+                            <i class="fas fa-download"></i>
+                            <?php echo $cv['download_count'] ?? 0; ?> downloads
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <div class="preview-actions">
-                <?php if ($fileExtension === 'html' || $fileExtension === 'htm'): ?>
+                <?php if ($isGenerated): ?>
                     <button onclick="downloadAsPDF()" class="btn btn-primary">
                         <i class="fas fa-download"></i> Download as PDF
                     </button>
-                    <a href="<?php echo $cvPath; ?>" download="<?php echo htmlspecialchars($cv['title']); ?>.html" class="btn btn-secondary">
-                        <i class="fas fa-code"></i> Download HTML
+                    <a href="../services/cv-generator.php" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Generator
                     </a>
                 <?php else: ?>
-                    <a href="<?php echo $cvPath; ?>" download="<?php echo htmlspecialchars($cv['title']); ?>.<?php echo $fileExtension; ?>" class="btn btn-primary" onclick="trackDownload()">
-                        <i class="fas fa-download"></i> Download <?php echo strtoupper($fileExtension); ?>
+                    <?php if ($fileExtension === 'html' || $fileExtension === 'htm'): ?>
+                        <button onclick="downloadAsPDF()" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download as PDF
+                        </button>
+                        <a href="<?php echo $cvPath; ?>" download="<?php echo htmlspecialchars($cv['title']); ?>.html" class="btn btn-secondary">
+                            <i class="fas fa-code"></i> Download HTML
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo $cvPath; ?>" download="<?php echo htmlspecialchars($cv['title']); ?>.<?php echo $fileExtension; ?>" class="btn btn-primary" onclick="trackDownload()">
+                            <i class="fas fa-download"></i> Download <?php echo strtoupper($fileExtension); ?>
+                        </a>
+                    <?php endif; ?>
+                    <a href="cv-manager.php" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Manager
                     </a>
                 <?php endif; ?>
-                <a href="cv-manager.php" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Manager
-                </a>
             </div>
         </div>
 
-        <?php if ($fileExtension === 'html' || $fileExtension === 'htm'): ?>
-            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; text-align: center;">
-                <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
-                <strong>How to download as PDF:</strong> Click "Download as PDF" button, then select "Save as PDF" as the destination in the print dialog, and click Save.
-            </div>
-        <?php endif; ?>
+        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; text-align: center;">
+            <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
+            <strong>How to download as PDF:</strong> Click "Download as PDF" button above. In the print dialog that opens, select "Save as PDF" or "Microsoft Print to PDF" as the destination, then click Save.
+        </div>
 
         <div class="preview-frame">
-            <?php if ($fileExtension === 'pdf'): ?>
+            <?php if ($isGenerated): ?>
+                <!-- Display generated CV inline -->
+                <div id="cv-content">
+                    <?php echo $htmlContent; ?>
+                </div>
+            <?php elseif ($fileExtension === 'pdf'): ?>
                 <iframe 
                     src="<?php echo $cvPath; ?>#toolbar=1&navpanes=0" 
                     class="pdf-viewer"
@@ -299,6 +396,7 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
     </div>
 
     <script>
+        <?php if (!$isGenerated && isset($cvId)): ?>
         // Track CV views
         fetch('../../api/cv-analytics.php', {
             method: 'POST',
@@ -324,27 +422,38 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
                 })
             });
         }
+        <?php else: ?>
+        function trackDownload() {
+            // No tracking for generated CVs
+        }
+        <?php endif; ?>
 
         // Download CV as PDF - Opens print dialog
         function downloadAsPDF() {
-            // Track the download
-            trackDownload();
-            
-            // Open CV in new window and trigger print
-            const cvUrl = '<?php echo $cvPath; ?>';
-            const printWindow = window.open(cvUrl, '_blank');
-            
-            if (printWindow) {
-                printWindow.onload = function() {
-                    setTimeout(function() {
-                        printWindow.print();
-                    }, 500); // Small delay to ensure content is loaded
-                };
-            } else {
-                alert('Please allow pop-ups to download as PDF.\n\nAlternatively:\n1. Right-click on the CV preview below\n2. Select "Print" from the menu\n3. Choose "Save as PDF"');
-            }
+            <?php if ($isGenerated): ?>
+                // For generated CV, print the current page's CV content
+                window.print();
+            <?php else: ?>
+                // Track the download
+                trackDownload();
+                
+                // Open CV in new window and trigger print
+                const cvUrl = '<?php echo $cvPath; ?>';
+                const printWindow = window.open(cvUrl, '_blank');
+                
+                if (printWindow) {
+                    printWindow.onload = function() {
+                        setTimeout(function() {
+                            printWindow.print();
+                        }, 500); // Small delay to ensure content is loaded
+                    };
+                } else {
+                    alert('Please allow pop-ups to download as PDF.\n\nAlternatively:\n1. Right-click on the CV preview below\n2. Select "Print" from the menu\n3. Choose "Save as PDF"');
+                }
+            <?php endif; ?>
         }
 
+        <?php if (!$isGenerated): ?>
         // Handle PDF/HTML loading errors
         const viewer = document.getElementById('pdf-viewer') || document.getElementById('html-viewer');
         viewer?.addEventListener('error', function() {
@@ -361,6 +470,7 @@ $fileExtension = strtolower(pathinfo($cv['file_path'], PATHINFO_EXTENSION));
                 loadingDiv.style.display = 'block';
             }
         });
+        <?php endif; ?>
     </script>
 </body>
 </html>

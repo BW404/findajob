@@ -42,6 +42,8 @@ try {
             'languages' => array_filter(array_map('trim', explode(',', $_POST['languages'] ?? ''))),
             'certifications' => array_filter(array_map('trim', explode(',', $_POST['certifications'] ?? '')))
         ],
+        'references' => $_POST['references'] ?? [],
+        'include_references' => isset($_POST['include_references']),
         'template' => $_POST['template'] ?? 'modern'
     ];
     
@@ -50,52 +52,18 @@ try {
     // Generate HTML CV based on template
     $htmlContent = generateHTMLCV($cvData);
     
-    // Generate PDF using DomPDF or similar library
-    $pdfContent = generatePDFFromHTML($htmlContent);
-    
-    // Determine if it's HTML or PDF
-    $isHtml = (strpos($pdfContent, '<!DOCTYPE') === 0 || strpos($pdfContent, '<html') === 0);
-    $fileExtension = $isHtml ? 'html' : 'pdf';
-    $mimeType = $isHtml ? 'text/html' : 'application/pdf';
-    
-    // Save to uploads directory
-    $uploadDir = '../uploads/cvs/';
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
-    
-    $fileName = 'cv_' . $userId . '_' . time() . '.' . $fileExtension;
-    $filePath = $uploadDir . $fileName;
-    
-    file_put_contents($filePath, $pdfContent);
-    $fileSize = filesize($filePath);
-    
-    // Save to database
-    $stmt = $pdo->prepare("
-        INSERT INTO cvs (
-            user_id, title, file_path, file_name, original_filename, 
-            file_size, file_type, cv_data, is_primary, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())
-    ");
-    
-    $stmt->execute([
-        $userId,
-        $cvTitle,
-        $fileName,
-        $fileName,
-        $cvTitle . '.' . $fileExtension,
-        $fileSize,
-        $mimeType,
-        json_encode($cvData)
-    ]);
-    
-    $cvId = $pdo->lastInsertId();
+    // Store CV data in session for preview (don't save to database)
+    $_SESSION['generated_cv'] = [
+        'title' => $cvTitle,
+        'html' => $htmlContent,
+        'data' => $cvData,
+        'generated_at' => time()
+    ];
     
     echo json_encode([
         'success' => true,
-        'cv_id' => $cvId,
         'message' => 'CV generated successfully',
-        'file_path' => $fileName
+        'preview' => true
     ]);
     
 } catch (Exception $e) {
@@ -387,6 +355,56 @@ function generateDefaultTemplate($data) {
     
     $html .= '</div>';
     $html .= '</div>';
+    
+    // References
+    if (!empty($data['include_references']) && !empty($data['references'])) {
+        $hasValidReference = false;
+        foreach ($data['references'] as $ref) {
+            if (!empty($ref['name']) && !empty($ref['title'])) {
+                $hasValidReference = true;
+                break;
+            }
+        }
+        
+        if ($hasValidReference) {
+            $html .= '<div class="section">';
+            $html .= '<h2 class="section-title">References</h2>';
+            
+            foreach ($data['references'] as $ref) {
+                if (empty($ref['name']) || empty($ref['title'])) continue;
+                
+                $html .= '<div class="education-item" style="margin-bottom: 12px;">';
+                $html .= '<div style="font-weight: 600; color: #111827; font-size: 11pt; margin-bottom: 2px;">' . htmlspecialchars($ref['name']) . '</div>';
+                $html .= '<div style="color: #3b82f6; font-weight: 600; font-size: 10pt;">' . htmlspecialchars($ref['title']);
+                
+                if (!empty($ref['company'])) {
+                    $html .= ' • ' . htmlspecialchars($ref['company']);
+                }
+                
+                $html .= '</div>';
+                
+                if (!empty($ref['relationship'])) {
+                    $html .= '<div style="color: #6b7280; font-size: 9pt; margin-top: 2px;">Relationship: ' . htmlspecialchars($ref['relationship']) . '</div>';
+                }
+                
+                $contactInfo = [];
+                if (!empty($ref['phone'])) {
+                    $contactInfo[] = htmlspecialchars($ref['phone']);
+                }
+                if (!empty($ref['email'])) {
+                    $contactInfo[] = htmlspecialchars($ref['email']);
+                }
+                
+                if (!empty($contactInfo)) {
+                    $html .= '<div style="color: #6b7280; font-size: 9pt; margin-top: 2px;">' . implode(' • ', $contactInfo) . '</div>';
+                }
+                
+                $html .= '</div>';
+            }
+            
+            $html .= '</div>';
+        }
+    }
     
     $html .= '</body></html>';
     

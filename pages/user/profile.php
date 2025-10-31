@@ -17,7 +17,8 @@ $stmt = $pdo->prepare("
         jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
-        jsp.profile_picture, jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture, 
+        jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
         jsp.subscription_type, jsp.subscription_expires,
         jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
@@ -265,8 +266,8 @@ $profileCompletion = calculateProfileCompletion($user);
         }
         
         .profile-avatar {
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             background: rgba(255,255,255,0.2);
             display: flex;
@@ -274,6 +275,43 @@ $profileCompletion = calculateProfileCompletion($user);
             justify-content: center;
             font-size: 2.5rem;
             margin: 0 auto 1rem;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .profile-avatar:hover {
+            transform: scale(1.05);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-avatar-upload {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .profile-avatar:hover .profile-avatar-upload {
+            opacity: 1;
+        }
+        
+        #profilePictureInput {
+            display: none;
         }
         
         .completion-badge {
@@ -689,9 +727,18 @@ $profileCompletion = calculateProfileCompletion($user);
     <main class="profile-container">
         <!-- Profile Header -->
         <div class="profile-header">
-            <div class="profile-avatar">
-                <?php echo strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)); ?>
+            <div class="profile-avatar" onclick="document.getElementById('profilePictureInput').click()">
+                <?php if (!empty($user['profile_picture'])): ?>
+                    <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['profile_picture']); ?>" 
+                         alt="Profile Picture" id="profilePicturePreview">
+                <?php else: ?>
+                    <span id="profileInitials"><?php echo strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)); ?></span>
+                <?php endif; ?>
+                <div class="profile-avatar-upload">
+                    <i class="fas fa-camera"></i> Change Photo
+                </div>
             </div>
+            <input type="file" id="profilePictureInput" accept="image/*">
             <h1><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h1>
             <p><?php echo htmlspecialchars($user['email']); ?></p>
             
@@ -1504,6 +1551,72 @@ $profileCompletion = calculateProfileCompletion($user);
 
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
+        
+        // Profile Picture Upload Handler
+        document.getElementById('profilePictureInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+            
+            // Show loading state
+            const avatar = document.querySelector('.profile-avatar');
+            const originalContent = avatar.innerHTML;
+            avatar.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>';
+            
+            // Upload file
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+            
+            fetch('/findajob/api/upload-profile-picture.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update avatar with new image
+                    const img = document.getElementById('profilePicturePreview');
+                    const initials = document.getElementById('profileInitials');
+                    
+                    if (img) {
+                        img.src = data.url + '?' + new Date().getTime(); // Cache bust
+                    } else {
+                        // Replace initials with image
+                        avatar.innerHTML = `
+                            <img src="${data.url}" alt="Profile Picture" id="profilePicturePreview">
+                            <div class="profile-avatar-upload">
+                                <i class="fas fa-camera"></i> Change Photo
+                            </div>
+                        `;
+                    }
+                    
+                    // Show success message
+                    alert('Profile picture updated successfully!');
+                    
+                    // Reload page to update all instances
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Error: ' + data.error);
+                    avatar.innerHTML = originalContent;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to upload profile picture');
+                avatar.innerHTML = originalContent;
+            });
+        });
     </script>
 
     <!-- Bottom Navigation for Mobile -->

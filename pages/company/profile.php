@@ -9,7 +9,12 @@ $userId = getCurrentUserId();
 
 // Get employer profile data
 $stmt = $pdo->prepare("
-    SELECT u.*, ep.* 
+    SELECT u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone,
+           u.email_verified, u.is_active, u.created_at, u.updated_at,
+           ep.id as profile_id, ep.company_name, ep.company_description,
+           ep.website, ep.industry, ep.company_size, ep.address,
+           ep.state_id, ep.lga_id,
+           COALESCE(ep.logo, u.profile_picture) as logo
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
     WHERE u.id = ?
@@ -322,9 +327,24 @@ if (!empty($user['state_id'])) {
                     <h3 style="margin: 0 0 1.5rem 0;">Profile Preview</h3>
                     
                     <div style="text-align: center; margin-bottom: 2rem;">
-                        <div style="width: 100px; height: 100px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2.5rem; font-weight: bold;">
-                            <?php echo strtoupper(substr($user['company_name'] ?? 'C', 0, 1)); ?>
+                        <div style="width: 120px; height: 120px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2.5rem; font-weight: bold; position: relative; cursor: pointer; border: 4px solid rgba(220, 38, 38, 0.2); transition: all 0.3s ease; overflow: hidden;"
+                             onclick="document.getElementById('companyLogoInput').click()"
+                             onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='rgba(220, 38, 38, 0.4)'"
+                             onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(220, 38, 38, 0.2)'">
+                            <?php if (!empty($user['logo'])): ?>
+                                <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['logo']); ?>" 
+                                     alt="Company Logo" id="companyLogoPreview"
+                                     style="width: 100%; height: 100%; object-fit: cover;">
+                            <?php else: ?>
+                                <span id="companyInitials"><?php echo strtoupper(substr($user['company_name'] ?? 'C', 0, 1)); ?></span>
+                            <?php endif; ?>
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem; font-size: 0.75rem; opacity: 0; transition: opacity 0.3s ease;" 
+                                 onmouseover="this.style.opacity='1'"
+                                 onmouseout="this.style.opacity='0'">
+                                <i class="fas fa-camera"></i> Change Logo
+                            </div>
                         </div>
+                        <input type="file" id="companyLogoInput" accept="image/*" style="display: none;">
                         <h4 style="margin: 0; color: var(--text-primary);">
                             <?php echo htmlspecialchars($user['company_name'] ?? 'Company Name'); ?>
                         </h4>
@@ -400,6 +420,72 @@ if (!empty($user['state_id'])) {
                 console.error('Failed to load LGAs:', error);
             }
         }
+        
+        // Company Logo Upload Handler
+        document.getElementById('companyLogoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+            
+            // Show loading state
+            const logoContainer = document.querySelector('.profile-preview > div > div');
+            const originalContent = logoContainer.innerHTML;
+            logoContainer.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>';
+            
+            // Upload file
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+            
+            fetch('/findajob/api/upload-profile-picture.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update logo with new image
+                    const img = document.getElementById('companyLogoPreview');
+                    
+                    if (img) {
+                        img.src = data.url + '?' + new Date().getTime(); // Cache bust
+                    } else {
+                        // Replace initials with image
+                        logoContainer.innerHTML = `
+                            <img src="${data.url}" alt="Company Logo" id="companyLogoPreview"
+                                 style="width: 100%; height: 100%; object-fit: cover;">
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem; font-size: 0.75rem; opacity: 0; transition: opacity 0.3s ease;">
+                                <i class="fas fa-camera"></i> Change Logo
+                            </div>
+                        `;
+                    }
+                    
+                    // Show success message
+                    alert('Company logo updated successfully!');
+                    
+                    // Reload page to update all instances
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Error: ' + data.error);
+                    logoContainer.innerHTML = originalContent;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to upload company logo');
+                logoContainer.innerHTML = originalContent;
+            });
+        });
     </script>
     
     <!-- Bottom Navigation for PWA -->

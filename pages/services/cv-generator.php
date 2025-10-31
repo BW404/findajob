@@ -1612,8 +1612,8 @@ if ($editingCvId) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('CV generated successfully!');
-                    window.location.href = '../user/cv-preview.php?id=' + data.cv_id;
+                    // Redirect to preview page for download
+                    window.location.href = '../user/cv-preview.php';
                 } else {
                     const errorMsg = data.error || 'Failed to generate CV';
                     const details = data.details ? '\n\nDetails: ' + data.details : '';

@@ -21,6 +21,44 @@ if (session_status() === PHP_SESSION_NONE) {
 // Get current page info
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
+
+// Get user profile picture if logged in
+$user_avatar = null;
+if (isLoggedIn()) {
+    try {
+        $db_path = $header_base_path . 'config/database.php';
+        if (file_exists($db_path)) {
+            require_once $db_path;
+            $userId = getCurrentUserId();
+            
+            if (isJobSeeker()) {
+                // Get profile picture from job_seeker_profiles or users table
+                $stmt = $pdo->prepare("
+                    SELECT COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture
+                    FROM users u 
+                    LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
+                    WHERE u.id = ?
+                ");
+            } else {
+                // Get logo from employer_profiles or users table
+                $stmt = $pdo->prepare("
+                    SELECT COALESCE(ep.logo, u.profile_picture) as profile_picture
+                    FROM users u 
+                    LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
+                    WHERE u.id = ?
+                ");
+            }
+            $stmt->execute([$userId]);
+            $result = $stmt->fetch();
+            if ($result && !empty($result['profile_picture'])) {
+                $user_avatar = $result['profile_picture'];
+            }
+        }
+    } catch (Exception $e) {
+        // Silently fail - just use default avatar
+        error_log("Header avatar fetch error: " . $e->getMessage());
+    }
+}
 ?>
 <header class="main-header">
     <nav class="navbar">
@@ -48,7 +86,11 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
                         
                         <li class="nav-dropdown">
                             <a href="#" class="nav-link dropdown-toggle">
-                                <img src="<?php echo $is_auth_page ? '../../assets/images/default-avatar.png' : '/findajob/assets/images/default-avatar.png'; ?>" alt="Profile" class="nav-avatar">
+                                <?php if ($user_avatar): ?>
+                                    <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user_avatar); ?>" alt="Profile" class="nav-avatar">
+                                <?php else: ?>
+                                    <span class="nav-avatar-initials"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1)); ?></span>
+                                <?php endif; ?>
                                 <span><?php echo htmlspecialchars($_SESSION['first_name']); ?></span>
                             </a>
                             <ul class="dropdown-menu">
@@ -169,6 +211,19 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+.nav-avatar-initials {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
 }
 
 .dropdown-menu {
