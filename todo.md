@@ -7,7 +7,7 @@ FindAJob is a comprehensive job platform for Nigeria, similar to Indeed but tail
 **Technology Stack**: PHP 8.x, MySQL, HTML5/CSS3/JavaScript, PWA
 
 ## 📊 Current Project Status
-- **Overall Completion**: ~72% 
+- **Overall Completion**: ~75% 
 - **Database Foundation**: ✅ Complete (100%)
 - **Authentication System**: ✅ Complete (100%)
 - **Nigerian Location Data**: ✅ Complete (100%)
@@ -59,6 +59,7 @@ FindAJob is a comprehensive job platform for Nigeria, similar to Indeed but tail
 - [x] Basic dashboard for job seekers
 - [x] Basic dashboard for employers
 - [x] Profile management system
+- [x] **Profile Picture Upload System** (job seekers & employers)
 
 ### 📱 PWA Foundation
 - [x] PWA manifest.json configuration
@@ -350,6 +351,14 @@ FindAJob is a comprehensive job platform for Nigeria, similar to Indeed but tail
 
 ## 🎉 RECENT ACHIEVEMENTS
 
+### ✅ Profile Picture Upload System (November 3, 2025) - **NEW!**
+- **Upload & Preview**: Job seekers and employers can upload profile pictures or company logos
+- **Database Migration**: Added profile_picture column to users table, synced with profile tables
+- **API Endpoint**: Secure PHP endpoint for image upload, validation, and automatic old file cleanup
+- **UI Integration**: Profile picture now displays in navbar, profile summary card, and profile page
+- **Fallbacks**: Initials shown if no image uploaded
+- **Consistent Experience**: Same upload flow for both user types, with error handling and loading states
+
 ### ✅ Application Status Email Notifications (October 23, 2025) - **NEW!**
 - **6 Beautiful HTML Email Templates**: Status-specific designs for viewed, shortlisted, interviewed, offered, hired, and rejected
 - **Gradient Headers with Emojis**: Color-coded emails (blue for viewed, purple for shortlisted, green for hired, gray for rejected)
@@ -424,8 +433,8 @@ FindAJob is a comprehensive job platform for Nigeria, similar to Indeed but tail
 
 
 
-*Last Updated: October 28, 2025*
-*Project Status: 70% Complete - Core Features Phase*
+*Last Updated: November 3, 2025*
+*Project Status: 75% Complete - Core Features Phase*
 
 ---
 
