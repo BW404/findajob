@@ -24,6 +24,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
 
 // Get user profile picture if logged in
 $user_avatar = null;
+$user_nin_verified = false;
 if (isLoggedIn()) {
     try {
         $db_path = $header_base_path . 'config/database.php';
@@ -32,9 +33,10 @@ if (isLoggedIn()) {
             $userId = getCurrentUserId();
             
             if (isJobSeeker()) {
-                // Get profile picture from job_seeker_profiles or users table
+                // Get profile picture and NIN verification status from job_seeker_profiles or users table
                 $stmt = $pdo->prepare("
-                    SELECT COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture
+                    SELECT COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture,
+                           jsp.nin_verified
                     FROM users u 
                     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
                     WHERE u.id = ?
@@ -42,7 +44,8 @@ if (isLoggedIn()) {
             } else {
                 // Get logo from employer_profiles or users table
                 $stmt = $pdo->prepare("
-                    SELECT COALESCE(ep.logo, u.profile_picture) as profile_picture
+                    SELECT COALESCE(ep.logo, u.profile_picture) as profile_picture,
+                           0 as nin_verified
                     FROM users u 
                     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
                     WHERE u.id = ?
@@ -50,8 +53,11 @@ if (isLoggedIn()) {
             }
             $stmt->execute([$userId]);
             $result = $stmt->fetch();
-            if ($result && !empty($result['profile_picture'])) {
-                $user_avatar = $result['profile_picture'];
+            if ($result) {
+                if (!empty($result['profile_picture'])) {
+                    $user_avatar = $result['profile_picture'];
+                }
+                $user_nin_verified = (bool)($result['nin_verified'] ?? false);
             }
         }
     } catch (Exception $e) {
@@ -91,7 +97,12 @@ if (isLoggedIn()) {
                                 <?php else: ?>
                                     <span class="nav-avatar-initials"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1)); ?></span>
                                 <?php endif; ?>
-                                <span><?php echo htmlspecialchars($_SESSION['first_name']); ?></span>
+                                <span>
+                                    <?php echo htmlspecialchars($_SESSION['first_name']); ?>
+                                    <?php if ($user_nin_verified): ?>
+                                        <span class="nav-verified-badge" title="NIN Verified">✓</span>
+                                    <?php endif; ?>
+                                </span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a href="<?php echo $is_auth_page ? '../user/profile.php' : '/findajob/pages/user/profile.php'; ?>">Settings</a></li>
@@ -224,6 +235,21 @@ if (isLoggedIn()) {
     justify-content: center;
     font-weight: 600;
     font-size: 14px;
+}
+
+.nav-verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: #1877f2;
+    border-radius: 50%;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    margin-left: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .dropdown-menu {

@@ -35,7 +35,8 @@ $query = "SELECT DISTINCT
           jsp.education_level,
           jsp.current_city,
           jsp.current_state,
-          jsp.bio
+          jsp.bio,
+          jsp.nin_verified
           FROM cvs cv
           INNER JOIN users u ON cv.user_id = u.id
           LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
@@ -298,6 +299,24 @@ $page_title = 'Search CVs - FindAJob Nigeria';
             font-weight: 600;
             color: #111827;
             margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .verified-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: #1877f2;
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
         }
 
         .cv-meta {
@@ -545,7 +564,12 @@ $page_title = 'Search CVs - FindAJob Nigeria';
                         <div class="cv-card">
                             <div class="cv-header">
                                 <div>
-                                    <h3 class="cv-title"><?php echo htmlspecialchars($cv['first_name'] . ' ' . $cv['last_name']); ?></h3>
+                                    <h3 class="cv-title">
+                                        <span><?php echo htmlspecialchars($cv['first_name'] . ' ' . $cv['last_name']); ?></span>
+                                        <?php if ($cv['nin_verified']): ?>
+                                            <span class="verified-badge" title="NIN Verified">✓</span>
+                                        <?php endif; ?>
+                                    </h3>
                                     <?php if ($cv['cv_title']): ?>
                                         <div style="color: #6b7280; font-size: 1rem; margin-bottom: 0.5rem;">
                                             <?php echo htmlspecialchars($cv['cv_title']); ?>

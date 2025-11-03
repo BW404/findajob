@@ -27,6 +27,7 @@ $stmt = $pdo->prepare("
         jsp.salary_expectation_min, jsp.salary_expectation_max, 
         jsp.skills, jsp.bio, jsp.profile_picture,
         jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.nin_verified, jsp.nin_verified_at,
         jsp.subscription_type, jsp.subscription_expires,
         jsp.created_at as profile_created_at, 
         jsp.updated_at as profile_updated_at
@@ -265,7 +266,14 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
                 <?php echo strtoupper(substr($seeker['first_name'], 0, 1) . substr($seeker['last_name'], 0, 1)); ?>
             </div>
             <div class="profile-info">
-                <h1><?php echo htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name']); ?></h1>
+                <h1>
+                    <?php echo htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name']); ?>
+                    <?php if (!empty($seeker['nin_verified'])): ?>
+                        <span class="verified-badge" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #1877f2; border-radius: 50%; margin-left: 8px; position: relative; top: -2px;" title="NIN Verified">
+                            <i class="fas fa-check" style="color: white; font-size: 12px;"></i>
+                        </span>
+                    <?php endif; ?>
+                </h1>
                 <div class="profile-meta">
                     <?php if ($seeker['years_of_experience']): ?>
                         <div class="profile-meta-item">
@@ -477,9 +485,11 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
                                         'rejected' => 'times-circle'
                                     ];
                                     $status = $seeker['verification_status'] ?? 'pending';
+                                    $color = isset($verif_colors[$status]) ? $verif_colors[$status] : 'var(--text-secondary)';
+                                    $icon = isset($verif_icons[$status]) ? $verif_icons[$status] : 'question-circle';
                                     ?>
-                                    <span style="color: <?php echo $verif_colors[$status]; ?>;">
-                                        <i class="fas fa-<?php echo $verif_icons[$status]; ?>"></i> 
+                                    <span style="color: <?php echo $color; ?>;">
+                                        <i class="fas fa-<?php echo $icon; ?>"></i> 
                                         <?php echo ucfirst($status); ?>
                                     </span>
                                 </div>
@@ -624,30 +634,25 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php if ($seeker['verification_status']): ?>
-                        <div class="info-item">
-                            <div class="info-label">Profile Verification</div>
-                            <div class="info-value">
-                                <?php 
-                                $verif_colors = [
-                                    'verified' => 'var(--accent)',
-                                    'pending' => 'var(--warning)',
-                                    'rejected' => 'var(--error)'
-                                ];
-                                $verif_icons = [
-                                    'verified' => 'check-circle',
-                                    'pending' => 'clock',
-                                    'rejected' => 'times-circle'
-                                ];
-                                $status = $seeker['verification_status'];
-                                ?>
-                                <span style="color: <?php echo $verif_colors[$status]; ?>;">
-                                    <i class="fas fa-<?php echo $verif_icons[$status]; ?>"></i> 
-                                    <?php echo ucfirst($status); ?>
+                    <div class="info-item">
+                        <div class="info-label">NIN Verification</div>
+                        <div class="info-value">
+                            <?php if (!empty($seeker['nin_verified'])): ?>
+                                <span style="color: var(--accent);">
+                                    <i class="fas fa-check-circle"></i> Verified
+                                    <?php if (!empty($seeker['nin_verified_at'])): ?>
+                                        <small style="color: var(--text-secondary); margin-left: 8px;">
+                                            (<?php echo date('M d, Y', strtotime($seeker['nin_verified_at'])); ?>)
+                                        </small>
+                                    <?php endif; ?>
                                 </span>
-                            </div>
+                            <?php else: ?>
+                                <span style="color: var(--warning);">
+                                    <i class="fas fa-exclamation-circle"></i> Not Verified
+                                </span>
+                            <?php endif; ?>
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>

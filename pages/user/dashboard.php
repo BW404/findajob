@@ -19,7 +19,8 @@ $stmt = $pdo->prepare("
         jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
-        jsp.profile_picture, jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.profile_picture, jsp.nin, jsp.nin_verified, jsp.nin_verified_at, 
+        jsp.bvn, jsp.is_verified, jsp.verification_status,
         jsp.subscription_type, jsp.subscription_expires,
         jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
@@ -305,6 +306,30 @@ try {
             color: var(--blue-dark, #1d4ed8);
         }
         
+        /* Verified Badge Checkmark (like Facebook/LinkedIn) */
+        .verified-checkmark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: #1877f2; /* Facebook blue */
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 6px;
+            vertical-align: middle;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            top: -1px;
+        }
+        
+        .profile-details h4 {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
 
 
         @media (max-width: 768px) {
@@ -427,11 +452,18 @@ try {
                         <div class="card-header">
                             <!-- add profile picture -->
                             <h3>Profile Summary</h3>
-                            <?php if ($user['email_verified']): ?>
-                                <span class="status-badge verified">✓ Verified</span>
-                            <?php else: ?>
-                                <span class="status-badge unverified">⚠ Unverified</span>
-                            <?php endif; ?>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <?php if ($user['nin_verified']): ?>
+                                    <span class="status-badge verified" title="NIN Verified">
+                                        🛡️ NIN Verified
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($user['email_verified']): ?>
+                                    <span class="status-badge verified">✓ Email Verified</span>
+                                <?php else: ?>
+                                    <span class="status-badge unverified">⚠ Email Unverified</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="profile-info">
                             <div class="profile-avatar">
@@ -441,7 +473,12 @@ try {
                                 </div>
                             </div>
                             <div class="profile-details">
-                                <h4><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h4>
+                                <h4>
+                                    <span><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
+                                    <?php if ($user['nin_verified']): ?>
+                                        <span class="verified-checkmark" title="NIN Verified">✓</span>
+                                    <?php endif; ?>
+                                </h4>
                                 <p class="profile-title"><?php echo htmlspecialchars($user['job_title'] ?? 'Job Seeker'); ?></p>
                                 <p class="profile-location">📍 <?php echo htmlspecialchars(($user['current_city'] ?? '') . ($user['current_state'] ? ', ' . $user['current_state'] : '') ?: 'Nigeria'); ?></p>
                                 <div class="profile-tags">

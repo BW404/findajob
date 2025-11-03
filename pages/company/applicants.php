@@ -36,6 +36,7 @@ $stmt = $pdo->prepare("
            j.title as job_title,
            u.first_name, u.last_name, u.email, u.phone,
            jsp.years_of_experience, jsp.job_status, jsp.education_level,
+           jsp.nin_verified,
            ja.application_status as status,
            ja.applicant_name, ja.applicant_email, ja.applicant_phone,
            ja.application_message,
@@ -212,6 +213,11 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                             <div>
                                                 <h4 style="margin: 0; font-size: 1.3rem; font-weight: 600;">
                                                     <?php echo htmlspecialchars($displayName); ?>
+                                                    <?php if (!empty($application['nin_verified'])): ?>
+                                                        <span class="verified-badge" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #1877f2; border-radius: 50%; margin-left: 6px; position: relative; top: -1px;" title="NIN Verified">
+                                                            <i class="fas fa-check" style="color: white; font-size: 11px;"></i>
+                                                        </span>
+                                                    <?php endif; ?>
                                                     <?php if (!empty($application['applicant_name'])): ?>
                                                         <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; font-weight: 500;">Easy Apply</span>
                                                     <?php endif; ?>

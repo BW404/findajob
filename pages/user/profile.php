@@ -18,7 +18,7 @@ $stmt = $pdo->prepare("
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
         COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture, 
-        jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.nin, jsp.nin_verified, jsp.nin_verified_at, jsp.bvn, jsp.is_verified, jsp.verification_status,
         jsp.subscription_type, jsp.subscription_expires,
         jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
@@ -702,6 +702,234 @@ $profileCompletion = calculateProfileCompletion($user);
             border: 1px solid #f5c6cb;
         }
         
+        /* NIN Verification Modal Styles */
+        .nin-verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .nin-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+        
+        .nin-modal-content {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .nin-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .nin-modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+        
+        .nin-modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #6b7280;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .nin-modal-close:hover {
+            background: #f3f4f6;
+            color: var(--primary);
+        }
+        
+        .nin-modal-body {
+            padding: 1.5rem;
+        }
+        
+        .nin-alert {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .nin-alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .nin-alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .nin-alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .verification-cost-summary {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .cost-item strong {
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+        
+        .cost-note {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .btn-block {
+            width: 100%;
+        }
+        
+        .btn-verify {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-verify:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        
+        .btn-verify:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .verification-details {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .verification-details p {
+            margin: 0.5rem 0;
+            color: #166534;
+        }
+        
+        /* Verified Badge Checkmark (like Facebook/LinkedIn) */
+        .verified-checkmark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: #1877f2; /* Facebook blue */
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 8px;
+            vertical-align: middle;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            top: -2px;
+        }
+        
+        .verified-checkmark.large {
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            margin-left: 12px;
+        }
+        
+        .profile-header h1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
         @media (max-width: 768px) {
             .profile-container {
                 padding: 1rem;
@@ -717,6 +945,11 @@ $profileCompletion = calculateProfileCompletion($user);
             
             .salary-range {
                 grid-template-columns: 1fr;
+            }
+            
+            .nin-modal-content {
+                width: 95%;
+                margin: 1rem;
             }
         }
     </style>
@@ -739,20 +972,25 @@ $profileCompletion = calculateProfileCompletion($user);
                 </div>
             </div>
             <input type="file" id="profilePictureInput" accept="image/*">
-            <h1><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h1>
+            <h1>
+                <span><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
+                <?php if ($user['nin_verified']): ?>
+                    <span class="verified-checkmark large" title="NIN Verified">✓</span>
+                <?php endif; ?>
+            </h1>
             <p><?php echo htmlspecialchars($user['email']); ?></p>
             
             <div class="completion-badge">
                 Profile <?php echo $profileCompletion; ?>% Complete
             </div>
             
-            <?php if ($user['is_verified']): ?>
+            <?php if ($user['nin_verified']): ?>
                 <div class="verification-status verified">
-                    ✓ Verified Profile
+                    ✓ NIN Verified
                 </div>
             <?php else: ?>
                 <div class="verification-status unverified">
-                    ⚠ Unverified Profile
+                    ⚠ Verify Your NIN
                 </div>
             <?php endif; ?>
         </div>
@@ -1129,13 +1367,17 @@ $profileCompletion = calculateProfileCompletion($user);
             <div class="profile-section">
                 <div class="section-header">
                     <span class="section-icon">🛡️</span>
-                    <h2>NIN Verification Service</h2>
+                    <h2>NIN Verification</h2>
                 </div>
                 
-                <?php if ($user['is_verified']): ?>
+                <?php if ($user['nin_verified']): ?>
                     <div class="verification-success">
                         <div class="verification-badge verified">
                             ✓ Your NIN has been successfully verified!
+                        </div>
+                        <div class="verification-details">
+                            <p><strong>NIN:</strong> <?php echo htmlspecialchars(substr($user['nin'], 0, 4) . '****' . substr($user['nin'], -3)); ?></p>
+                            <p><strong>Verified on:</strong> <?php echo date('F j, Y', strtotime($user['nin_verified_at'])); ?></p>
                         </div>
                         <p style="color: var(--accent); margin-top: 1rem;">
                             <strong>Congratulations!</strong> Your profile now has a verified badge that increases your credibility with employers.
@@ -1146,7 +1388,7 @@ $profileCompletion = calculateProfileCompletion($user);
                         <div class="service-card">
                             <div class="service-header">
                                 <h3>🏆 Get Your Verified Badge</h3>
-                                <div class="service-price">₦1,000 <span>one-time</span></div>
+                                <div class="service-price">₦<?php echo number_format(NIN_VERIFICATION_FEE, 0); ?> <span>one-time</span></div>
                             </div>
                             
                             <div class="service-benefits">
@@ -1169,11 +1411,11 @@ $profileCompletion = calculateProfileCompletion($user);
                                     </div>
                                     <div class="step">
                                         <span class="step-number">2</span>
-                                        <span>Pay ₦1,000 securely</span>
+                                        <span>Enter your 11-digit NIN</span>
                                     </div>
                                     <div class="step">
                                         <span class="step-number">3</span>
-                                        <span>Enter your 11-digit NIN</span>
+                                        <span>Confirm payment of ₦<?php echo number_format(NIN_VERIFICATION_FEE, 0); ?></span>
                                     </div>
                                     <div class="step">
                                         <span class="step-number">4</span>
@@ -1182,8 +1424,8 @@ $profileCompletion = calculateProfileCompletion($user);
                                 </div>
                             </div>
                             
-                            <button type="button" class="btn-verify" onclick="startNINVerification()">
-                                🛡️ Verify My NIN - ₦1,000
+                            <button type="button" class="btn-verify" onclick="openNINVerificationModal()">
+                                🛡️ Verify My NIN - ₦<?php echo number_format(NIN_VERIFICATION_FEE, 0); ?>
                             </button>
                             
                             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
@@ -1541,11 +1783,152 @@ $profileCompletion = calculateProfileCompletion($user);
         }
 
         // NIN Verification Service
-        function startNINVerification() {
-            // Show confirmation dialog
-            if (confirm('Proceed to pay ₦1,000 for NIN verification?\n\nThis will verify your National Identification Number and add a verified badge to your profile.')) {
-                // Redirect to verification payment page
-                window.location.href = '../services/nin-verification.php';
+        function openNINVerificationModal() {
+            // Create modal dynamically
+            const modal = document.createElement('div');
+            modal.className = 'nin-verification-modal';
+            modal.id = 'ninVerificationModal';
+            
+            modal.innerHTML = `
+                <div class="nin-modal-overlay" onclick="closeNINVerificationModal()"></div>
+                <div class="nin-modal-content">
+                    <div class="nin-modal-header">
+                        <h3>🛡️ NIN Verification</h3>
+                        <button class="nin-modal-close" onclick="closeNINVerificationModal()">×</button>
+                    </div>
+                    
+                    <div class="nin-modal-body">
+                        <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
+                            Enter your 11-digit National Identification Number to verify your identity and get a verified badge on your profile.
+                        </p>
+                        
+                        <div id="ninVerificationAlert" class="nin-alert" style="display: none;"></div>
+                        
+                        <form id="ninVerificationForm" onsubmit="submitNINVerification(event)">
+                            <div class="form-group">
+                                <label class="form-label" for="ninInput">National Identification Number (NIN)</label>
+                                <input type="text" id="ninInput" name="nin" class="form-input" 
+                                       placeholder="Enter your 11-digit NIN" 
+                                       pattern="[0-9]{11}" 
+                                       maxlength="11"
+                                       required>
+                                <small style="color: var(--text-secondary);">Example: 12345678901</small>
+                            </div>
+                            
+                            <div class="verification-cost-summary">
+                                <div class="cost-item">
+                                    <span>Verification Fee:</span>
+                                    <strong>₦<?php echo number_format(NIN_VERIFICATION_FEE, 2); ?></strong>
+                                </div>
+                                <div class="cost-note">
+                                    <small>⚡ Instant verification • Secure & encrypted • One-time payment</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="ninAgreeTerms" required>
+                                    <span>I agree to the <a href="/findajob/pages/legal/terms.php" target="_blank">Terms of Service</a> and confirm that the NIN provided is mine</span>
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn-verify btn-block" id="ninVerifyButton">
+                                <span id="ninVerifyButtonText">Proceed to Verify - ₦<?php echo number_format(NIN_VERIFICATION_FEE, 0); ?></span>
+                                <span id="ninVerifyButtonSpinner" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i> Verifying...
+                                </span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Focus on NIN input
+            setTimeout(() => {
+                document.getElementById('ninInput').focus();
+            }, 100);
+        }
+        
+        function closeNINVerificationModal() {
+            const modal = document.getElementById('ninVerificationModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function showNINAlert(message, type = 'info') {
+            const alert = document.getElementById('ninVerificationAlert');
+            if (!alert) return;
+            
+            alert.className = `nin-alert nin-alert-${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            
+            // Auto hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    alert.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        async function submitNINVerification(event) {
+            event.preventDefault();
+            
+            const button = document.getElementById('ninVerifyButton');
+            const buttonText = document.getElementById('ninVerifyButtonText');
+            const buttonSpinner = document.getElementById('ninVerifyButtonSpinner');
+            const ninInput = document.getElementById('ninInput');
+            const nin = ninInput.value.trim();
+            
+            // Validate NIN
+            if (!/^\d{11}$/.test(nin)) {
+                showNINAlert('Please enter a valid 11-digit NIN', 'error');
+                ninInput.focus();
+                return;
+            }
+            
+            // Disable button and show loading state
+            button.disabled = true;
+            buttonText.style.display = 'none';
+            buttonSpinner.style.display = 'inline-block';
+            
+            try {
+                const response = await fetch('/findajob/api/verify-nin.php?action=verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `nin=${encodeURIComponent(nin)}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNINAlert('✓ NIN verified successfully! Reloading page...', 'success');
+                    
+                    // Reload page after 2 seconds to show updated verification status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showNINAlert(data.error || 'Verification failed. Please try again.', 'error');
+                    
+                    // Re-enable button
+                    button.disabled = false;
+                    buttonText.style.display = 'inline-block';
+                    buttonSpinner.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                showNINAlert('Network error. Please check your connection and try again.', 'error');
+                
+                // Re-enable button
+                button.disabled = false;
+                buttonText.style.display = 'inline-block';
+                buttonSpinner.style.display = 'none';
             }
         }
 
