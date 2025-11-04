@@ -56,6 +56,15 @@ if (isLoggedIn()) {
             if ($result) {
                 if (!empty($result['profile_picture'])) {
                     $user_avatar = $result['profile_picture'];
+                    // Normalize avatar URL: if stored as relative path like "uploads/profile_pictures/..."
+                    // prepend the app base path so it resolves correctly in the browser.
+                    if (strpos($user_avatar, '/') === 0 || preg_match('#^https?://#i', $user_avatar)) {
+                        $user_avatar_url = $user_avatar; // absolute path or full URL
+                    } else {
+                        $user_avatar_url = '/findajob/' . ltrim($user_avatar, '/');
+                    }
+                } else {
+                    $user_avatar_url = null;
                 }
                 $user_nin_verified = (bool)($result['nin_verified'] ?? false);
             }
@@ -92,10 +101,10 @@ if (isLoggedIn()) {
                         
                         <li class="nav-dropdown">
                             <a href="#" class="nav-link dropdown-toggle">
-                                <?php if ($user_avatar): ?>
-                                    <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user_avatar); ?>" alt="Profile" class="nav-avatar">
+                                        <?php if (!empty($user_avatar_url)): ?>
+                                            <img src="<?php echo htmlspecialchars($user_avatar_url); ?>" alt="Profile" class="nav-avatar">
                                 <?php else: ?>
-                                    <span class="nav-avatar-initials"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1)); ?></span>
+                                            <span class="nav-avatar-initials"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1)); ?></span>
                                 <?php endif; ?>
                                 <span>
                                     <?php echo htmlspecialchars($_SESSION['first_name']); ?>

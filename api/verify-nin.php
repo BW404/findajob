@@ -314,11 +314,84 @@ class NINVerificationAPI {
             $params[] = $gender;
         }
         
+        // Always update profile picture from NIN photo if available
+        if (!empty($data['photo'])) {
+            error_log("NIN Photo data found, attempting to save...");
+            $photoPath = $this->saveNINPhoto($data['photo']);
+            if ($photoPath) {
+                error_log("NIN Photo saved successfully: " . $photoPath);
+                $updates[] = "profile_picture = ?";
+                $params[] = $photoPath;
+            } else {
+                error_log("Failed to save NIN photo");
+            }
+        } else {
+            error_log("No photo data in NIN response");
+        }
+        
         if (!empty($updates)) {
             $params[] = $this->userId;
             $sql = "UPDATE job_seeker_profiles SET " . implode(', ', $updates) . " WHERE user_id = ?";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
+            error_log("Profile updated with " . count($updates) . " fields");
+        }
+    }
+    
+    /**
+     * Save NIN photo as profile picture
+     */
+    private function saveNINPhoto($photoData) {
+        try {
+            // Create uploads directory if it doesn't exist
+            $uploadDir = dirname(__DIR__) . '/uploads/profile_pictures/';
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+                error_log("Created directory: " . $uploadDir);
+            }
+            
+            // Check if photo is base64 encoded or URL
+            if (filter_var($photoData, FILTER_VALIDATE_URL)) {
+                error_log("Photo is URL: " . $photoData);
+                // Download photo from URL
+                $imageContent = @file_get_contents($photoData);
+                if ($imageContent === false) {
+                    error_log("Failed to download photo from URL");
+                    return null;
+                }
+            } else {
+                error_log("Photo is base64 encoded, length: " . strlen($photoData));
+                // Assume it's base64 encoded
+                // Remove data URI scheme if present
+                if (strpos($photoData, 'data:image') === 0) {
+                    $photoData = preg_replace('/^data:image\/\w+;base64,/', '', $photoData);
+                }
+                $imageContent = base64_decode($photoData, true);
+                if ($imageContent === false) {
+                    error_log("Failed to decode base64 photo");
+                    return null;
+                }
+            }
+            
+            // Generate unique filename
+            $filename = 'nin_' . $this->userId . '_' . time() . '.jpg';
+            $filePath = $uploadDir . $filename;
+            
+            error_log("Attempting to save to: " . $filePath);
+            
+            // Save the file
+            if (file_put_contents($filePath, $imageContent)) {
+                error_log("File saved successfully, size: " . filesize($filePath) . " bytes");
+                // Return relative path for database
+                return 'uploads/profile_pictures/' . $filename;
+            } else {
+                error_log("Failed to write file to disk");
+            }
+            
+            return null;
+        } catch (Exception $e) {
+            error_log("Error saving NIN photo: " . $e->getMessage());
+            return null;
         }
     }
     

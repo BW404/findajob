@@ -17,6 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     $userId = getCurrentUserId();
     $userType = $_SESSION['user_type'];
+    // Prevent profile picture changes if job seeker has NIN verified
+    if ($userType === 'job_seeker') {
+        $chk = $pdo->prepare("SELECT nin_verified FROM job_seeker_profiles WHERE user_id = ?");
+        $chk->execute([$userId]);
+        $r = $chk->fetch();
+        if (!empty($r['nin_verified'])) {
+            echo json_encode(['success' => false, 'error' => 'Profile picture cannot be changed after NIN verification.']);
+            exit;
+        }
+    }
     
     // Check if file was uploaded
     if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {

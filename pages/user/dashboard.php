@@ -467,10 +467,23 @@ try {
                         </div>
                         <div class="profile-info">
                             <div class="profile-avatar">
-                                <img src="../../assets/images/default-avatar.png" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="avatar-placeholder">
-                                    <?php echo strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)); ?>
-                                </div>
+                                <?php if (!empty($user['profile_picture'])): ?>
+                                    <?php
+                                        // Normalize stored profile_picture (e.g., "uploads/profile_pictures/...")
+                                        $pp = $user['profile_picture'];
+                                        if (strpos($pp, '/') === 0 || preg_match('#^https?://#i', $pp)) {
+                                            $pp_url = $pp;
+                                        } else {
+                                            $pp_url = '/findajob/' . ltrim($pp, '/');
+                                        }
+                                    ?>
+                                    <img src="<?php echo htmlspecialchars($pp_url); ?>" alt="Profile">
+                                <?php else: ?>
+                                    <img src="/findajob/assets/images/default-avatar.png" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="avatar-placeholder">
+                                        <?php echo strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)); ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div class="profile-details">
                                 <h4>
@@ -482,11 +495,19 @@ try {
                                 <p class="profile-title"><?php echo htmlspecialchars($user['job_title'] ?? 'Job Seeker'); ?></p>
                                 <p class="profile-location">📍 <?php echo htmlspecialchars(($user['current_city'] ?? '') . ($user['current_state'] ? ', ' . $user['current_state'] : '') ?: 'Nigeria'); ?></p>
                                 <div class="profile-tags">
-                                    <?php 
-                                    $skills = $user['skills'] ? explode(',', $user['skills']) : ['Complete Profile'];
-                                    foreach (array_slice($skills, 0, 3) as $skill): 
+                                    <?php
+                                        // Normalize skills from stored string and display up to 4 tags
+                                        if (!empty($user['skills'])) {
+                                            $skills = array_filter(array_map('trim', explode(',', $user['skills'])), function($v){ return $v !== ''; });
+                                        } else {
+                                            $skills = [];
+                                        }
+                                        if (empty($skills)) {
+                                            $skills = ['Complete Profile'];
+                                        }
+                                        foreach (array_slice($skills, 0, 4) as $skill):
                                     ?>
-                                        <span class="tag"><?php echo htmlspecialchars(trim($skill)); ?></span>
+                                        <span class="tag"><?php echo htmlspecialchars($skill); ?></span>
                                     <?php endforeach; ?>
                                 </div>
                             </div>

@@ -116,6 +116,12 @@ if ($_POST) {
                     skills = ?, bio = ?
                 WHERE user_id = ?
             ");
+            // Normalize skills input: trim, remove empty entries and duplicates
+            $rawSkills = $_POST['skills'] ?? '';
+            $skillsArr = array_filter(array_map('trim', explode(',', $rawSkills)), function($v){ return $v !== ''; });
+            $skillsArr = array_values(array_unique($skillsArr));
+            $skillsClean = implode(', ', $skillsArr);
+
             $updateProfileStmt->execute([
                 $_POST['date_of_birth'],
                 $_POST['gender'],
@@ -126,7 +132,7 @@ if ($_POST) {
                 $_POST['job_status'],
                 $_POST['salary_expectation_min'],
                 $_POST['salary_expectation_max'],
-                $_POST['skills'],
+                $skillsClean,
                 $_POST['bio'],
                 $userId
             ]);
@@ -139,6 +145,12 @@ if ($_POST) {
                  salary_expectation_min, salary_expectation_max, skills, bio)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
+            // Normalize skills input for insert as well
+            $rawSkills = $_POST['skills'] ?? '';
+            $skillsArr = array_filter(array_map('trim', explode(',', $rawSkills)), function($v){ return $v !== ''; });
+            $skillsArr = array_values(array_unique($skillsArr));
+            $skillsClean = implode(', ', $skillsArr);
+
             $insertProfileStmt->execute([
                 $userId,
                 $_POST['date_of_birth'],
@@ -150,7 +162,7 @@ if ($_POST) {
                 $_POST['job_status'],
                 $_POST['salary_expectation_min'],
                 $_POST['salary_expectation_max'],
-                $_POST['skills'],
+                $skillsClean,
                 $_POST['bio']
             ]);
         }
@@ -286,6 +298,26 @@ $profileCompletion = calculateProfileCompletion($user);
             transform: scale(1.05);
             border-color: rgba(255,255,255,0.5);
         }
+
+        .profile-avatar.locked {
+            cursor: default;
+            opacity: 0.95;
+        }
+
+        .avatar-locked {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
         
         .profile-avatar img {
             width: 100%;
@@ -308,6 +340,9 @@ $profileCompletion = calculateProfileCompletion($user);
         
         .profile-avatar:hover .profile-avatar-upload {
             opacity: 1;
+        }
+        .profile-avatar.locked .profile-avatar-upload {
+            display: none;
         }
         
         #profilePictureInput {
@@ -960,9 +995,9 @@ $profileCompletion = calculateProfileCompletion($user);
     <main class="profile-container">
         <!-- Profile Header -->
         <div class="profile-header">
-            <div class="profile-avatar" onclick="document.getElementById('profilePictureInput').click()">
+            <div class="profile-avatar <?php echo !empty($user['nin_verified']) ? 'locked' : ''; ?>" <?php if (empty($user['nin_verified'])): ?>onclick="document.getElementById('profilePictureInput').click()"<?php endif; ?>>
                 <?php if (!empty($user['profile_picture'])): ?>
-                    <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['profile_picture']); ?>" 
+                    <img src="/findajob/<?php echo htmlspecialchars($user['profile_picture']); ?>" 
                          alt="Profile Picture" id="profilePicturePreview">
                 <?php else: ?>
                     <span id="profileInitials"><?php echo strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)); ?></span>
@@ -970,8 +1005,13 @@ $profileCompletion = calculateProfileCompletion($user);
                 <div class="profile-avatar-upload">
                     <i class="fas fa-camera"></i> Change Photo
                 </div>
+                <?php if (!empty($user['nin_verified'])): ?>
+                    <div class="avatar-locked" title="Profile picture is locked because NIN is verified">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                <?php endif; ?>
             </div>
-            <input type="file" id="profilePictureInput" accept="image/*">
+            <input type="file" id="profilePictureInput" accept="image/*" <?php echo !empty($user['nin_verified']) ? 'disabled' : ''; ?> >
             <h1>
                 <span><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
                 <?php if ($user['nin_verified']): ?>
@@ -1936,7 +1976,13 @@ $profileCompletion = calculateProfileCompletion($user);
         document.body.classList.add('has-bottom-nav');
         
         // Profile Picture Upload Handler
+        const ninVerified = <?php echo !empty($user['nin_verified']) ? 'true' : 'false'; ?>;
+
         document.getElementById('profilePictureInput').addEventListener('change', function(e) {
+            if (ninVerified) {
+                alert('Your profile picture is locked because your NIN has been verified.');
+                return;
+            }
             const file = e.target.files[0];
             if (!file) return;
             
