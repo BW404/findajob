@@ -14,7 +14,8 @@ $stmt = $pdo->prepare("
         u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
         u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
         jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
-        jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
+        jsp.state_of_origin, jsp.lga_of_origin, jsp.city_of_birth, jsp.religion,
+        jsp.current_state, jsp.current_city,
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
         COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture, 
@@ -110,6 +111,7 @@ if ($_POST) {
             $updateProfileStmt = $pdo->prepare("
                 UPDATE job_seeker_profiles 
                 SET date_of_birth = ?, gender = ?, state_of_origin = ?, 
+                    lga_of_origin = ?, city_of_birth = ?, religion = ?,
                     current_state = ?, current_city = ?,
                     years_of_experience = ?, job_status = ?, 
                     salary_expectation_min = ?, salary_expectation_max = ?,
@@ -126,6 +128,9 @@ if ($_POST) {
                 $_POST['date_of_birth'],
                 $_POST['gender'],
                 $_POST['state_of_origin'],
+                $_POST['lga_of_origin'] ?? null,
+                $_POST['city_of_birth'] ?? null,
+                $_POST['religion'] ?? null,
                 $_POST['current_state'],
                 $_POST['current_city'],
                 $_POST['years_of_experience'],
@@ -140,10 +145,10 @@ if ($_POST) {
             // Insert new profile
             $insertProfileStmt = $pdo->prepare("
                 INSERT INTO job_seeker_profiles 
-                (user_id, date_of_birth, gender, state_of_origin, current_state, 
-                 current_city, years_of_experience, job_status,
+                (user_id, date_of_birth, gender, state_of_origin, lga_of_origin, city_of_birth, religion,
+                 current_state, current_city, years_of_experience, job_status,
                  salary_expectation_min, salary_expectation_max, skills, bio)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             // Normalize skills input for insert as well
             $rawSkills = $_POST['skills'] ?? '';
@@ -156,6 +161,9 @@ if ($_POST) {
                 $_POST['date_of_birth'],
                 $_POST['gender'],
                 $_POST['state_of_origin'],
+                $_POST['lga_of_origin'] ?? null,
+                $_POST['city_of_birth'] ?? null,
+                $_POST['religion'] ?? null,
                 $_POST['current_state'],
                 $_POST['current_city'],
                 $_POST['years_of_experience'],
@@ -416,6 +424,21 @@ $profileCompletion = calculateProfileCompletion($user);
         .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
             border-color: var(--primary);
+        }
+
+        /* Locked/readonly fields styling */
+        .form-input:read-only, .form-select:disabled {
+            background-color: #f7fafc;
+            border-color: #cbd5e0;
+            cursor: not-allowed;
+            color: #4a5568;
+        }
+
+        .form-hint {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #718096;
         }
         
         .form-textarea {
@@ -1055,13 +1078,21 @@ $profileCompletion = calculateProfileCompletion($user);
                     <div class="form-group">
                         <label class="form-label" for="first_name">First Name *</label>
                         <input type="text" id="first_name" name="first_name" class="form-input" 
-                               value="<?php echo htmlspecialchars($user['first_name'] ?? ''); ?>" required>
+                               value="<?php echo htmlspecialchars($user['first_name'] ?? ''); ?>" 
+                               <?php echo !empty($user['nin_verified']) ? 'readonly' : ''; ?> required>
+                        <?php if (!empty($user['nin_verified'])): ?>
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="last_name">Last Name *</label>
                         <input type="text" id="last_name" name="last_name" class="form-input" 
-                               value="<?php echo htmlspecialchars($user['last_name'] ?? ''); ?>" required>
+                               value="<?php echo htmlspecialchars($user['last_name'] ?? ''); ?>" 
+                               <?php echo !empty($user['nin_verified']) ? 'readonly' : ''; ?> required>
+                        <?php if (!empty($user['nin_verified'])): ?>
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
@@ -1074,7 +1105,11 @@ $profileCompletion = calculateProfileCompletion($user);
                     <div class="form-group">
                         <label class="form-label" for="date_of_birth">Date of Birth</label>
                         <input type="date" id="date_of_birth" name="date_of_birth" class="form-input" 
-                               value="<?php echo $user['date_of_birth'] ?? ''; ?>">
+                               value="<?php echo $user['date_of_birth'] ?? ''; ?>"
+                               <?php echo !empty($user['nin_verified']) ? 'readonly' : ''; ?>>
+                        <?php if (!empty($user['nin_verified'])): ?>
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
@@ -1099,15 +1134,73 @@ $profileCompletion = calculateProfileCompletion($user);
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="state_of_origin">State of Origin</label>
-                        <select id="state_of_origin" name="state_of_origin" class="form-select">
-                            <option value="">Select State of Origin</option>
-                            <?php foreach ($states as $state): ?>
-                                <option value="<?php echo htmlspecialchars($state['name']); ?>" 
-                                        <?php echo ($user['state_of_origin'] ?? '') === $state['name'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($state['name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if (!empty($user['nin_verified']) && !empty($user['state_of_origin'])): ?>
+                            <!-- Show as read-only text when NIN verified -->
+                            <input type="text" id="state_of_origin_display" class="form-input" 
+                                   value="<?php echo htmlspecialchars($user['state_of_origin']); ?>" 
+                                   readonly>
+                            <input type="hidden" name="state_of_origin" value="<?php echo htmlspecialchars($user['state_of_origin']); ?>">
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php else: ?>
+                            <!-- Show as dropdown when not verified -->
+                            <select id="state_of_origin" name="state_of_origin" class="form-select">
+                                <option value="">Select State of Origin</option>
+                                <?php foreach ($states as $state): ?>
+                                    <option value="<?php echo htmlspecialchars($state['name']); ?>" 
+                                            <?php echo ($user['state_of_origin'] ?? '') === $state['name'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($state['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="lga_of_origin">LGA of Origin</label>
+                        <input type="text" id="lga_of_origin" name="lga_of_origin" class="form-input" 
+                               value="<?php echo htmlspecialchars($user['lga_of_origin'] ?? ''); ?>" 
+                               placeholder="e.g., Ikeja, Surulere"
+                               <?php echo !empty($user['nin_verified']) ? 'readonly' : ''; ?>>
+                        <?php if (!empty($user['nin_verified'])): ?>
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php else: ?>
+                            <small class="form-hint">Local Government Area where you were born</small>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="city_of_birth">City/LGA of Birth</label>
+                        <input type="text" id="city_of_birth" name="city_of_birth" class="form-input" 
+                               value="<?php echo htmlspecialchars($user['city_of_birth'] ?? ''); ?>" 
+                               placeholder="e.g., Lagos, Kano"
+                               <?php echo !empty($user['nin_verified']) ? 'readonly' : ''; ?>>
+                        <?php if (!empty($user['nin_verified'])): ?>
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php else: ?>
+                            <small class="form-hint">City or LGA where you were born</small>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="religion">Religion</label>
+                        <?php if (!empty($user['nin_verified']) && !empty($user['religion'])): ?>
+                            <!-- Show as read-only text when NIN verified -->
+                            <input type="text" id="religion_display" class="form-input" 
+                                   value="<?php echo htmlspecialchars($user['religion']); ?>" 
+                                   readonly>
+                            <input type="hidden" name="religion" value="<?php echo htmlspecialchars($user['religion']); ?>">
+                            <small class="form-hint">🔒 Locked by NIN verification</small>
+                        <?php else: ?>
+                            <!-- Show as dropdown when not verified -->
+                            <select id="religion" name="religion" class="form-select">
+                                <option value="">Select Religion</option>
+                                <option value="Christianity" <?php echo ($user['religion'] ?? '') === 'Christianity' ? 'selected' : ''; ?>>Christianity</option>
+                                <option value="Islam" <?php echo ($user['religion'] ?? '') === 'Islam' ? 'selected' : ''; ?>>Islam</option>
+                                <option value="Traditional" <?php echo ($user['religion'] ?? '') === 'Traditional' ? 'selected' : ''; ?>>Traditional</option>
+                                <option value="Other" <?php echo ($user['religion'] ?? '') === 'Other' ? 'selected' : ''; ?>>Other</option>
+                                <option value="Prefer not to say" <?php echo ($user['religion'] ?? '') === 'Prefer not to say' ? 'selected' : ''; ?>>Prefer not to say</option>
+                            </select>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">

@@ -36,7 +36,8 @@ $query = "SELECT DISTINCT
           jsp.current_city,
           jsp.current_state,
           jsp.bio,
-          jsp.nin_verified
+          jsp.nin_verified,
+          jsp.profile_picture
           FROM cvs cv
           INNER JOIN users u ON cv.user_id = u.id
           LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
@@ -563,18 +564,44 @@ $page_title = 'Search CVs - FindAJob Nigeria';
                     <?php foreach ($cvs as $cv): ?>
                         <div class="cv-card">
                             <div class="cv-header">
-                                <div>
-                                    <h3 class="cv-title">
-                                        <span><?php echo htmlspecialchars($cv['first_name'] . ' ' . $cv['last_name']); ?></span>
-                                        <?php if ($cv['nin_verified']): ?>
-                                            <span class="verified-badge" title="NIN Verified">✓</span>
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <!-- Profile Picture -->
+                                    <div style="flex-shrink: 0;">
+                                        <?php if (!empty($cv['profile_picture'])): ?>
+                                            <?php
+                                            // Normalize profile picture path
+                                            $profile_pic_url = $cv['profile_picture'];
+                                            if (strpos($profile_pic_url, '/') === 0 || preg_match('#^https?://#i', $profile_pic_url)) {
+                                                // Already absolute path or full URL
+                                                $profile_pic_url = $profile_pic_url;
+                                            } else {
+                                                // Relative path - prepend base path
+                                                $profile_pic_url = '/findajob/' . ltrim($profile_pic_url, '/');
+                                            }
+                                            ?>
+                                            <img src="<?php echo htmlspecialchars($profile_pic_url); ?>" 
+                                                 alt="<?php echo htmlspecialchars($cv['first_name']); ?>" 
+                                                 style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb;">
+                                        <?php else: ?>
+                                            <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: 600; border: 2px solid #e5e7eb;">
+                                                <?php echo strtoupper(substr($cv['first_name'], 0, 1) . substr($cv['last_name'], 0, 1)); ?>
+                                            </div>
                                         <?php endif; ?>
-                                    </h3>
-                                    <?php if ($cv['cv_title']): ?>
-                                        <div style="color: #6b7280; font-size: 1rem; margin-bottom: 0.5rem;">
-                                            <?php echo htmlspecialchars($cv['cv_title']); ?>
-                                        </div>
-                                    <?php endif; ?>
+                                    </div>
+                                    <!-- Name and Title -->
+                                    <div>
+                                        <h3 class="cv-title">
+                                            <span><?php echo htmlspecialchars($cv['first_name'] . ' ' . $cv['last_name']); ?></span>
+                                            <?php if ($cv['nin_verified']): ?>
+                                                <span class="verified-badge" title="NIN Verified">✓</span>
+                                            <?php endif; ?>
+                                        </h3>
+                                        <?php if ($cv['cv_title']): ?>
+                                            <div style="color: #6b7280; font-size: 1rem; margin-bottom: 0.5rem;">
+                                                <?php echo htmlspecialchars($cv['cv_title']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div style="text-align: right; color: #6b7280; font-size: 0.85rem;">
                                     Updated <?php echo date('M j, Y', strtotime($cv['updated_at'])); ?>

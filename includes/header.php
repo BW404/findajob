@@ -25,6 +25,7 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
 // Get user profile picture if logged in
 $user_avatar = null;
 $user_nin_verified = false;
+$user_first_name = $_SESSION['first_name'] ?? 'User';
 if (isLoggedIn()) {
     try {
         $db_path = $header_base_path . 'config/database.php';
@@ -33,10 +34,12 @@ if (isLoggedIn()) {
             $userId = getCurrentUserId();
             
             if (isJobSeeker()) {
-                // Get profile picture and NIN verification status from job_seeker_profiles or users table
+                // Get profile picture, NIN verification status, and current name from database
                 $stmt = $pdo->prepare("
                     SELECT COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture,
-                           jsp.nin_verified
+                           jsp.nin_verified,
+                           u.first_name,
+                           u.last_name
                     FROM users u 
                     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
                     WHERE u.id = ?
@@ -45,7 +48,9 @@ if (isLoggedIn()) {
                 // Get logo from employer_profiles or users table
                 $stmt = $pdo->prepare("
                     SELECT COALESCE(ep.logo, u.profile_picture) as profile_picture,
-                           0 as nin_verified
+                           0 as nin_verified,
+                           u.first_name,
+                           u.last_name
                     FROM users u 
                     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
                     WHERE u.id = ?
@@ -54,6 +59,9 @@ if (isLoggedIn()) {
             $stmt->execute([$userId]);
             $result = $stmt->fetch();
             if ($result) {
+                // Update first name from database (may have been updated by NIN verification)
+                $user_first_name = $result['first_name'] ?? $_SESSION['first_name'];
+                
                 if (!empty($result['profile_picture'])) {
                     $user_avatar = $result['profile_picture'];
                     // Normalize avatar URL: if stored as relative path like "uploads/profile_pictures/..."
@@ -104,10 +112,10 @@ if (isLoggedIn()) {
                                         <?php if (!empty($user_avatar_url)): ?>
                                             <img src="<?php echo htmlspecialchars($user_avatar_url); ?>" alt="Profile" class="nav-avatar">
                                 <?php else: ?>
-                                            <span class="nav-avatar-initials"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1)); ?></span>
+                                            <span class="nav-avatar-initials"><?php echo strtoupper(substr($user_first_name, 0, 1)); ?></span>
                                 <?php endif; ?>
                                 <span>
-                                    <?php echo htmlspecialchars($_SESSION['first_name']); ?>
+                                    <?php echo htmlspecialchars($user_first_name); ?>
                                     <?php if ($user_nin_verified): ?>
                                         <span class="nav-verified-badge" title="NIN Verified">✓</span>
                                     <?php endif; ?>

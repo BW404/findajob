@@ -263,7 +263,22 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
         <!-- Profile Header -->
         <div class="profile-header">
             <div class="profile-avatar">
-                <?php echo strtoupper(substr($seeker['first_name'], 0, 1) . substr($seeker['last_name'], 0, 1)); ?>
+                <?php if (!empty($seeker['profile_picture'])): ?>
+                    <?php
+                    // Normalize profile picture path
+                    $profile_pic_url = $seeker['profile_picture'];
+                    if (strpos($profile_pic_url, '/') === 0 || preg_match('#^https?://#i', $profile_pic_url)) {
+                        // Already absolute path or full URL
+                        $profile_pic_url = $profile_pic_url;
+                    } else {
+                        // Relative path - prepend base path
+                        $profile_pic_url = '/findajob/' . ltrim($profile_pic_url, '/');
+                    }
+                    ?>
+                    <img src="<?php echo htmlspecialchars($profile_pic_url); ?>" alt="<?php echo htmlspecialchars($seeker['first_name']); ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                <?php else: ?>
+                    <?php echo strtoupper(substr($seeker['first_name'], 0, 1) . substr($seeker['last_name'], 0, 1)); ?>
+                <?php endif; ?>
             </div>
             <div class="profile-info">
                 <h1>

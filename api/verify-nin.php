@@ -282,6 +282,141 @@ class NINVerificationAPI {
         
         // Also update user's basic info if available and not already set
         $this->updateUserBasicInfo($data);
+
+        // Overwrite profile fields with authoritative NIN data where available
+        $this->applyNINDataToProfile($data);
+    }
+
+    /**
+     * Apply selected NIN data to user's profile and users table (overwrite existing values)
+     * Fields applied: first_name, last_name, date_of_birth, state_of_origin, lga_of_origin, city_of_birth, religion
+     */
+    private function applyNINDataToProfile($data) {
+        try {
+            // Update users table (name fields) if present in NIN data
+            $userUpdates = [];
+            $userParams = [];
+            if (!empty($data['first_name'])) {
+                $userUpdates[] = 'first_name = ?';
+                $userParams[] = $data['first_name'];
+            }
+            if (!empty($data['last_name'])) {
+                $userUpdates[] = 'last_name = ?';
+                $userParams[] = $data['last_name'];
+            }
+            if (!empty($userUpdates)) {
+                $userParams[] = $this->userId;
+                $sql = 'UPDATE users SET ' . implode(', ', $userUpdates) . ' WHERE id = ?';
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($userParams);
+                error_log("NIN: updated users table for user {$this->userId}");
+                
+                // Update session with new names so header shows correct name immediately
+                if (!empty($data['first_name'])) {
+                    $_SESSION['first_name'] = $data['first_name'];
+                }
+                if (!empty($data['last_name'])) {
+                    $_SESSION['last_name'] = $data['last_name'];
+                }
+            }
+
+            // Prepare profile updates with column existence checks
+            $profileUpdates = [];
+            $profileParams = [];
+
+            // Date of birth
+            if (!empty($data['date_of_birth'])) {
+                $profileUpdates[] = 'date_of_birth = ?';
+                $profileParams[] = $data['date_of_birth'];
+            }
+
+            // State of origin - map from origin_state or fallback to residence_state
+            if (!empty($data['origin_state'])) {
+                if ($this->columnExists('state_of_origin')) {
+                    $profileUpdates[] = 'state_of_origin = ?';
+                    $profileParams[] = $data['origin_state'];
+                }
+            } elseif (!empty($data['residence_state'])) {
+                if ($this->columnExists('state_of_origin')) {
+                    $profileUpdates[] = 'state_of_origin = ?';
+                    $profileParams[] = $data['residence_state'];
+                }
+            }
+
+            // LGA of origin - map from origin_lga or fallback to residence_lga
+            if (!empty($data['origin_lga'])) {
+                if ($this->columnExists('lga_of_origin')) {
+                    $profileUpdates[] = 'lga_of_origin = ?';
+                    $profileParams[] = $data['origin_lga'];
+                }
+            } elseif (!empty($data['residence_lga'])) {
+                if ($this->columnExists('lga_of_origin')) {
+                    $profileUpdates[] = 'lga_of_origin = ?';
+                    $profileParams[] = $data['residence_lga'];
+                }
+            }
+
+            // City of birth - prioritize birth_lga, then origin_lga, then place_of_birth
+            // Dojah API may return: birth_lga, birthlga, origin_lga, or place_of_birth
+            $cityOfBirth = $data['birth_lga'] ?? $data['birthlga'] ?? $data['origin_lga'] ?? $data['place_of_birth'] ?? null;
+            if (!empty($cityOfBirth) && $this->columnExists('city_of_birth')) {
+                $profileUpdates[] = 'city_of_birth = ?';
+                $profileParams[] = $cityOfBirth;
+                error_log("NIN: City of birth set to: " . $cityOfBirth);
+            }
+
+            // Religion - check multiple possible field names
+            $religion = $data['religion'] ?? $data['Religion'] ?? null;
+            if (!empty($religion) && $this->columnExists('religion')) {
+                $profileUpdates[] = 'religion = ?';
+                $profileParams[] = $religion;
+                error_log("NIN: Religion set to: " . $religion);
+            } else {
+                if (empty($religion)) {
+                    error_log("NIN: Religion field is empty or not present in NIN data");
+                }
+                if (!$this->columnExists('religion')) {
+                    error_log("NIN: Religion column does not exist in database");
+                }
+            }
+
+            // Execute profile updates
+            if (!empty($profileUpdates)) {
+                $profileParams[] = $this->userId;
+                $sql = 'UPDATE job_seeker_profiles SET ' . implode(', ', $profileUpdates) . ' WHERE user_id = ?';
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($profileParams);
+                error_log("NIN: applied " . count($profileUpdates) . " profile field updates for user {$this->userId}");
+            }
+        } catch (Exception $e) {
+            error_log('Error applying NIN data to profile: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check if a column exists in job_seeker_profiles table
+     */
+    private function columnExists($columnName) {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT COUNT(*) 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'job_seeker_profiles' 
+                AND COLUMN_NAME = ?
+            ");
+            $stmt->execute([$columnName]);
+            $exists = ($stmt->fetchColumn() > 0);
+            
+            if (!$exists) {
+                error_log("NIN: column '$columnName' not found in job_seeker_profiles, skipping");
+            }
+            
+            return $exists;
+        } catch (Exception $e) {
+            error_log("Error checking column existence for '$columnName': " . $e->getMessage());
+            return false;
+        }
     }
     
     /**
