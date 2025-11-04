@@ -11,10 +11,10 @@ $userId = getCurrentUserId();
 $stmt = $pdo->prepare("
     SELECT u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone,
            u.email_verified, u.is_active, u.created_at, u.updated_at,
-           ep.id as profile_id, ep.company_name, ep.company_description,
+           ep.id as profile_id, ep.company_name, ep.description as company_description,
            ep.website, ep.industry, ep.company_size, ep.address,
-           ep.state_id, ep.lga_id,
-           COALESCE(ep.logo, u.profile_picture) as logo
+           ep.state, ep.city,
+           u.profile_picture as logo
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
     WHERE u.id = ?
@@ -33,8 +33,8 @@ if ($_POST) {
     $industry = trim($_POST['industry'] ?? '');
     $company_size = trim($_POST['company_size'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
-    $state_id = !empty($_POST['state_id']) ? (int)$_POST['state_id'] : null;
-    $lga_id = !empty($_POST['lga_id']) ? (int)$_POST['lga_id'] : null;
+    $state = trim($_POST['state'] ?? '');
+    $city = trim($_POST['city'] ?? '');
     $address = trim($_POST['address'] ?? '');
     
     // Validation
@@ -54,9 +54,11 @@ if ($_POST) {
         try {
             $pdo->beginTransaction();
             
-            // Update users table
-            $stmt = $pdo->prepare("UPDATE users SET first_name = ? WHERE id = ?");
-            $stmt->execute([$company_name, $userId]);
+            // Update users table (phone number)
+            if (!empty($phone)) {
+                $stmt = $pdo->prepare("UPDATE users SET phone = ? WHERE id = ?");
+                $stmt->execute([$phone, $userId]);
+            }
             
             // Check if employer profile exists
             $stmt = $pdo->prepare("SELECT user_id FROM employer_profiles WHERE user_id = ?");
@@ -67,26 +69,26 @@ if ($_POST) {
                 // Update existing profile
                 $stmt = $pdo->prepare("
                     UPDATE employer_profiles SET 
-                    company_name = ?, company_description = ?, website = ?, 
-                    industry = ?, company_size = ?, phone = ?, 
-                    state_id = ?, lga_id = ?, address = ?, updated_at = NOW()
+                    company_name = ?, description = ?, website = ?, 
+                    industry = ?, company_size = ?, 
+                    state = ?, city = ?, address = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
                 $stmt->execute([
                     $company_name, $company_description, $website, 
-                    $industry, $company_size, $phone, 
-                    $state_id, $lga_id, $address, $userId
+                    $industry, $company_size,
+                    $state, $city, $address, $userId
                 ]);
             } else {
                 // Insert new profile
                 $stmt = $pdo->prepare("
                     INSERT INTO employer_profiles 
-                    (user_id, company_name, company_description, website, industry, company_size, phone, state_id, lga_id, address, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    (user_id, company_name, description, website, industry, company_size, state, city, address, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 ");
                 $stmt->execute([
                     $userId, $company_name, $company_description, $website, 
-                    $industry, $company_size, $phone, $state_id, $lga_id, $address
+                    $industry, $company_size, $state, $city, $address
                 ]);
             }
             
@@ -113,14 +115,6 @@ if ($_POST) {
 // Get states for dropdown
 $stmt = $pdo->query("SELECT id, name FROM nigeria_states ORDER BY name");
 $states = $stmt->fetchAll();
-
-// Get LGAs for selected state
-$lgas = [];
-if (!empty($user['state_id'])) {
-    $stmt = $pdo->prepare("SELECT id, name FROM nigeria_lgas WHERE state_id = ? ORDER BY name");
-    $stmt->execute([$user['state_id']]);
-    $lgas = $stmt->fetchAll();
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -270,35 +264,23 @@ if (!empty($user['state_id'])) {
                             <!-- Location -->
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
-                                    <label for="state_id" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                                    <label for="state" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
                                         State
                                     </label>
-                                    <select id="state_id" name="state_id" onchange="loadLGAs()"
-                                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;">
-                                        <option value="">Select State</option>
-                                        <?php foreach ($states as $state): ?>
-                                            <option value="<?php echo $state['id']; ?>" 
-                                                    <?php echo ($user['state_id'] ?? '') == $state['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($state['name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <input type="text" id="state" name="state" 
+                                           value="<?php echo htmlspecialchars($user['state'] ?? ''); ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;"
+                                           placeholder="e.g., Lagos">
                                 </div>
 
                                 <div>
-                                    <label for="lga_id" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-                                        Local Government Area
+                                    <label for="city" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                                        City
                                     </label>
-                                    <select id="lga_id" name="lga_id" 
-                                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;">
-                                        <option value="">Select LGA</option>
-                                        <?php foreach ($lgas as $lga): ?>
-                                            <option value="<?php echo $lga['id']; ?>" 
-                                                    <?php echo ($user['lga_id'] ?? '') == $lga['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($lga['name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <input type="text" id="city" name="city" 
+                                           value="<?php echo htmlspecialchars($user['city'] ?? ''); ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;"
+                                           placeholder="e.g., Ikeja">
                                 </div>
                             </div>
 
