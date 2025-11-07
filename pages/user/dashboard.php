@@ -1448,30 +1448,12 @@ try {
                 </div>
                 
                 <div class="job-actions" style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
-                    <button class="btn-apply ai-apply-btn" onclick="applyToJob(${job.id})" style="
+                    <button class="btn-view-details" onclick="viewJobDetails(${job.id})" style="
                         flex: 1;
                         background: linear-gradient(135deg, #dc2626, #991b1b);
                         color: white;
                         border: none;
-                        padding: 0.75rem 1.25rem;
-                        border-radius: 8px;
-                        font-weight: 700;
-                        font-size: 0.95rem;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 0.5rem;
-                    ">
-                        <span>⚡</span> Quick Apply
-                    </button>
-                    <button class="btn-view-details" onclick="viewJobDetails(${job.id})" style="
-                        background: white;
-                        border: 2px solid #667eea;
-                        color: #667eea;
-                        padding: 0.75rem 1.25rem;
+                        padding: 0.85rem 1.5rem;
                         border-radius: 8px;
                         cursor: pointer;
                         transition: all 0.3s ease;
@@ -1481,8 +1463,9 @@ try {
                         align-items: center;
                         justify-content: center;
                         gap: 0.5rem;
+                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
                     " title="View Details">
-                        👁️
+                        <span>👁️</span> View Details
                     </button>
                     <button class="btn-save save-job ai-save-btn" data-job-id="${job.id}" onclick="saveJob(${job.id}, this)" style="
                         background: white;
