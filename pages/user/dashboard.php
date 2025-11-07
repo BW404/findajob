@@ -331,6 +331,336 @@ try {
             gap: 6px;
         }
 
+        /* AI Recommendations Styling */
+        .ai-recommended {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-recommended::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .ai-recommended:hover::before {
+            transform: scaleX(1);
+        }
+
+        .ai-recommended:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.2);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .job-header h4 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .job-header h4 a {
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .job-header h4 a:hover {
+            color: var(--primary);
+        }
+
+        .match-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .match-score::before {
+            content: '⭐';
+            font-size: 1rem;
+        }
+
+        .urgent-badge {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .job-company {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .job-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .match-reasons {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left: 3px solid #3b82f6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin: 0.75rem 0;
+            font-size: 0.85rem;
+            color: #1e40af;
+        }
+
+        .match-reasons span:first-child {
+            font-weight: 700;
+            color: #1e3a8a;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-right: 0.25rem;
+        }
+
+        .match-reasons span:first-child::before {
+            content: '✓';
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .job-details {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 0.75rem 0;
+            font-size: 0.85rem;
+        }
+
+        .job-salary {
+            color: #059669;
+            font-weight: 700;
+            background: #d1fae5;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .job-salary::before {
+            content: '💰';
+        }
+
+        .job-type {
+            background: #e0e7ff;
+            color: #4f46e5;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .job-type::before {
+            content: '💼';
+        }
+
+        .job-time {
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .job-time::before {
+            content: '🕐';
+        }
+
+        .job-deadline {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-weight: 600;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn-apply {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary) 0%, #b91c1c 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-apply:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+        }
+
+        .btn-apply:active {
+            transform: translateY(0);
+        }
+
+        .btn-save {
+            background: white;
+            border: 2px solid #e5e7eb;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.25rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-save:hover {
+            border-color: var(--primary);
+            background: #fef2f2;
+            transform: scale(1.1);
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.35rem 0.85rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .ai-badge::before {
+            content: '✨';
+        }
+
+        /* Card hover effects */
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        /* Scrollbar styling for recommendations container */
+        .jobs-list {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .jobs-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .jobs-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .jobs-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+        .jobs-list::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #764ba2 0%, #667eea 100%);
+        }
+
 
         @media (max-width: 768px) {
             .dashboard-header {
@@ -364,6 +694,9 @@ try {
                 <p style="margin: 0; color: var(--text-secondary);">Welcome back, <?php echo htmlspecialchars($user['first_name']); ?>! Track your job search progress and manage your applications</p>
             </div>
             <div class="header-actions">
+                <a href="ai-recommendations.php" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                    🤖 AI Jobs
+                </a>
                 <?php if (isDevelopmentMode()): ?>
                     <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-blue btn-sm">📧 Dev Emails</a>
                 <?php endif; ?>
@@ -571,6 +904,68 @@ try {
                             </a>
                         </div>
                     </div>
+
+                    <!-- AI-Powered Recommended Jobs -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3 class="ai-recommendations-header" style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                                <span style="font-size: 1.5rem;">🤖</span>
+                                <span>AI Recommendations</span>
+                            </h3>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="ai-badge" style="
+                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    color: white;
+                                    padding: 0.35rem 0.85rem;
+                                    border-radius: 16px;
+                                    font-size: 0.75rem;
+                                    font-weight: 700;
+                                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 0.3rem;
+                                ">
+                                    ✨ Powered by AI
+                                </span>
+                                <a href="ai-recommendations.php" class="view-all" style="
+                                    color: #667eea;
+                                    font-weight: 600;
+                                    transition: all 0.2s ease;
+                                ">View All →</a>
+                            </div>
+                        </div>
+                        <div id="ai-recommendations-container" class="jobs-list">
+                            <!-- Loading state -->
+                            <div class="loading-state" style="text-align: center; padding: 3rem 1.5rem;">
+                                <div class="spinner" style="
+                                    border: 4px solid rgba(102, 126, 234, 0.1);
+                                    border-top: 4px solid #667eea;
+                                    border-radius: 50%;
+                                    width: 50px;
+                                    height: 50px;
+                                    animation: spin 1s linear infinite;
+                                    margin: 0 auto 1.5rem;
+                                "></div>
+                                <div style="
+                                    font-size: 2rem;
+                                    margin-bottom: 1rem;
+                                    animation: pulse 2s ease-in-out infinite;
+                                ">🧠</div>
+                                <p style="
+                                    color: var(--text-primary);
+                                    font-weight: 600;
+                                    font-size: 1.1rem;
+                                    margin-bottom: 0.5rem;
+                                ">AI is analyzing your profile...</p>
+                                <p style="
+                                    font-size: 0.9rem;
+                                    color: var(--text-secondary);
+                                    margin-top: 0.5rem;
+                                    line-height: 1.6;
+                                ">Finding the best job matches tailored just for you ✨</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column -->
@@ -641,59 +1036,6 @@ try {
                                         <h4 style="color: var(--text-secondary);">No Saved Jobs Yet</h4>
                                         <p class="company" style="margin: 0.5rem 0;">Save jobs you're interested in by clicking the heart ❤️ icon</p>
                                         <a href="../jobs/browse.php" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Browse Jobs</a>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <!-- Recommended Jobs -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3>Recommended for You</h3>
-                            <span class="ai-badge">🤖 AI Matched</span>
-                        </div>
-                        <div class="jobs-list">
-                            <?php if (count($recommendedJobs) > 0): ?>
-                                <?php foreach ($recommendedJobs as $job): ?>
-                                    <div class="job-item">
-                                        <div class="job-header">
-                                            <h4>
-                                                <a href="../jobs/details.php?id=<?php echo $job['id']; ?>" style="text-decoration: none; color: inherit;">
-                                                    <?php echo htmlspecialchars($job['title']); ?>
-                                                </a>
-                                            </h4>
-                                            <span class="match-score"><?php echo rand(75, 95); ?>% match</span>
-                                        </div>
-                                        <p class="job-company">🏢 <?php echo htmlspecialchars($job['employer_name'] ?? $job['company_name']); ?></p>
-                                        <p class="job-location">📍 <?php echo htmlspecialchars($job['location']); ?></p>
-                                        <div class="job-details">
-                                            <span class="job-salary">
-                                                <?php if ($job['salary_min'] && $job['salary_max']): ?>
-                                                    ₦<?php echo number_format($job['salary_min']/1000); ?>K - ₦<?php echo number_format($job['salary_max']/1000); ?>K
-                                                <?php elseif ($job['salary_min']): ?>
-                                                    ₦<?php echo number_format($job['salary_min']/1000); ?>K+
-                                                <?php else: ?>
-                                                    Negotiable
-                                                <?php endif; ?>
-                                            </span>
-                                            <span class="job-type"><?php echo ucfirst($job['type']); ?></span>
-                                        </div>
-                                        <div class="job-actions">
-                                            <button class="btn-apply" onclick="window.location.href='../jobs/apply.php?id=<?php echo $job['id']; ?>'">Quick Apply</button>
-                                            <button class="btn-save save-job" data-job-id="<?php echo $job['id']; ?>">💖</button>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <div class="job-item" style="text-align: center; padding: 2rem;">
-                                    <div class="job-header">
-                                        <h4 style="color: var(--text-secondary);">No Matches Yet</h4>
-                                        <span class="match-score" style="color: var(--text-secondary);">0% match</span>
-                                    </div>
-                                    <p class="job-company" style="margin: 1rem 0;">Complete your profile to get personalized job recommendations</p>
-                                    <div class="job-actions" style="justify-content: center;">
-                                        <button class="btn-apply" onclick="window.location.href='profile.php'">Complete Profile</button>
                                     </div>
                                 </div>
                             <?php endif; ?>
@@ -947,7 +1289,757 @@ try {
 
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
+
+        // Load AI Recommendations
+        loadAIRecommendations();
+
+        async function loadAIRecommendations() {
+            const container = document.getElementById('ai-recommendations-container');
+            
+            try {
+                const response = await fetch('/findajob/api/ai-job-recommendations.php');
+                
+                // Log response for debugging
+                console.log('AI Recommendations Response Status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('AI Recommendations Data:', data);
+                
+                if (data.error) {
+                    console.error('API returned error:', data.error);
+                    renderErrorState(data.error);
+                    return;
+                }
+                
+                if (data.success && data.recommendations.length > 0) {
+                    renderRecommendations(data.recommendations);
+                } else if (data.success) {
+                    // No recommendations found
+                    renderEmptyState(data.profile_completeness || 0, data.has_sufficient_profile || false);
+                } else {
+                    renderErrorState('Unexpected response format');
+                }
+            } catch (error) {
+                console.error('Failed to load AI recommendations:', error);
+                renderErrorState(error.message || 'Network error');
+            }
+        }
+
+        function renderRecommendations(recommendations) {
+            const container = document.getElementById('ai-recommendations-container');
+            container.innerHTML = '';
+            
+            // Show top 5 recommendations in sidebar layout
+            const topRecommendations = recommendations.slice(0, 5);
+            
+            topRecommendations.forEach(job => {
+                const jobCard = createJobCard(job);
+                container.appendChild(jobCard);
+            });
+        }
+
+        function createJobCard(job) {
+            const card = document.createElement('div');
+            card.className = 'job-item ai-recommended';
+            
+            const matchColor = getMatchColor(job.match_level);
+            
+            card.innerHTML = `
+                <div class="job-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; flex: 1;">
+                        <a href="${job.job_url}" style="text-decoration: none; color: var(--text-primary); font-size: 1.1rem; font-weight: 600; display: block; line-height: 1.4;">
+                            ${escapeHtml(job.title)}
+                            ${job.is_urgent ? '<span class="urgent-badge">🔥 URGENT</span>' : ''}
+                        </a>
+                    </h4>
+                    <span class="match-score" style="
+                        background: linear-gradient(135deg, ${matchColor}, ${adjustBrightness(matchColor, -20)});
+                        color: white;
+                        padding: 0.4rem 0.9rem;
+                        border-radius: 20px;
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        white-space: nowrap;
+                        box-shadow: 0 2px 8px ${matchColor}40;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.3rem;
+                    ">
+                        ⭐ ${job.match_score}%
+                    </span>
+                </div>
+                
+                <div class="job-company" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.95rem; color: var(--text-primary); font-weight: 500;">
+                    <span style="font-size: 1.2rem;">🏢</span>
+                    <span>${escapeHtml(job.company_name)}</span>
+                </div>
+                
+                <div class="job-location" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    <span style="font-size: 1.1rem;">📍</span>
+                    <span>${escapeHtml(job.location)}</span>
+                    ${job.remote_friendly ? '<span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">🌐 Remote OK</span>' : ''}
+                </div>
+                
+                ${job.match_reasons ? `
+                    <div class="match-reasons" style="
+                        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+                        padding: 0.75rem;
+                        border-radius: 8px;
+                        margin: 1rem 0;
+                        font-size: 0.875rem;
+                        color: #1e40af;
+                        border-left: 3px solid #3b82f6;
+                    ">
+                        <div style="font-weight: 700; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <span style="font-size: 1.1rem;">✨</span>
+                            <span>Why this matches:</span>
+                        </div>
+                        <div style="color: #1e3a8a;">${escapeHtml(job.match_reasons)}</div>
+                    </div>
+                ` : ''}
+                
+                <div class="job-details" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; font-size: 0.875rem;">
+                    <span class="job-salary" style="
+                        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+                        color: #065f46;
+                        font-weight: 700;
+                        padding: 0.35rem 0.8rem;
+                        border-radius: 6px;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.3rem;
+                    ">
+                        💰 ${job.formatted_salary}
+                    </span>
+                    <span class="job-type" style="
+                        background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+                        color: #4338ca;
+                        padding: 0.35rem 0.8rem;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.3rem;
+                    ">
+                        💼 ${capitalizeFirst(job.employment_type)}
+                    </span>
+                    <span class="job-time" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+                        <span style="font-size: 1rem;">🕐</span>
+                        ${job.time_ago}
+                    </span>
+                    ${job.days_left !== null ? `
+                        <span class="job-deadline" style="
+                            color: ${job.days_left <= 7 ? '#dc2626' : '#6b7280'};
+                            font-weight: ${job.days_left <= 7 ? '700' : '500'};
+                            display: flex;
+                            align-items: center;
+                            gap: 0.3rem;
+                            ${job.days_left <= 7 ? 'background: #fee2e2; padding: 0.35rem 0.8rem; border-radius: 6px;' : ''}
+                        ">
+                            ⏰ ${job.days_left} day${job.days_left !== 1 ? 's' : ''} left
+                        </span>
+                    ` : ''}
+                </div>
+                
+                <div class="job-actions" style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                    <button class="btn-apply ai-apply-btn" onclick="applyToJob(${job.id})" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #dc2626, #991b1b);
+                        color: white;
+                        border: none;
+                        padding: 0.75rem 1.25rem;
+                        border-radius: 8px;
+                        font-weight: 700;
+                        font-size: 0.95rem;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 0.5rem;
+                    ">
+                        <span>⚡</span> Quick Apply
+                    </button>
+                    <button class="btn-view-details" onclick="viewJobDetails(${job.id})" style="
+                        background: white;
+                        border: 2px solid #667eea;
+                        color: #667eea;
+                        padding: 0.75rem 1.25rem;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        font-size: 0.95rem;
+                        font-weight: 600;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 0.5rem;
+                    " title="View Details">
+                        👁️
+                    </button>
+                    <button class="btn-save save-job ai-save-btn" data-job-id="${job.id}" onclick="saveJob(${job.id}, this)" style="
+                        background: white;
+                        border: 2px solid #e5e7eb;
+                        padding: 0.75rem 1rem;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        font-size: 1.3rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    " title="Save job">
+                        ❤️
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        function adjustBrightness(color, percent) {
+            const num = parseInt(color.replace("#",""), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 +
+                (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255))
+                .toString(16).slice(1);
+        }
+
+        function renderEmptyState(profileCompleteness = 0, hasSufficientProfile = false) {
+            const container = document.getElementById('ai-recommendations-container');
+            
+            if (hasSufficientProfile || profileCompleteness >= 40) {
+                // Profile is complete but no matching jobs found
+                container.innerHTML = `
+                    <div class="job-item empty-state" style="text-align: center; padding: 2.5rem 1.5rem; background: linear-gradient(135deg, #f9fafb, #f3f4f6); border: 2px dashed #d1d5db; border-radius: 12px;">
+                        <div class="empty-state-icon" style="font-size: 4rem; margin-bottom: 1.5rem;">🔍</div>
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 700;">
+                            No Matching Jobs Right Now
+                        </h4>
+                        <p class="job-company" style="margin: 1rem auto; max-width: 400px; color: var(--text-secondary); line-height: 1.6;">
+                            Our AI couldn't find any new jobs matching your profile at the moment. Check back later or browse all available jobs.
+                        </p>
+                        <div class="job-actions" style="justify-content: center; margin-top: 2rem; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn-apply" onclick="window.location.href='../jobs/browse.php'" style="
+                                background: linear-gradient(135deg, #dc2626, #991b1b);
+                                color: white;
+                                border: none;
+                                padding: 0.85rem 2rem;
+                                border-radius: 10px;
+                                font-weight: 700;
+                                cursor: pointer;
+                                font-size: 1rem;
+                                box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+                                transition: all 0.3s ease;
+                            ">
+                                🌐 Browse All Jobs
+                            </button>
+                            <button class="btn-apply" onclick="window.location.href='ai-recommendations.php'" style="
+                                background: white;
+                                border: 2px solid #667eea;
+                                color: #667eea;
+                                padding: 0.85rem 2rem;
+                                border-radius: 10px;
+                                font-weight: 700;
+                                cursor: pointer;
+                                font-size: 1rem;
+                                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+                                transition: all 0.3s ease;
+                            ">
+                                🤖 View Full AI Page
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Profile incomplete
+                const progressColor = profileCompleteness < 30 ? '#ef4444' : profileCompleteness < 60 ? '#f59e0b' : '#10b981';
+                
+                container.innerHTML = `
+                    <div class="job-item empty-state" style="text-align: center; padding: 2.5rem 1.5rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px dashed #fbbf24; border-radius: 12px;">
+                        <div class="empty-state-icon" style="font-size: 4rem; margin-bottom: 1.5rem;">🤖</div>
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 700;">
+                            AI Needs More Information
+                        </h4>
+                        <p class="job-company" style="margin: 1rem auto; max-width: 400px; color: var(--text-secondary); line-height: 1.6;">
+                            Complete your profile with skills, experience, and preferences to get personalized AI-powered job recommendations
+                        </p>
+                        <div style="
+                            background: white;
+                            padding: 1.5rem;
+                            border-radius: 12px;
+                            margin: 1.5rem auto;
+                            max-width: 350px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 600;">
+                                    Profile Completeness
+                                </div>
+                                <div style="font-size: 1.75rem; font-weight: 800; color: ${progressColor};">
+                                    ${profileCompleteness}%
+                                </div>
+                            </div>
+                            <div style="background: #e5e7eb; height: 12px; border-radius: 12px; overflow: hidden; position: relative;">
+                                <div style="
+                                    background: linear-gradient(90deg, ${progressColor}, ${adjustBrightness(progressColor, 20)});
+                                    height: 100%;
+                                    width: ${profileCompleteness}%;
+                                    border-radius: 12px;
+                                    transition: width 1s ease;
+                                    box-shadow: 0 0 10px ${progressColor}80;
+                                    position: relative;
+                                    overflow: hidden;
+                                ">
+                                    <div style="
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        bottom: 0;
+                                        right: 0;
+                                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                                        animation: shimmer 2s infinite;
+                                    "></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                                ${profileCompleteness < 40 ? '⚠️ Minimum 40% required for AI recommendations' : '✅ Looking good! Add more for better matches'}
+                            </div>
+                        </div>
+                        <div class="job-actions" style="justify-content: center; margin-top: 2rem;">
+                            <button class="btn-apply" onclick="window.location.href='profile.php'" style="
+                                background: linear-gradient(135deg, #dc2626, #991b1b);
+                                color: white;
+                                border: none;
+                                padding: 0.85rem 2rem;
+                                border-radius: 10px;
+                                font-weight: 700;
+                                cursor: pointer;
+                                font-size: 1rem;
+                                box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+                                transition: all 0.3s ease;
+                            ">
+                                ✏️ Complete Profile Now
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderErrorState(errorMessage = '') {
+            const container = document.getElementById('ai-recommendations-container');
+            container.innerHTML = `
+                <div class="job-item empty-state" style="
+                    text-align: center;
+                    padding: 2.5rem 1.5rem;
+                    background: linear-gradient(135deg, #fee2e2, #fecaca);
+                    border: 2px dashed #f87171;
+                    border-radius: 12px;
+                ">
+                    <div class="empty-state-icon" style="font-size: 4rem; margin-bottom: 1.5rem;">⚠️</div>
+                    <h4 style="color: #991b1b; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 700;">
+                        Could not load recommendations
+                    </h4>
+                    <p style="margin: 1rem auto; color: #7f1d1d; max-width: 400px; line-height: 1.6;">
+                        We encountered a problem loading your AI recommendations. Please try refreshing the page.
+                    </p>
+                    ${errorMessage ? `
+                        <div style="
+                            background: white;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            margin: 1.5rem auto;
+                            max-width: 500px;
+                            border-left: 4px solid #ef4444;
+                        ">
+                            <div style="font-size: 0.75rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.5rem; text-align: left;">
+                                🔍 Technical Details:
+                            </div>
+                            <p style="
+                                font-size: 0.8rem;
+                                color: #991b1b;
+                                font-family: 'Courier New', monospace;
+                                text-align: left;
+                                word-break: break-word;
+                                margin: 0;
+                                line-height: 1.5;
+                            ">${escapeHtml(errorMessage)}</p>
+                        </div>
+                    ` : ''}
+                    <button onclick="loadAIRecommendations()" class="btn-apply" style="
+                        background: linear-gradient(135deg, #dc2626, #991b1b);
+                        color: white;
+                        border: none;
+                        padding: 0.85rem 2rem;
+                        border-radius: 10px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+                        transition: all 0.3s ease;
+                        margin-top: 1rem;
+                    ">
+                        🔄 Retry
+                    </button>
+                </div>
+            `;
+        }
+
+        function getMatchColor(level) {
+            const colors = {
+                'excellent': '#10b981',
+                'good': '#3b82f6',
+                'fair': '#f59e0b',
+                'basic': '#6b7280'
+            };
+            return colors[level] || colors['basic'];
+        }
+
+        function capitalizeFirst(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function adjustBrightness(color, percent) {
+            // Handle both hex colors and already calculated values
+            if (!color || !color.startsWith('#')) return color || '#000000';
+            
+            const num = parseInt(color.replace("#",""), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 +
+                (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255))
+                .toString(16).slice(1);
+        }
+        
+        function applyToJob(jobId) {
+            window.location.href = '/findajob/pages/jobs/apply.php?id=' + jobId;
+        }
+
+        function viewJobDetails(jobId) {
+            window.location.href = '/findajob/pages/jobs/details.php?id=' + jobId;
+        }
+
+        async function saveJob(jobId, button) {
+            try {
+                const response = await fetch('/findajob/api/save-job.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    button.innerHTML = '💚';
+                    button.style.borderColor = 'var(--success)';
+                    showNotification('Job saved successfully!', 'success');
+                } else {
+                    showNotification(data.message || 'Failed to save job', 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to save job', 'error');
+            }
+        }
     </script>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+        
+        .ai-recommended {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.5s ease;
+            border-left: 4px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ai-recommended::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(102, 126, 234, 0.05) 50%, 
+                transparent 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 3s infinite;
+            pointer-events: none;
+        }
+        
+        .ai-recommended:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.15), 
+                        0 6px 12px rgba(0, 0, 0, 0.1);
+            border-left-color: #667eea;
+        }
+        
+        .urgent-badge {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 0.25rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        }
+        
+        .match-score {
+            animation: fadeInUp 0.6s ease 0.2s backwards;
+        }
+        
+        .ai-apply-btn:hover {
+            background: linear-gradient(135deg, #b91c1c, #7f1d1d) !important;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4) !important;
+        }
+        
+        .ai-apply-btn:active {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3) !important;
+        }
+        
+        .btn-view-details:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+        }
+        
+        .btn-view-details:active {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3) !important;
+        }
+        
+        .ai-save-btn {
+            position: relative;
+        }
+        
+        .ai-save-btn:hover {
+            border-color: #dc2626 !important;
+            background: linear-gradient(135deg, #fef2f2, #fee2e2) !important;
+            transform: scale(1.1);
+        }
+        
+        .ai-save-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .ai-save-btn.saved {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+            border-color: #10b981 !important;
+        }
+        
+        .job-header h4 a {
+            transition: color 0.2s ease;
+        }
+        
+        .job-header h4 a:hover {
+            color: #667eea !important;
+        }
+        
+        .match-reasons {
+            animation: fadeInUp 0.7s ease 0.3s backwards;
+        }
+        
+        .job-details > span {
+            animation: fadeInUp 0.8s ease 0.4s backwards;
+        }
+        
+        .job-actions {
+            animation: fadeInUp 0.9s ease 0.5s backwards;
+        }
+        
+        /* Loading spinner enhancement */
+        .spinner {
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        
+        /* Scrollbar enhancement */
+        .jobs-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .jobs-list::-webkit-scrollbar-track {
+            background: #f3f4f6;
+            border-radius: 10px;
+        }
+        
+        .jobs-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .jobs-list::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #5568d3, #6a4193);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+        
+        /* AI Recommendations header enhancement */
+        .ai-recommendations-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+        
+        /* Tooltip enhancement */
+        [title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Responsive enhancements */
+        @media (max-width: 768px) {
+            .ai-recommended {
+                margin-bottom: 1rem;
+            }
+            
+            .job-header {
+                flex-direction: column;
+                gap: 0.75rem !important;
+            }
+            
+            .match-score {
+                align-self: flex-start;
+            }
+            
+            .job-details {
+                flex-direction: column;
+                gap: 0.5rem !important;
+            }
+            
+            .job-actions {
+                flex-direction: column;
+            }
+            
+            .ai-apply-btn {
+                width: 100%;
+            }
+        }
+        
+        /* Empty state enhancement */
+        .empty-state-icon {
+            font-size: 4rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* Button ripple effect */
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .btn-apply, .btn-save {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-apply::after, .btn-save::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn-apply:active::after, .btn-save:active::after {
+            width: 300px;
+            height: 300px;
+        }
+    </style>
 
     <?php include '../../includes/footer.php'; ?>
 </body>
