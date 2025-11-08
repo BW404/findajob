@@ -47,7 +47,7 @@ if (isLoggedIn()) {
             } else {
                 // Get logo from employer_profiles or users table
                 $stmt = $pdo->prepare("
-                    SELECT COALESCE(ep.logo, u.profile_picture) as profile_picture,
+                    SELECT COALESCE(ep.company_logo, u.profile_picture) as profile_picture,
                            0 as nin_verified,
                            u.first_name,
                            u.last_name

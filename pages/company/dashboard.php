@@ -90,7 +90,7 @@ try {
                     <a href="applicants.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Applicants</a>
                     <a href="analytics.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Analytics</a>
                     <a href="profile.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Profile</a>
-                    <span style="margin-left: 1rem;">Welcome, <?php echo htmlspecialchars($user['company_name'] ?? $user['first_name']); ?>!</span>
+                    <span style="margin-left: 1rem;">Welcome, <?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name']); ?>!</span>
                     <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
                         <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-secondary" style="margin-left: 1rem;">📧 Dev Emails</a>
                     <?php endif; ?>
@@ -106,10 +106,10 @@ try {
             <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <div>
                     <h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: var(--text-primary);">
-                        Employer Dashboard
+                        <?php echo htmlspecialchars($user['company_name'] ?? 'Employer'); ?> Dashboard
                     </h1>
                     <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 1.1rem;">
-                        Welcome back, <?php echo htmlspecialchars($user['company_name'] ?? $user['first_name']); ?>! 
+                        Welcome back, <?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name']); ?>! 
                         Manage your jobs and find the perfect candidates.
                     </p>
                 </div>
@@ -132,6 +132,35 @@ try {
                         <button onclick="resendVerification('<?php echo $user['email']; ?>')" class="btn btn-outline btn-sm">
                             Resend Verification
                         </button>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!$user['provider_nin_verified']): ?>
+                <div class="alert alert-info" style="margin-bottom: 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-id-card" style="font-size: 1.5rem;"></i>
+                        <div style="flex: 1;">
+                            <strong style="font-size: 1.1rem;">Verify Your Identity (Company Representative)</strong><br>
+                            <span style="opacity: 0.95;">Complete NIN verification to build trust and unlock premium features. Verification fee: ₦1,000</span>
+                        </div>
+                        <a href="nin-verification.php" class="btn btn-sm" style="background: white; color: #2563eb; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 8px; text-decoration: none; white-space: nowrap;">
+                            <i class="fas fa-shield-alt"></i> Verify Now
+                        </a>
+                    </div>
+                </div>
+            <?php elseif ($user['provider_nin_verified']): ?>
+                <div class="alert alert-success" style="margin-bottom: 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+                        <div style="flex: 1;">
+                            <strong style="font-size: 1.1rem;">Identity Verified</strong><br>
+                            <span style="opacity: 0.95;">Your NIN verification is complete. Job seekers can trust your company profile.</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
+                            <i class="fas fa-shield-check" style="font-size: 1.2rem;"></i>
+                            <span style="font-weight: 600;">Verified</span>
+                        </div>
                     </div>
                 </div>
             <?php endif; ?>

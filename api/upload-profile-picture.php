@@ -68,10 +68,10 @@ try {
         $result = $stmt->fetch();
         $oldPicture = $result['profile_picture'] ?? null;
     } else if ($userType === 'employer') {
-        $stmt = $pdo->prepare("SELECT logo FROM employer_profiles WHERE user_id = ?");
+        $stmt = $pdo->prepare("SELECT company_logo FROM employer_profiles WHERE user_id = ?");
         $stmt->execute([$userId]);
         $result = $stmt->fetch();
-        $oldPicture = $result['logo'] ?? null;
+        $oldPicture = $result['company_logo'] ?? null;
     }
     
     if ($oldPicture && file_exists($uploadDir . $oldPicture)) {

@@ -100,8 +100,8 @@ function searchCompanies($query, $limit) {
             ep.industry,
             ep.city,
             ep.state,
-            ep.logo,
-            ep.is_verified,
+            ep.company_logo as logo,
+            ep.company_cac_verified as is_verified,
             COUNT(j.id) as job_count
         FROM employer_profiles ep
         LEFT JOIN jobs j ON ep.user_id = j.employer_id AND j.status = 'active'
@@ -109,7 +109,7 @@ function searchCompanies($query, $limit) {
         GROUP BY ep.id
         ORDER BY 
             CASE WHEN ep.company_name LIKE ? THEN 1 ELSE 2 END,
-            ep.is_verified DESC,
+            ep.company_cac_verified DESC,
             job_count DESC
         LIMIT ?
     ");

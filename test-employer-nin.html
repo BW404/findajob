@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Employer NIN Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #991b1b;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Employer NIN Verification API</h1>
+    
+    <div>
+        <label for="nin">Enter 11-digit NIN:</label>
+        <input type="text" id="nin" placeholder="12345678901" maxlength="11" pattern="\d{11}" value="12345678901">
+        <button id="testBtn" onclick="testVerification()">Test Verification</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <script>
+        async function testVerification() {
+            const nin = document.getElementById('nin').value.trim();
+            const resultDiv = document.getElementById('result');
+            const testBtn = document.getElementById('testBtn');
+            
+            // Validate NIN
+            if (!/^\d{11}$/.test(nin)) {
+                resultDiv.innerHTML = '<div class="result error">Please enter exactly 11 digits</div>';
+                return;
+            }
+            
+            // Disable button and show loading
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            resultDiv.innerHTML = '<div class="result info">Sending request to Dojah API via employer verification endpoint...</div>';
+            
+            try {
+                const response = await fetch('/findajob/api/verify-employer-nin.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nin: nin })
+                });
+                
+                const data = await response.json();
+                
+                console.log('API Response:', data);
+                
+                let html = '<div class="result ' + (data.success ? 'success' : 'error') + '">';
+                html += '<h3>' + (data.success ? '✓ Success' : '✗ Error') + '</h3>';
+                
+                if (data.message) {
+                    html += '<p><strong>Message:</strong> ' + data.message + '</p>';
+                }
+                
+                if (data.error) {
+                    html += '<p><strong>Error:</strong> ' + data.error + '</p>';
+                }
+                
+                if (data.data) {
+                    html += '<h4>Verification Data:</h4>';
+                    html += '<pre>' + JSON.stringify(data.data, null, 2) + '</pre>';
+                }
+                
+                html += '</div>';
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = '<div class="result error"><h3>✗ Request Failed</h3><p>' + error.message + '</p></div>';
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test Verification';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -18,7 +18,7 @@ $stmt->execute([$userId]);
 $user = $stmt->fetch();
 
 // Redirect if already verified
-if ($user['is_verified']) {
+if ($user['nin_verified']) {
     header('Location: ../user/profile.php');
     exit();
 }
@@ -44,7 +44,7 @@ if ($_POST && isset($_POST['nin'])) {
             }
             
             // Mark as verified (in real implementation, this would be after actual NIN verification)
-            $verifyStmt = $pdo->prepare("UPDATE job_seeker_profiles SET is_verified = 1, verification_status = 'verified' WHERE user_id = ?");
+            $verifyStmt = $pdo->prepare("UPDATE job_seeker_profiles SET nin_verified = 1, nin_verified_at = NOW(), verification_status = 'nin_verified' WHERE user_id = ?");
             $verifyStmt->execute([$userId]);
             
             // Record transaction (you would integrate with actual payment gateway)

@@ -14,7 +14,14 @@ $stmt = $pdo->prepare("
            ep.id as profile_id, ep.company_name, ep.description as company_description,
            ep.website, ep.industry, ep.company_size, ep.address,
            ep.state, ep.city,
-           u.profile_picture as logo
+           ep.provider_first_name, ep.provider_last_name, ep.provider_phone,
+           ep.provider_date_of_birth, ep.provider_gender,
+           ep.provider_state_of_origin, ep.provider_lga_of_origin, 
+           ep.provider_city_of_birth, ep.provider_religion,
+           ep.provider_profile_picture, ep.provider_nin, ep.provider_nin_verified,
+           ep.provider_nin_verified_at,
+           ep.company_logo,
+           u.profile_picture
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
     WHERE u.id = ?
@@ -27,26 +34,41 @@ $errors = [];
 
 // Handle form submission
 if ($_POST) {
+    // Company Information
     $company_name = trim($_POST['company_name'] ?? '');
     $company_description = trim($_POST['company_description'] ?? '');
     $website = trim($_POST['website'] ?? '');
     $industry = trim($_POST['industry'] ?? '');
     $company_size = trim($_POST['company_size'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
     $state = trim($_POST['state'] ?? '');
     $city = trim($_POST['city'] ?? '');
     $address = trim($_POST['address'] ?? '');
+    
+    // Provider/Representative Information
+    $provider_first_name = trim($_POST['provider_first_name'] ?? '');
+    $provider_last_name = trim($_POST['provider_last_name'] ?? '');
+    $provider_phone = trim($_POST['provider_phone'] ?? '');
+    $provider_gender = trim($_POST['provider_gender'] ?? '');
+    $provider_dob = trim($_POST['provider_date_of_birth'] ?? '');
     
     // Validation
     if (empty($company_name)) {
         $errors[] = "Company name is required";
     }
     
+    if (empty($provider_first_name)) {
+        $errors[] = "Representative first name is required";
+    }
+    
+    if (empty($provider_last_name)) {
+        $errors[] = "Representative last name is required";
+    }
+    
     if (!empty($website) && !filter_var($website, FILTER_VALIDATE_URL)) {
         $errors[] = "Please enter a valid website URL";
     }
     
-    if (!empty($phone) && !preg_match('/^[\d\s\-\+\(\)]+$/', $phone)) {
+    if (!empty($provider_phone) && !preg_match('/^[\d\s\-\+\(\)]+$/', $provider_phone)) {
         $errors[] = "Please enter a valid phone number";
     }
     
@@ -54,11 +76,9 @@ if ($_POST) {
         try {
             $pdo->beginTransaction();
             
-            // Update users table (phone number)
-            if (!empty($phone)) {
-                $stmt = $pdo->prepare("UPDATE users SET phone = ? WHERE id = ?");
-                $stmt->execute([$phone, $userId]);
-            }
+            // Update users table (email remains same, update first_name, last_name for consistency)
+            $stmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id = ?");
+            $stmt->execute([$provider_first_name, $provider_last_name, $provider_phone, $userId]);
             
             // Check if employer profile exists
             $stmt = $pdo->prepare("SELECT user_id FROM employer_profiles WHERE user_id = ?");
@@ -71,24 +91,34 @@ if ($_POST) {
                     UPDATE employer_profiles SET 
                     company_name = ?, description = ?, website = ?, 
                     industry = ?, company_size = ?, 
-                    state = ?, city = ?, address = ?, updated_at = NOW()
+                    state = ?, city = ?, address = ?,
+                    provider_first_name = ?, provider_last_name = ?, provider_phone = ?,
+                    provider_gender = ?, provider_date_of_birth = ?, 
+                    updated_at = NOW()
                     WHERE user_id = ?
                 ");
                 $stmt->execute([
                     $company_name, $company_description, $website, 
                     $industry, $company_size,
-                    $state, $city, $address, $userId
+                    $state, $city, $address,
+                    $provider_first_name, $provider_last_name, $provider_phone,
+                    $provider_gender, $provider_dob ?: null,
+                    $userId
                 ]);
             } else {
                 // Insert new profile
                 $stmt = $pdo->prepare("
                     INSERT INTO employer_profiles 
-                    (user_id, company_name, description, website, industry, company_size, state, city, address, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    (user_id, company_name, description, website, industry, company_size, 
+                     state, city, address, provider_first_name, provider_last_name, 
+                     provider_phone, provider_gender, provider_date_of_birth, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 ");
                 $stmt->execute([
                     $userId, $company_name, $company_description, $website, 
-                    $industry, $company_size, $state, $city, $address
+                    $industry, $company_size, $state, $city, $address,
+                    $provider_first_name, $provider_last_name, $provider_phone,
+                    $provider_gender, $provider_dob ?: null
                 ]);
             }
             
@@ -97,7 +127,16 @@ if ($_POST) {
             
             // Refresh user data
             $stmt = $pdo->prepare("
-                SELECT u.*, ep.* 
+                SELECT u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone,
+                       u.email_verified, u.is_active, u.created_at, u.updated_at,
+                       ep.id as profile_id, ep.company_name, ep.description as company_description,
+                       ep.website, ep.industry, ep.company_size, ep.address,
+                       ep.state, ep.city,
+                       ep.provider_first_name, ep.provider_last_name, ep.provider_phone,
+                       ep.provider_date_of_birth, ep.provider_gender,
+                       ep.provider_profile_picture,
+                       ep.company_logo,
+                       u.profile_picture
                 FROM users u 
                 LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
                 WHERE u.id = ?
@@ -238,27 +277,15 @@ $states = $stmt->fetchAll();
                                           placeholder="Describe your company, mission, and what makes it a great place to work..."><?php echo htmlspecialchars($user['company_description'] ?? ''); ?></textarea>
                             </div>
 
-                            <!-- Website and Phone -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div>
-                                    <label for="website" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-                                        Company Website
-                                    </label>
-                                    <input type="url" id="website" name="website" 
-                                           value="<?php echo htmlspecialchars($user['website'] ?? ''); ?>"
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;"
-                                           placeholder="https://www.yourcompany.com">
-                                </div>
-
-                                <div>
-                                    <label for="phone" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-                                        Phone Number
-                                    </label>
-                                    <input type="tel" id="phone" name="phone" 
-                                           value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;"
-                                           placeholder="+234 xxx xxxx xxx">
-                                </div>
+                            <!-- Website -->
+                            <div>
+                                <label for="website" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                                    Company Website
+                                </label>
+                                <input type="url" id="website" name="website" 
+                                       value="<?php echo htmlspecialchars($user['website'] ?? ''); ?>"
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;"
+                                       placeholder="https://www.yourcompany.com">
                             </div>
 
                             <!-- Location -->
@@ -294,9 +321,126 @@ $states = $stmt->fetchAll();
                                           placeholder="Enter your office address..."><?php echo htmlspecialchars($user['address'] ?? ''); ?></textarea>
                             </div>
 
+                            <!-- Divider with Icon -->
+                            <div style="border-top: 2px solid #e5e7eb; margin: 2rem 0;"></div>
+                            
+                            <!-- Representative Information Section Header -->
+                            <div id="nin-verification" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <h3 style="margin: 0; color: #1f2937; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-user-tie" style="color: #dc2626;"></i> 
+                                    <span>Company Representative</span>
+                                    <?php if (!empty($user['provider_nin_verified'])): ?>
+                                        <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 12px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);">
+                                            <i class="fas fa-check-circle"></i> NIN Verified
+                                        </span>
+                                    <?php endif; ?>
+                                </h3>
+                            </div>
+                            <p style="margin: 0 0 1.5rem 0; color: #6b7280; font-size: 0.875rem; line-height: 1.5;">
+                                Information about the person managing this account on behalf of the company
+                                <?php if (!empty($user['provider_nin_verified'])): ?>
+                                    <br><span style="color: #10b981; font-weight: 500; font-size: 0.8rem;">
+                                        <i class="fas fa-shield-check"></i> Personal information has been verified with NIN
+                                    </span>
+                                <?php endif; ?>
+                            </p>
+
+                            <!-- Provider Name -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <label for="provider_first_name" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                        First Name 
+                                        <span style="color: #dc2626;">*</span>
+                                        <?php if (!empty($user['provider_nin_verified'])): ?>
+                                            <i class="fas fa-lock" style="color: #10b981; font-size: 0.75rem;" title="Locked after NIN verification"></i>
+                                        <?php endif; ?>
+                                    </label>
+                                    <input type="text" id="provider_first_name" name="provider_first_name" 
+                                           value="<?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name'] ?? ''); ?>"
+                                           style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; <?php echo !empty($user['provider_nin_verified']) ? 'background: #f9fafb; color: #6b7280; cursor: not-allowed;' : 'background: white;'; ?>"
+                                           placeholder="e.g., Jalal Uddin"
+                                           <?php echo !empty($user['provider_nin_verified']) ? 'readonly' : 'required'; ?>>
+                                    <?php if (!empty($user['provider_nin_verified'])): ?>
+                                        <small style="display: block; margin-top: 0.25rem; color: #10b981; font-size: 0.75rem; font-weight: 500;">
+                                            <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified from NIN data
+                                        </small>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div>
+                                    <label for="provider_last_name" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                        Last Name 
+                                        <span style="color: #dc2626;">*</span>
+                                        <?php if (!empty($user['provider_nin_verified'])): ?>
+                                            <i class="fas fa-lock" style="color: #10b981; font-size: 0.75rem;" title="Locked after NIN verification"></i>
+                                        <?php endif; ?>
+                                    </label>
+                                    <input type="text" id="provider_last_name" name="provider_last_name" 
+                                           value="<?php echo htmlspecialchars($user['provider_last_name'] ?? $user['last_name'] ?? ''); ?>"
+                                           style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; <?php echo !empty($user['provider_nin_verified']) ? 'background: #f9fafb; color: #6b7280; cursor: not-allowed;' : 'background: white;'; ?>"
+                                           placeholder="e.g., Taj"
+                                           <?php echo !empty($user['provider_nin_verified']) ? 'readonly' : 'required'; ?>>
+                                    <?php if (!empty($user['provider_nin_verified'])): ?>
+                                        <small style="display: block; margin-top: 0.25rem; color: #10b981; font-size: 0.75rem; font-weight: 500;">
+                                            <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified from NIN data
+                                        </small>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <!-- Provider Contact -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <label for="provider_phone" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                        Phone Number
+                                    </label>
+                                    <input type="tel" id="provider_phone" name="provider_phone" 
+                                           value="<?php echo htmlspecialchars($user['provider_phone'] ?? $user['phone'] ?? ''); ?>"
+                                           style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;"
+                                           placeholder="+234 xxx xxx xxxx">
+                                </div>
+
+                                <div>
+                                    <label for="provider_gender" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                        Gender
+                                    </label>
+                                    <select id="provider_gender" name="provider_gender" 
+                                            style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
+                                        <option value="">Select Gender</option>
+                                        <option value="male" <?php echo ($user['provider_gender'] ?? '') === 'male' ? 'selected' : ''; ?>>Male</option>
+                                        <option value="female" <?php echo ($user['provider_gender'] ?? '') === 'female' ? 'selected' : ''; ?>>Female</option>
+                                        <option value="other" <?php echo ($user['provider_gender'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Provider Date of Birth -->
+                            <div style="margin-bottom: 1rem;">
+                                <label for="provider_date_of_birth" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                    Date of Birth
+                                    <?php if (!empty($user['provider_nin_verified'])): ?>
+                                        <i class="fas fa-lock" style="color: #10b981; font-size: 0.75rem;" title="Locked after NIN verification"></i>
+                                    <?php endif; ?>
+                                </label>
+                                <input type="date" id="provider_date_of_birth" name="provider_date_of_birth" 
+                                       value="<?php echo htmlspecialchars($user['provider_date_of_birth'] ?? ''); ?>"
+                                       style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; <?php echo !empty($user['provider_nin_verified']) ? 'background: #f9fafb; color: #6b7280; cursor: not-allowed;' : 'background: white;'; ?>"
+                                       max="<?php echo date('Y-m-d', strtotime('-18 years')); ?>"
+                                       <?php echo !empty($user['provider_nin_verified']) ? 'readonly' : ''; ?>>
+                                <?php if (!empty($user['provider_nin_verified'])): ?>
+                                    <small style="display: block; margin-top: 0.25rem; color: #10b981; font-size: 0.75rem; font-weight: 500;">
+                                        <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified from NIN data
+                                    </small>
+                                <?php else: ?>
+                                    <small style="display: block; margin-top: 0.25rem; color: #6b7280; font-size: 0.75rem;">
+                                        Must be at least 18 years old
+                                    </small>
+                                <?php endif; ?>
+                            </div>
+
                             <!-- Submit Button -->
-                            <div style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-weight: 600; border-radius: 6px; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2); transition: all 0.2s;">
                                     <i class="fas fa-save"></i> Update Profile
                                 </button>
                             </div>
@@ -313,8 +457,8 @@ $states = $stmt->fetchAll();
                              onclick="document.getElementById('companyLogoInput').click()"
                              onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='rgba(220, 38, 38, 0.4)'"
                              onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(220, 38, 38, 0.2)'">
-                            <?php if (!empty($user['logo'])): ?>
-                                <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['logo']); ?>" 
+                            <?php if (!empty($user['company_logo'])): ?>
+                                <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['company_logo']); ?>" 
                                      alt="Company Logo" id="companyLogoPreview"
                                      style="width: 100%; height: 100%; object-fit: cover;">
                             <?php else: ?>

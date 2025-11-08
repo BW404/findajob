@@ -220,7 +220,7 @@ function handleGetJobs() {
             jc.slug as category_slug,
             jc.icon as category_icon,
             ep.company_name as employer_company_name,
-            ep.is_verified as employer_verified
+            ep.company_cac_verified as employer_verified
         FROM jobs j 
         LEFT JOIN job_categories jc ON j.category_id = jc.id 
         LEFT JOIN employer_profiles ep ON j.employer_id = ep.user_id 

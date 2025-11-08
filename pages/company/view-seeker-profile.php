@@ -26,7 +26,7 @@ $stmt = $pdo->prepare("
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, 
         jsp.skills, jsp.bio, jsp.profile_picture,
-        jsp.nin, jsp.bvn, jsp.is_verified, jsp.verification_status,
+        jsp.nin, jsp.bvn, jsp.verification_status,
         jsp.nin_verified, jsp.nin_verified_at,
         jsp.subscription_type, jsp.subscription_expires,
         jsp.created_at as profile_created_at, 
@@ -484,7 +484,7 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
                             </div>
                         </div>
 
-                        <?php if ($seeker['is_verified']): ?>
+                        <?php if ($seeker['nin_verified']): ?>
                             <div class="info-item">
                                 <div class="info-label">Profile Verification</div>
                                 <div class="info-value">

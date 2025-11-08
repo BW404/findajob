@@ -353,10 +353,30 @@ class AuthAPI {
     }
     
     private function createEmployerProfile($userId, $data) {
+        // Get user data for provider information
         $stmt = $this->pdo->prepare("
-            INSERT INTO employer_profiles (user_id, company_name) VALUES (?, ?)
+            SELECT first_name, last_name, phone FROM users WHERE id = ?
         ");
-        $stmt->execute([$userId, $data['company_name']]);
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        
+        // Create employer profile with both company and provider (representative) information
+        $stmt = $this->pdo->prepare("
+            INSERT INTO employer_profiles (
+                user_id, 
+                company_name,
+                provider_first_name,
+                provider_last_name,
+                provider_phone
+            ) VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            $data['company_name'],
+            $user['first_name'],
+            $user['last_name'],
+            $user['phone']
+        ]);
     }
     
     private function logLoginAttempt($email, $success) {
