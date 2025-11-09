@@ -40,10 +40,10 @@ define('APPLICATIONS_PER_PAGE', 10);
 // Dojah API Configuration (for NIN/BVN verification)
 // Get your credentials from https://dojah.io
 define('DOJAH_APP_ID', getenv('DOJAH_APP_ID') ?: '68e170175ab6888b2b8c0f71'); // Replace with your AppId
-// define('DOJAH_API_KEY', getenv('DOJAH_API_KEY') ?: 'test_sk_3i97kuOmiq11lP3XA5FlkVZkG'); // Replace with your API Key
-define('DOJAH_API_KEY', getenv('DOJAH_API_KEY') ?: 'prod_sk_k3xhzVViIPs5XXWr7gcwvgeqa'); // Replace with your API Key
-define('DOJAH_API_BASE_URL', getenv('DOJAH_API_URL') ?: 'https://api.dojah.io/api/v1'); // Use https://api.dojah.io/api/v1 for production
-define('DOJAH_USE_SANDBOX', false); // Set to false in production
+define('DOJAH_API_KEY', getenv('DOJAH_API_KEY') ?: 'test_sk_3i97kuOmiq11lP3XA5FlkVZkG'); // Replace with your API Key
+// define('DOJAH_API_KEY', getenv('DOJAH_API_KEY') ?: 'prod_sk_k3xhzVViIPs5XXWr7gcwvgeqaL'); // Replace with your API Key
+define('DOJAH_API_BASE_URL', getenv('DOJAH_API_URL') ?: 'https://sandbox.dojah.io/api/v1'); // Use https://api.dojah.io/api/v1 for production
+define('DOJAH_USE_SANDBOX', true); // Set to false in production
 
 // Verification pricing (in Naira)
 define('NIN_VERIFICATION_FEE', 1000.00);
