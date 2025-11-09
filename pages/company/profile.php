@@ -10,11 +10,13 @@ $userId = getCurrentUserId();
 // Get employer profile data
 $stmt = $pdo->prepare("
     SELECT u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone,
-           u.email_verified, u.is_active, u.created_at, u.updated_at,
+           u.email_verified, u.phone_verified, u.phone_verified_at,
+           u.is_active, u.created_at, u.updated_at,
            ep.id as profile_id, ep.company_name, ep.description as company_description,
            ep.website, ep.industry, ep.company_size, ep.address,
            ep.state, ep.city,
            ep.provider_first_name, ep.provider_last_name, ep.provider_phone,
+           ep.provider_phone_verified, ep.provider_phone_verified_at,
            ep.provider_date_of_birth, ep.provider_gender,
            ep.provider_state_of_origin, ep.provider_lga_of_origin, 
            ep.provider_city_of_birth, ep.provider_religion,
@@ -388,16 +390,31 @@ $states = $stmt->fetchAll();
                                 </div>
                             </div>
 
-                            <!-- Provider Contact -->
+                            <!-- Provider Contact and Personal Info -->
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                                 <div>
-                                    <label for="provider_phone" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
-                                        Phone Number
+                                    <label for="provider_phone" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">
+                                        <span>Phone Number</span>
+                                        <?php if (!empty($user['provider_phone_verified'])): ?>
+                                            <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 0.65rem; padding: 0.25rem 0.5rem; border-radius: 10px; font-weight: 600;">
+                                                <i class="fas fa-check-circle"></i> Verified
+                                            </span>
+                                        <?php else: ?>
+                                            <button type="button" onclick="openPhoneModal()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; padding: 0.25rem 0.65rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                                <i class="fas fa-shield-alt"></i> Verify
+                                            </button>
+                                        <?php endif; ?>
                                     </label>
                                     <input type="tel" id="provider_phone" name="provider_phone" 
                                            value="<?php echo htmlspecialchars($user['provider_phone'] ?? $user['phone'] ?? ''); ?>"
-                                           style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;"
-                                           placeholder="+234 xxx xxx xxxx">
+                                           style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; <?php echo !empty($user['provider_phone_verified']) ? 'background: #f9fafb; color: #6b7280; cursor: not-allowed;' : 'background: white;'; ?>"
+                                           placeholder="+234 xxx xxx xxxx"
+                                           <?php echo !empty($user['provider_phone_verified']) ? 'readonly' : ''; ?>>
+                                    <?php if (!empty($user['provider_phone_verified'])): ?>
+                                        <small style="display: block; margin-top: 0.25rem; color: #10b981; font-size: 0.7rem; font-weight: 500;">
+                                            <i class="fas fa-check-circle" style="font-size: 0.65rem;"></i> Verified on <?php echo date('M d, Y', strtotime($user['provider_phone_verified_at'])); ?>
+                                        </small>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div>
@@ -633,5 +650,7 @@ $states = $stmt->fetchAll();
             <div class="app-bottom-nav-label">Company</div>
         </a>
     </nav>
+
+    <?php include '../../includes/phone-verification-modal.php'; ?>
 </body>
 </html>

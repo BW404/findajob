@@ -12,7 +12,8 @@ $userId = getCurrentUserId();
 $stmt = $pdo->prepare("
     SELECT 
         u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
-        u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        u.email_verified, u.phone_verified, u.phone_verified_at,
+        u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
         jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
         jsp.state_of_origin, jsp.lga_of_origin, jsp.city_of_birth, jsp.religion,
         jsp.current_state, jsp.current_city,
@@ -1096,10 +1097,29 @@ $profileCompletion = calculateProfileCompletion($user);
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="phone">Phone Number</label>
+                        <label class="form-label" for="phone" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>Phone Number</span>
+                            <?php if (!empty($user['phone_verified'])): ?>
+                                <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 12px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);">
+                                    <i class="fas fa-check-circle"></i> Verified
+                                </span>
+                            <?php else: ?>
+                                <button type="button" onclick="openPhoneModal()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; padding: 0.3rem 0.75rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i class="fas fa-shield-alt"></i> Verify Phone
+                                </button>
+                            <?php endif; ?>
+                        </label>
                         <input type="tel" id="phone" name="phone" class="form-input" 
                                value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" 
-                               placeholder="+234 801 234 5678">
+                               placeholder="+234 801 234 5678"
+                               <?php echo !empty($user['phone_verified']) ? 'readonly style="background: #f9fafb; color: #6b7280; cursor: not-allowed;"' : ''; ?>>
+                        <?php if (!empty($user['phone_verified'])): ?>
+                            <small class="form-hint" style="color: #10b981; font-weight: 500;">
+                                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified on <?php echo date('M d, Y', strtotime($user['phone_verified_at'])); ?>
+                            </small>
+                        <?php else: ?>
+                            <small class="form-hint">Click "Verify Phone" to receive SMS verification code</small>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
@@ -2165,6 +2185,7 @@ $profileCompletion = calculateProfileCompletion($user);
         </a>
     </nav>
 
+    <?php include '../../includes/phone-verification-modal.php'; ?>
     <?php include '../../includes/footer.php'; ?>
 </body>
 </html>
