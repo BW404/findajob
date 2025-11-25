@@ -21,27 +21,27 @@ function isEmployer() {
 
 // Check if user is admin
 function isAdmin() {
-    return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
+    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
 }
 
-// Check admin role
+// Check admin role (for future role system)
 function isAdminRole($role) {
     return isAdmin() && isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === $role;
 }
 
-// Check if super admin
+// Check if super admin (all admins are super admin by default for now)
 function isSuperAdmin() {
-    return isAdminRole('super_admin');
+    return isAdmin();
 }
 
 // Get admin ID
 function getAdminId() {
-    return $_SESSION['admin_id'] ?? null;
+    return isAdmin() ? $_SESSION['user_id'] : null;
 }
 
-// Get admin role
+// Get admin role (default to super_admin)
 function getAdminRole() {
-    return $_SESSION['admin_role'] ?? null;
+    return isAdmin() ? ($_SESSION['admin_role'] ?? 'super_admin') : null;
 }
 
 // Get current user ID

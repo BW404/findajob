@@ -1,12 +1,7 @@
 <?php
-require_once '../config/database.php';
-require_once '../config/session.php';
-
-// Redirect if not admin
-if (!isLoggedIn() || !isAdmin()) {
-    header('Location: login.php');
-    exit;
-}
+// Redirect to dashboard
+header('Location: dashboard.php');
+exit;
 
 // Get dashboard statistics
 try {

@@ -18,63 +18,28 @@ if ($_POST && isset($_POST['email']) && isset($_POST['password'])) {
     if (empty($email) || empty($password)) {
         $error = 'Please enter both email and password.';
     } else {
-        // Check admin credentials
+        // Check admin credentials from users table
         try {
-            $stmt = $pdo->prepare("SELECT id, username, email, password_hash, first_name, last_name, role, login_attempts, locked_until FROM admin_users WHERE (email = ? OR username = ?) AND is_active = 1");
-            $stmt->execute([$email, $email]);
+            $stmt = $pdo->prepare("SELECT id, email, password_hash, first_name, last_name, user_type, is_active FROM users WHERE email = ? AND user_type = 'admin' AND is_active = 1");
+            $stmt->execute([$email]);
             $admin = $stmt->fetch();
             
-            if ($admin) {
-                // Check if account is locked
-                if ($admin['locked_until'] && new DateTime() < new DateTime($admin['locked_until'])) {
-                    $error = 'Account is temporarily locked due to too many failed login attempts.';
-                } elseif (password_verify($password, $admin['password_hash'])) {
-                    // Login successful - reset login attempts
-                    $stmt = $pdo->prepare("UPDATE admin_users SET login_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = ?");
-                    $stmt->execute([$admin['id']]);
-                    
-                    // Set session variables
-                    $_SESSION['admin_id'] = $admin['id'];
-                    $_SESSION['admin_username'] = $admin['username'];
-                    $_SESSION['admin_email'] = $admin['email'];
-                    $_SESSION['admin_name'] = $admin['first_name'] . ' ' . $admin['last_name'];
-                    $_SESSION['admin_role'] = $admin['role'];
-                    $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['login_time'] = time();
-                    
-                    // Log admin login
-                    $stmt = $pdo->prepare("INSERT INTO admin_logs (admin_user_id, action, details, ip_address, created_at) VALUES (?, 'login', 'Admin login successful', ?, NOW())");
-                    $stmt->execute([$admin['id'], $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-                    
-                    header('Location: index.php');
-                    exit;
-                } else {
-                    // Invalid password - increment login attempts
-                    $newAttempts = $admin['login_attempts'] + 1;
-                    $lockTime = null;
-                    
-                    // Lock account after 5 failed attempts for 30 minutes
-                    if ($newAttempts >= 5) {
-                        $lockTime = date('Y-m-d H:i:s', strtotime('+30 minutes'));
-                        $error = 'Too many failed login attempts. Account locked for 30 minutes.';
-                    } else {
-                        $error = 'Invalid email/username or password. Attempts: ' . $newAttempts . '/5';
-                    }
-                    
-                    // Update failed attempts
-                    $stmt = $pdo->prepare("UPDATE admin_users SET login_attempts = ?, locked_until = ? WHERE id = ?");
-                    $stmt->execute([$newAttempts, $lockTime, $admin['id']]);
-                    
-                    // Log failed attempt
-                    $stmt = $pdo->prepare("INSERT INTO admin_logs (admin_user_id, action, details, ip_address, created_at) VALUES (?, 'failed_login', ?, ?, NOW())");
-                    $stmt->execute([$admin['id'], "Failed login attempt #{$newAttempts} for: {$email}", $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-                }
-            } else {
-                $error = 'Invalid email/username or password.';
+            if ($admin && password_verify($password, $admin['password_hash'])) {
+                // Login successful - set session variables
+                $_SESSION['user_id'] = $admin['id'];
+                $_SESSION['user_type'] = 'admin';
+                $_SESSION['email'] = $admin['email'];
+                $_SESSION['first_name'] = $admin['first_name'];
+                $_SESSION['last_name'] = $admin['last_name'];
+                $_SESSION['logged_in'] = true;
+                $_SESSION['login_time'] = time();
                 
-                // Log failed attempt with unknown user
-                $stmt = $pdo->prepare("INSERT INTO admin_logs (admin_user_id, action, details, ip_address, created_at) VALUES (NULL, 'failed_login', ?, ?, NOW())");
-                $stmt->execute(["Failed login attempt for unknown user: $email", $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+                // Redirect to dashboard
+                header('Location: dashboard.php');
+                exit;
+            } else {
+                $error = 'Invalid email or password.';
+                error_log("Failed admin login attempt for: " . $email);
             }
         } catch (Exception $e) {
             $error = 'An error occurred. Please try again.';
