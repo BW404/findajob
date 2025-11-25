@@ -13,17 +13,21 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
-    email_verified BOOLEAN DEFAULT FALSE,
+    profile_picture VARCHAR(255),
+    email_verified TINYINT(1) DEFAULT 0,
     email_verification_token VARCHAR(255),
     email_verification_expires DATETIME,
     password_reset_token VARCHAR(255),
     password_reset_expires DATETIME,
-    is_active BOOLEAN DEFAULT TRUE,
+    is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    phone_verified TINYINT(1) DEFAULT 0,
+    phone_verified_at DATETIME,
     INDEX idx_email (email),
     INDEX idx_user_type (user_type),
-    INDEX idx_email_verified (email_verified)
+    INDEX idx_email_verified (email_verified),
+    INDEX idx_phone_verified (phone_verified)
 );
 
 -- Job seeker profiles
@@ -46,17 +50,24 @@ CREATE TABLE job_seeker_profiles (
     profile_picture VARCHAR(255),
     nin VARCHAR(11),
     bvn VARCHAR(11),
-    nin_verified TINYINT(1) DEFAULT 0,
-    nin_verified_at TIMESTAMP NULL,
     verification_status ENUM('pending', 'nin_verified', 'fully_verified', 'rejected') DEFAULT 'pending',
     subscription_type ENUM('free', 'pro') DEFAULT 'free',
     subscription_expires DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    nin_verified TINYINT(1) DEFAULT 0,
+    nin_verified_at TIMESTAMP NULL,
+    nin_verification_data LONGTEXT,
+    city_of_birth VARCHAR(100),
+    religion VARCHAR(64),
+    phone_verified TINYINT(1) DEFAULT 0,
+    phone_verified_at DATETIME,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_job_status (job_status),
-    INDEX idx_verification_status (verification_status)
+    INDEX idx_verification_status (verification_status),
+    INDEX idx_nin (nin),
+    INDEX idx_nin_verified (nin_verified)
 );
 
 -- Employer profiles
@@ -96,6 +107,7 @@ CREATE TABLE employer_profiles (
     
     -- Company CAC Verification
     company_cac_number VARCHAR(50),
+    company_type VARCHAR(50),
     company_cac_verified TINYINT(1) DEFAULT 0,
     company_cac_verified_at DATETIME,
     company_cac_data LONGTEXT,
@@ -103,12 +115,19 @@ CREATE TABLE employer_profiles (
     company_registration_date DATE,
     company_tax_id VARCHAR(50),
     
+    -- Provider Phone Verification
+    provider_phone_verified TINYINT(1) DEFAULT 0,
+    provider_phone_verified_at DATETIME,
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_company_name (company_name),
-    INDEX idx_verification_status (verification_status)
+    INDEX idx_verification_status (verification_status),
+    INDEX idx_company_cac_number (company_cac_number),
+    INDEX idx_company_cac_verified (company_cac_verified),
+    INDEX idx_provider_nin (provider_nin)
 );
 
 -- Email verification logs
@@ -122,6 +141,23 @@ CREATE TABLE email_verifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_token (token),
     INDEX idx_user_id (user_id)
+);
+
+-- Phone verification attempts
+CREATE TABLE phone_verification_attempts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    reference_id VARCHAR(100) NOT NULL,
+    verified TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    verified_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_phone_number (phone_number),
+    INDEX idx_reference_id (reference_id),
+    INDEX idx_verified (verified)
 );
 
 -- Password reset logs
@@ -276,6 +312,20 @@ CREATE TABLE job_applications (
     INDEX idx_job_seeker_id (job_seeker_id),
     INDEX idx_status (application_status),
     INDEX idx_applied_at (applied_at)
+);
+
+-- Saved jobs (job bookmarks)
+CREATE TABLE saved_jobs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    job_id INT NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_save (user_id, job_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_job_id (job_id),
+    INDEX idx_saved_at (saved_at)
 );
 
 -- CVs table
