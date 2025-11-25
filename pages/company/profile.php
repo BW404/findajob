@@ -22,7 +22,8 @@ $stmt = $pdo->prepare("
            ep.provider_city_of_birth, ep.provider_religion,
            ep.provider_profile_picture, ep.provider_nin, ep.provider_nin_verified,
            ep.provider_nin_verified_at,
-           ep.company_logo,
+           ep.company_logo, ep.company_cac_number, ep.company_type,
+           ep.company_cac_verified, ep.company_cac_verified_at,
            u.profile_picture
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
@@ -277,6 +278,66 @@ $states = $stmt->fetchAll();
                                 <textarea id="company_description" name="company_description" rows="4"
                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical;"
                                           placeholder="Describe your company, mission, and what makes it a great place to work..."><?php echo htmlspecialchars($user['company_description'] ?? ''); ?></textarea>
+                            </div>
+
+                            <!-- CAC Verification -->
+                            <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc2626;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                    <div>
+                                        <h3 style="margin: 0 0 0.5rem 0; color: #dc2626; font-size: 1.125rem;">
+                                            <i class="fas fa-building"></i> CAC Verification
+                                        </h3>
+                                        <?php if (!empty($user['company_cac_verified'])): ?>
+                                            <p style="margin: 0; color: #059669; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                                                <i class="fas fa-check-circle"></i> Verified
+                                            </p>
+                                        <?php else: ?>
+                                            <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">
+                                                Verify your company registration with CAC
+                                            </p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (empty($user['company_cac_verified'])): ?>
+                                        <button type="button" onclick="openCACModal()" 
+                                                style="padding: 0.625rem 1.25rem; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; white-space: nowrap; font-size: 0.875rem; transition: all 0.2s;">
+                                            <i class="fas fa-shield-alt"></i> Verify Now
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <?php if (!empty($user['company_cac_verified'])): ?>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+                                        <div>
+                                            <small style="color: #6b7280; font-weight: 500;">RC Number</small>
+                                            <div style="color: #1f2937; font-weight: 600;"><?php echo htmlspecialchars($user['company_cac_number'] ?? 'N/A'); ?></div>
+                                        </div>
+                                        <div>
+                                            <small style="color: #6b7280; font-weight: 500;">Company Type</small>
+                                            <div style="color: #1f2937; font-weight: 600;"><?php echo htmlspecialchars(str_replace('_', ' ', $user['company_type'] ?? 'N/A')); ?></div>
+                                        </div>
+                                        <div>
+                                            <small style="color: #6b7280; font-weight: 500;">Verified On</small>
+                                            <div style="color: #1f2937; font-weight: 600;">
+                                                <?php 
+                                                if (!empty($user['company_cac_verified_at'])) {
+                                                    echo date('M d, Y', strtotime($user['company_cac_verified_at']));
+                                                } else {
+                                                    echo 'N/A';
+                                                }
+                                                ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="margin-top: 1rem; padding: 1rem; background: white; border-radius: 6px;">
+                                        <ul style="margin: 0; padding-left: 1.5rem; color: #6b7280; font-size: 0.875rem; line-height: 1.75;">
+                                            <li>Builds trust with job seekers</li>
+                                            <li>Verification is <strong style="color: #059669;">FREE</strong></li>
+                                            <li>Takes less than 2 minutes</li>
+                                            <li>One-time verification</li>
+                                        </ul>
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                             <!-- Website -->
@@ -652,5 +713,6 @@ $states = $stmt->fetchAll();
     </nav>
 
     <?php include '../../includes/phone-verification-modal.php'; ?>
+    <?php include '../../includes/cac-verification-modal.php'; ?>
 </body>
 </html>

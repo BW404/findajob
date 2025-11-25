@@ -1355,6 +1355,27 @@ $profileCompletion = calculateProfileCompletion($user);
                         <option value="10" <?php echo ($user['years_of_experience'] ?? 0) >= 10 ? 'selected' : ''; ?>>10+ Years</option>
                     </select>
                 </div>
+
+                <!-- Job Status -->
+                <div class="form-group" id="job-status">
+                    <label class="form-label" for="job_status">
+                        <i class="fas fa-briefcase"></i> Current Job Status
+                    </label>
+                    <select id="job_status" name="job_status" class="form-select" onchange="updateJobStatusMessage()">
+                        <option value="looking" <?php echo ($user['job_status'] ?? 'looking') === 'looking' ? 'selected' : ''; ?>>
+                            🔍 Looking for work
+                        </option>
+                        <option value="employed_but_looking" <?php echo ($user['job_status'] ?? '') === 'employed_but_looking' ? 'selected' : ''; ?>>
+                            💼 Employed but still looking
+                        </option>
+                        <option value="not_looking" <?php echo ($user['job_status'] ?? '') === 'not_looking' ? 'selected' : ''; ?>>
+                            🚫 Not looking (disable notifications & hide CV)
+                        </option>
+                    </select>
+                    <div id="jobStatusMessage" style="margin-top: 0.75rem; padding: 0.875rem; border-radius: 6px; font-size: 0.875rem; display: none;">
+                        <!-- Dynamic message will appear here -->
+                    </div>
+                </div>
                 
                 <div id="experience-container">
                     <?php if (empty($experience_records)): ?>
@@ -1470,17 +1491,6 @@ $profileCompletion = calculateProfileCompletion($user);
                 <div class="section-header">
                     <span class="section-icon">💼</span>
                     <h2>Job Preferences</h2>
-                </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="job_status">Job Status</label>
-                        <select id="job_status" name="job_status" class="form-select">
-                            <option value="looking" <?php echo ($user['job_status'] ?? '') === 'looking' ? 'selected' : ''; ?>>Actively Looking</option>
-                            <option value="employed_but_looking" <?php echo ($user['job_status'] ?? '') === 'employed_but_looking' ? 'selected' : ''; ?>>Employed but Looking</option>
-                            <option value="not_looking" <?php echo ($user['job_status'] ?? '') === 'not_looking' ? 'selected' : ''; ?>>Not Looking</option>
-                        </select>
-                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1616,8 +1626,38 @@ $profileCompletion = calculateProfileCompletion($user);
     </nav>
 
     <script>
+        // Job Status Message Update
+        function updateJobStatusMessage() {
+            const jobStatus = document.getElementById('job_status').value;
+            const messageDiv = document.getElementById('jobStatusMessage');
+            
+            const messages = {
+                'looking': {
+                    text: '✓ You will receive job alerts and your CV will be visible to employers.',
+                    style: 'background: #d1fae5; border: 1px solid #a7f3d0; color: #059669;'
+                },
+                'employed_but_looking': {
+                    text: '✓ You will receive job alerts and your CV will be visible to employers. Your current employment status is confidential.',
+                    style: 'background: #dbeafe; border: 1px solid #93c5fd; color: #1e40af;'
+                },
+                'not_looking': {
+                    text: '⚠ Job notifications will be disabled and your CV will be hidden from employers.',
+                    style: 'background: #fee2e2; border: 1px solid #fecaca; color: #dc2626;'
+                }
+            };
+            
+            if (messages[jobStatus]) {
+                messageDiv.textContent = messages[jobStatus].text;
+                messageDiv.style.cssText = messages[jobStatus].style + ' display: block;';
+            } else {
+                messageDiv.style.display = 'none';
+            }
+        }
+        
         // Form validation and enhancement
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize job status message
+            updateJobStatusMessage();
             
             // Phone number formatting
             const phoneInput = document.getElementById('phone');

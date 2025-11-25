@@ -42,7 +42,8 @@ $query = "SELECT DISTINCT
           INNER JOIN users u ON cv.user_id = u.id
           LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
           WHERE u.user_type = 'job_seeker'
-          AND u.is_active = 1";
+          AND u.is_active = 1
+          AND (jsp.job_status IS NULL OR jsp.job_status != 'not_looking')";
 
 $params = [];
 
@@ -117,7 +118,8 @@ $count_query = "SELECT COUNT(DISTINCT cv.id) as total FROM cvs cv
                 INNER JOIN users u ON cv.user_id = u.id
                 LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
                 WHERE u.user_type = 'job_seeker'
-                AND u.is_active = 1";
+                AND u.is_active = 1
+                AND (jsp.job_status IS NULL OR jsp.job_status != 'not_looking')";
 
 if (!empty($search_query)) {
     $count_query .= " AND (

@@ -23,9 +23,12 @@ $user_type = $_SESSION['user_type'];
 
 // Get CV information
 $stmt = $pdo->prepare("
-    SELECT cv.*, CONCAT(u.first_name, ' ', u.last_name) as owner_name 
+    SELECT cv.*, 
+           CONCAT(u.first_name, ' ', u.last_name) as owner_name,
+           jsp.job_status
     FROM cvs cv
     JOIN users u ON cv.user_id = u.id
+    LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
     WHERE cv.id = ?
 ");
 $stmt->execute([$cv_id]);
@@ -34,6 +37,13 @@ $cv = $stmt->fetch();
 if (!$cv) {
     header('HTTP/1.0 404 Not Found');
     exit('CV not found');
+}
+
+// Check if CV owner has set status to "not_looking"
+// Only block employers, not the CV owner themselves
+if ($user_type === 'employer' && $cv['job_status'] === 'not_looking') {
+    header('HTTP/1.0 403 Forbidden');
+    exit('This CV is not available. The candidate is not currently looking for work.');
 }
 
 // Check permissions

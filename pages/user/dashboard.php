@@ -714,6 +714,49 @@ try {
                 </div>
             <?php endif; ?>
 
+        <!-- Job Status Banner -->
+        <?php
+        $jobStatus = $user['job_status'] ?? 'looking';
+        $statusConfig = [
+            'looking' => [
+                'icon' => '🔍',
+                'title' => 'Looking for work',
+                'message' => 'Your profile is active. You\'ll receive job alerts and employers can view your CV.',
+                'style' => 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #059669;'
+            ],
+            'employed_but_looking' => [
+                'icon' => '💼',
+                'title' => 'Employed but still looking',
+                'message' => 'Your profile is active. You\'ll receive job alerts and employers can view your CV. Your search is confidential.',
+                'style' => 'background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%); border-left: 4px solid #1e40af;'
+            ],
+            'not_looking' => [
+                'icon' => '🚫',
+                'title' => 'Not looking for work',
+                'message' => 'Your profile is paused. Job notifications are disabled and your CV is hidden from employers.',
+                'style' => 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 4px solid #dc2626;'
+            ]
+        ];
+        
+        $currentStatus = $statusConfig[$jobStatus];
+        ?>
+        <div style="padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; <?php echo $currentStatus['style']; ?>">
+            <div style="display: flex; align-items: start; justify-content: space-between; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #1f2937; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;"><?php echo $currentStatus['icon']; ?></span>
+                        <?php echo $currentStatus['title']; ?>
+                    </h3>
+                    <p style="margin: 0; color: #4b5563; font-size: 0.875rem;">
+                        <?php echo $currentStatus['message']; ?>
+                    </p>
+                </div>
+                <a href="profile.php#job-status" style="padding: 0.5rem 1rem; background: white; color: #1f2937; border: 2px solid #d1d5db; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 0.875rem; white-space: nowrap; transition: all 0.2s; display: inline-block;">
+                    Change Status
+                </a>
+            </div>
+        </div>
+
         <!-- Dashboard Stats Cards -->
         <div class="dashboard-stats">
                 <a href="applications.php" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">

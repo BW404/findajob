@@ -49,6 +49,7 @@ define('DOJAH_USE_SANDBOX', true); // Set to false in production
 define('NIN_VERIFICATION_FEE', 1000.00);
 define('BVN_VERIFICATION_FEE', 1500.00);
 define('PHONE_VERIFICATION_FEE', 0.00); // Free phone verification
+define('CAC_VERIFICATION_FEE', 0.00); // Free CAC verification
 
 // Phone verification settings
 define('PHONE_OTP_EXPIRY', 10); // minutes
