@@ -29,9 +29,34 @@ function isAdminRole($role) {
     return isAdmin() && isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === $role;
 }
 
-// Check if super admin (all admins are super admin by default for now)
-function isSuperAdmin() {
-    return isAdmin();
+// Check if super admin (checks role from database)
+function isSuperAdmin($userId = null) {
+    global $pdo;
+    
+    if (!$userId) {
+        $userId = getCurrentUserId();
+    }
+    
+    if (!$userId) {
+        return false;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT ar.role_slug 
+            FROM users u
+            JOIN admin_roles ar ON u.admin_role_id = ar.id
+            WHERE u.id = ? AND u.user_type = 'admin'
+        ");
+        $stmt->execute([$userId]);
+        $result = $stmt->fetch();
+        
+        return $result && $result['role_slug'] === 'super_admin';
+    } catch (Exception $e) {
+        error_log("Super admin check error: " . $e->getMessage());
+        // Fallback: if table doesn't exist yet, all admins are super admin
+        return isAdmin();
+    }
 }
 
 // Get admin ID

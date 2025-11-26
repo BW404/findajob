@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/session.php';
+require_once '../config/permissions.php';
 
 // Check admin authentication
 if (!isLoggedIn()) {
@@ -15,6 +16,12 @@ $user = $stmt->fetch();
 
 if (!$user || $user['user_type'] !== 'admin') {
     header('Location: ../index.php');
+    exit;
+}
+
+// Check permission
+if (!hasPermission($user_id, 'view_admin_users')) {
+    header('Location: dashboard.php?error=access_denied');
     exit;
 }
 
@@ -34,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $last_name = trim($_POST['last_name']);
                 $email = trim($_POST['email']);
                 $password = $_POST['password'];
-                $role = $_POST['role']; // Can use this for future role system
+                $admin_role_id = (int)$_POST['admin_role_id'];
                 
                 // Check if email exists
                 $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -44,13 +51,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     exit;
                 }
                 
+                // Validate role exists
+                $stmt = $pdo->prepare("SELECT id FROM admin_roles WHERE id = ? AND is_active = 1");
+                $stmt->execute([$admin_role_id]);
+                if (!$stmt->fetch()) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid role selected']);
+                    exit;
+                }
+                
                 // Create admin user
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("
-                    INSERT INTO users (user_type, email, password_hash, first_name, last_name, email_verified, is_active)
-                    VALUES ('admin', ?, ?, ?, ?, 1, 1)
+                    INSERT INTO users (user_type, email, password_hash, first_name, last_name, admin_role_id, email_verified, is_active)
+                    VALUES ('admin', ?, ?, ?, ?, ?, 1, 1)
                 ");
-                $stmt->execute([$email, $password_hash, $first_name, $last_name]);
+                $stmt->execute([$email, $password_hash, $first_name, $last_name, $admin_role_id]);
                 
                 echo json_encode(['success' => true, 'message' => 'Admin user created successfully']);
                 exit;
@@ -60,14 +75,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $first_name = trim($_POST['first_name']);
                 $last_name = trim($_POST['last_name']);
                 $email = trim($_POST['email']);
+                $admin_role_id = (int)$_POST['admin_role_id'];
                 $is_active = isset($_POST['is_active']) ? 1 : 0;
+                
+                // Validate role exists
+                $stmt = $pdo->prepare("SELECT id FROM admin_roles WHERE id = ? AND is_active = 1");
+                $stmt->execute([$admin_role_id]);
+                if (!$stmt->fetch()) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid role selected']);
+                    exit;
+                }
                 
                 $stmt = $pdo->prepare("
                     UPDATE users 
-                    SET first_name = ?, last_name = ?, email = ?, is_active = ?
+                    SET first_name = ?, last_name = ?, email = ?, admin_role_id = ?, is_active = ?
                     WHERE id = ? AND user_type = 'admin'
                 ");
-                $stmt->execute([$first_name, $last_name, $email, $is_active, $admin_id]);
+                $stmt->execute([$first_name, $last_name, $email, $admin_role_id, $is_active, $admin_id]);
                 
                 echo json_encode(['success' => true, 'message' => 'Admin user updated successfully']);
                 exit;
@@ -109,12 +133,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// Get all admin users
+// Get all admin roles for dropdown
+$roles = $pdo->query("
+    SELECT id, role_name, role_slug 
+    FROM admin_roles 
+    WHERE is_active = 1 
+    ORDER BY 
+        CASE role_slug 
+            WHEN 'super_admin' THEN 1 
+            ELSE 2 
+        END,
+        role_name
+")->fetchAll();
+
+// Get all admin users with their roles
 $stmt = $pdo->query("
-    SELECT id, first_name, last_name, email, is_active, email_verified, created_at
-    FROM users 
-    WHERE user_type = 'admin'
-    ORDER BY created_at DESC
+    SELECT u.id, u.first_name, u.last_name, u.email, u.is_active, u.email_verified, u.created_at,
+           u.admin_role_id, ar.role_name, ar.role_slug
+    FROM users u
+    LEFT JOIN admin_roles ar ON u.admin_role_id = ar.id
+    WHERE u.user_type = 'admin'
+    ORDER BY u.created_at DESC
 ");
 $admins = $stmt->fetchAll();
 
@@ -478,6 +517,7 @@ $pageTitle = 'Admin Users Manager';
                                 <th>ID</th>
                                 <th>Name</th>
                                 <th>Email</th>
+                                <th>Role</th>
                                 <th>Status</th>
                                 <th>Email Verified</th>
                                 <th>Created</th>
@@ -490,6 +530,14 @@ $pageTitle = 'Admin Users Manager';
                                     <td>#<?= $a['id'] ?></td>
                                     <td><?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?></td>
                                     <td><?= htmlspecialchars($a['email']) ?></td>
+                                    <td>
+                                        <span class="badge badge-info" style="background: #dbeafe; color: #1e40af;">
+                                            <?php if ($a['role_slug'] === 'super_admin'): ?>
+                                                <i class="fas fa-crown" style="color: #dc2626;"></i>
+                                            <?php endif; ?>
+                                            <?= htmlspecialchars($a['role_name'] ?? 'No Role') ?>
+                                        </span>
+                                    </td>
                                     <td>
                                         <?php if ($a['is_active']): ?>
                                             <span class="badge badge-success">Active</span>
@@ -557,6 +605,21 @@ $pageTitle = 'Admin Users Manager';
                         <input type="email" name="email" id="email" class="form-control" required>
                     </div>
                     
+                    <div class="form-group">
+                        <label>Admin Role</label>
+                        <select name="admin_role_id" id="adminRole" class="form-control" required>
+                            <option value="">Select Role...</option>
+                            <?php foreach ($roles as $role): ?>
+                                <option value="<?= $role['id'] ?>">
+                                    <?= htmlspecialchars($role['role_name']) ?>
+                                    <?php if ($role['role_slug'] === 'super_admin'): ?>
+                                        👑
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
                     <div class="form-group" id="passwordGroup">
                         <label>Password</label>
                         <input type="password" name="password" id="password" class="form-control">
@@ -597,6 +660,7 @@ $pageTitle = 'Admin Users Manager';
             document.getElementById('firstName').value = admin.first_name;
             document.getElementById('lastName').value = admin.last_name;
             document.getElementById('email').value = admin.email;
+            document.getElementById('adminRole').value = admin.admin_role_id || '';
             document.getElementById('isActive').checked = admin.is_active == 1;
             document.getElementById('passwordGroup').style.display = 'none';
             document.getElementById('password').required = false;

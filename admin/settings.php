@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/session.php';
+require_once '../config/permissions.php';
 
 // Check if user is admin
 if (!isLoggedIn()) {
@@ -16,6 +17,12 @@ $user = $stmt->fetch();
 
 if (!$user || $user['user_type'] !== 'admin') {
     header('Location: ../index.php');
+    exit;
+}
+
+// Check permission - only super admin or those with edit_settings can access
+if (!hasAnyPermission($user_id, ['edit_settings', 'view_settings'])) {
+    header('Location: dashboard.php?error=access_denied');
     exit;
 }
 

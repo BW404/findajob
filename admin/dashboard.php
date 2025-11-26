@@ -503,6 +503,17 @@ $pageTitle = 'Admin Dashboard';
         
         <!-- Main Content -->
         <div class="admin-main">
+            <!-- Access Denied Message -->
+            <?php if (isset($_GET['error']) && $_GET['error'] === 'access_denied'): ?>
+                <div style="background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; margin: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 20px;"></i>
+                    <div>
+                        <strong>Access Denied</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">You don't have permission to access that page. Please contact your administrator if you need access.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
             <!-- Header -->
             <div class="admin-header">
                 <h2>Dashboard Overview</h2>

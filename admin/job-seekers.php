@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/session.php';
+require_once '../config/permissions.php';
 
 // Check admin authentication
 if (!isLoggedIn()) {
@@ -15,6 +16,12 @@ $user = $stmt->fetch();
 
 if (!$user || $user['user_type'] !== 'admin') {
     header('Location: ../index.php');
+    exit;
+}
+
+// Check permission
+if (!hasPermission($user_id, 'view_job_seekers')) {
+    header('Location: dashboard.php?error=access_denied');
     exit;
 }
 

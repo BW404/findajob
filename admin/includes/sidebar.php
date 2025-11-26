@@ -25,6 +25,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="fas fa-user-shield"></i>
                 <span>Admin Users</span>
             </a>
+            <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active' : '' ?>">
+                <i class="fas fa-user-tag"></i>
+                <span>Roles & Permissions</span>
+            </a>
             <a href="job-seekers.php" class="nav-link <?= $current_page == 'job-seekers.php' ? 'active' : '' ?>">
                 <i class="fas fa-users"></i>
                 <span>Job Seekers</span>
