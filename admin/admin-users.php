@@ -19,8 +19,8 @@ if (!$user || $user['user_type'] !== 'admin') {
     exit;
 }
 
-// Check permission
-if (!hasPermission($user_id, 'view_admin_users')) {
+// Only Super Admin can manage admin users and assign roles
+if (!isSuperAdmin($user_id)) {
     header('Location: dashboard.php?error=access_denied');
     exit;
 }

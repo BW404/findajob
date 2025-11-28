@@ -19,10 +19,16 @@ if (!$user || $user['user_type'] !== 'admin') {
     exit;
 }
 
-// Get admin info
-$stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
+// Get admin info including role
+$stmt = $pdo->prepare("
+    SELECT u.first_name, u.last_name, u.email, ar.role_name 
+    FROM users u 
+    LEFT JOIN admin_roles ar ON u.admin_role_id = ar.id 
+    WHERE u.id = ?
+");
 $stmt->execute([$user_id]);
 $admin = $stmt->fetch();
+$admin_role_display = $admin['role_name'] ?? 'Admin';
 
 // Initialize all variables with default values
 $totalJobSeekers = $totalEmployers = $totalAdmins = 0;
@@ -523,7 +529,7 @@ $pageTitle = 'Admin Dashboard';
                     </div>
                     <div class="admin-info">
                         <h4><?= htmlspecialchars($admin['first_name'] . ' ' . $admin['last_name']) ?></h4>
-                        <p>Super Admin</p>
+                        <p><?= htmlspecialchars($admin_role_display) ?></p>
                     </div>
                 </div>
             </div>

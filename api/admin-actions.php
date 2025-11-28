@@ -40,8 +40,8 @@ try {
             break;
 
         case 'create_role':
-            if (!hasPermission($user_id, 'manage_roles')) {
-                echo json_encode(['success' => false, 'message' => 'Permission denied']);
+            if (!isSuperAdmin($user_id)) {
+                echo json_encode(['success' => false, 'message' => 'Only Super Admin can manage roles']);
                 exit;
             }
 
@@ -83,8 +83,8 @@ try {
             break;
 
         case 'update_role':
-            if (!hasPermission($user_id, 'manage_roles')) {
-                echo json_encode(['success' => false, 'message' => 'Permission denied']);
+            if (!isSuperAdmin($user_id)) {
+                echo json_encode(['success' => false, 'message' => 'Only Super Admin can manage roles']);
                 exit;
             }
 
@@ -132,8 +132,8 @@ try {
             break;
 
         case 'delete_role':
-            if (!hasPermission($user_id, 'manage_roles')) {
-                echo json_encode(['success' => false, 'message' => 'Permission denied']);
+            if (!isSuperAdmin($user_id)) {
+                echo json_encode(['success' => false, 'message' => 'Only Super Admin can manage roles']);
                 exit;
             }
 
