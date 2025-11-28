@@ -95,6 +95,19 @@ function mapJobTypeToForm($dbJobType) {
 $current_jobs = 0;
 $is_premium = false;
 $job_limit = 5;
+$job_boost_credits = 0;
+
+// Get employer boost credits
+try {
+    $stmt = $pdo->prepare("SELECT job_boost_credits FROM employer_profiles WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $result = $stmt->fetch();
+    if ($result) {
+        $job_boost_credits = $result['job_boost_credits'] ?? 0;
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching boost credits: " . $e->getMessage());
+}
 
 // Double-check user is actually an employer in database
 try {
@@ -1362,9 +1375,18 @@ if (empty($user_display_name)) {
 
                     <!-- Job Boost Options -->
                     <div style="margin-bottom: 3rem;">
-                        <h4 style="color: var(--text-primary); margin-bottom: 1.5rem;">🚀 Boost Your Job Post</h4>
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">🚀 Boost Your Job Post</h4>
+                        <?php if ($job_boost_credits > 0): ?>
+                        <p style="color: var(--accent); font-weight: 600; margin-bottom: 1.5rem;">
+                            ✨ You have <?php echo $job_boost_credits; ?> boost credit<?php echo $job_boost_credits !== 1 ? 's' : ''; ?> available!
+                        </p>
+                        <?php else: ?>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Boost your job to appear at the top of search results for 30 days.
+                        </p>
+                        <?php endif; ?>
                         
-                        <!-- Free Boost -->
+                        <!-- Standard (Free) -->
                         <div class="boost-option selected" onclick="selectBoost('free')">
                             <div class="boost-badge">Free</div>
                             <input type="radio" name="boost_type" value="free" id="boost-free" checked style="display: none;">
@@ -1380,39 +1402,53 @@ if (empty($user_display_name)) {
                             </ul>
                         </div>
 
-                        <!-- Premium Boost -->
-                        <div class="boost-option" onclick="selectBoost('premium')">
-                            <div class="boost-badge">Popular</div>
-                            <input type="radio" name="boost_type" value="premium" id="boost-premium" style="display: none;">
+                        <?php if ($job_boost_credits > 0): ?>
+                        <!-- Use Boost Credit -->
+                        <div class="boost-option" onclick="selectBoost('credit')">
+                            <div class="boost-badge" style="background: #7c3aed;">Use Credit</div>
+                            <input type="radio" name="boost_type" value="credit" id="boost-credit" style="display: none;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                                <h5 style="margin: 0; color: var(--text-primary); font-size: 1.2rem;">⭐ Premium Boost</h5>
-                                <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">₦5,000</span>
+                                <h5 style="margin: 0; color: var(--text-primary); font-size: 1.2rem;">🚀 Boosted (Use 1 Credit)</h5>
+                                <span style="font-size: 1.5rem; font-weight: 700; color: #7c3aed;">1 CREDIT</span>
                             </div>
                             <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary);">
                                 <li>✅ Everything in Standard</li>
-                                <li>⭐ Featured in search results</li>
-                                <li>📊 Enhanced job analytics</li>
-                                <li>🎯 Priority placement</li>
-                                <li>⏰ 60-day visibility</li>
+                                <li>🚀 Featured at top of search results</li>
+                                <li>📊 Priority placement for 30 days</li>
+                                <li>⭐ "Boosted" badge on listing</li>
+                                <li>📈 Enhanced visibility</li>
                             </ul>
                         </div>
+                        <?php endif; ?>
 
-                        <!-- Super Boost -->
-                        <div class="boost-option" onclick="selectBoost('super')">
-                            <div class="boost-badge">Best Value</div>
-                            <input type="radio" name="boost_type" value="super" id="boost-super" style="display: none;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                                <h5 style="margin: 0; color: var(--text-primary); font-size: 1.2rem;">🚀 Super Boost</h5>
-                                <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">₦15,000</span>
+                        <!-- Buy Boost Options -->
+                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border-color);">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">💳 Buy Boost Credits</h5>
+                            <div style="display: grid; gap: 1rem;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 2px solid transparent; cursor: pointer;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='transparent'">
+                                    <div>
+                                        <strong>1 Job Boost</strong>
+                                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--text-secondary);">30-day premium placement</p>
+                                    </div>
+                                    <a href="../payment/plans.php?service=employer_job_booster_1" class="btn btn-sm btn-primary">₦5,000</a>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 2px solid var(--accent); position: relative;">
+                                    <span style="position: absolute; top: -10px; right: 10px; background: var(--accent); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">SAVE ₦5K</span>
+                                    <div>
+                                        <strong>3 Job Boosts</strong>
+                                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--text-secondary);">3 boosts for ₦10,000 (₦3,333 each)</p>
+                                    </div>
+                                    <a href="../payment/plans.php?service=employer_job_booster_3" class="btn btn-sm btn-primary">₦10,000</a>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 2px solid var(--primary); position: relative;">
+                                    <span style="position: absolute; top: -10px; right: 10px; background: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">SAVE ₦10K</span>
+                                    <div>
+                                        <strong>5 Job Boosts</strong>
+                                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--text-secondary);">5 boosts for ₦15,000 (₦3,000 each)</p>
+                                    </div>
+                                    <a href="../payment/plans.php?service=employer_job_booster_5" class="btn btn-sm btn-primary">₦15,000</a>
+                                </div>
                             </div>
-                            <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary);">
-                                <li>✅ Everything in Premium</li>
-                                <li>🚀 Top of search results</li>
-                                <li>📱 Social media promotion</li>
-                                <li>💼 Dedicated account manager</li>
-                                <li>📈 Advanced hiring tools</li>
-                                <li>⏰ 90-day visibility</li>
-                            </ul>
                         </div>
                     </div>
 

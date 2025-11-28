@@ -54,7 +54,7 @@ $base_path = $is_auth_page ? '../../' : '/findajob/';
                     <li><a href="<?php echo $base_path; ?>pages/jobs/browse.php">Browse Jobs</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/services/cv-creator.php">CV Builder</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/services/training.php">Career Training</a></li>
-                    <li><a href="<?php echo $base_path; ?>pages/user/subscription.php">Upgrade to Pro</a></li>
+                    <li><a href="<?php echo $base_path; ?>pages/payment/plans.php">Upgrade to Pro</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/auth/register-jobseeker.php">Create Account</a></li>
                 </ul>
             </div>
@@ -65,7 +65,7 @@ $base_path = $is_auth_page ? '../../' : '/findajob/';
                     <li><a href="<?php echo $base_path; ?>pages/company/post-job.php">Post a Job</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/company/resume-search.php">Search CVs</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/company/mini-site.php">Company Page</a></li>
-                    <li><a href="<?php echo $base_path; ?>pages/company/subscription.php">Employer Plans</a></li>
+                    <li><a href="<?php echo $base_path; ?>pages/payment/plans.php">Employer Plans</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/auth/register-employer.php">Create Account</a></li>
                 </ul>
             </div>

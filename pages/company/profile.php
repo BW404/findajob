@@ -12,6 +12,7 @@ $stmt = $pdo->prepare("
     SELECT u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone,
            u.email_verified, u.phone_verified, u.phone_verified_at,
            u.is_active, u.created_at, u.updated_at,
+           u.subscription_status, u.subscription_plan, u.subscription_type, u.subscription_start, u.subscription_end,
            ep.id as profile_id, ep.company_name, ep.description as company_description,
            ep.website, ep.industry, ep.company_size, ep.address,
            ep.state, ep.city,
@@ -24,6 +25,7 @@ $stmt = $pdo->prepare("
            ep.provider_nin_verified_at,
            ep.company_logo, ep.company_cac_number, ep.company_type,
            ep.company_cac_verified, ep.company_cac_verified_at,
+           ep.verification_boosted, ep.verification_boost_date, ep.job_boost_credits,
            u.profile_picture
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
@@ -210,6 +212,49 @@ $states = $stmt->fetchAll();
                         <?php endforeach; ?>
                     </ul>
                 </div>
+            <?php endif; ?>
+            
+            <?php 
+            $verificationBoosted = $user['verification_boosted'] ?? 0;
+            $ninVerified = $user['provider_nin_verified'] ?? 0;
+            $cacVerified = $user['company_cac_verified'] ?? 0;
+            ?>
+            
+            <?php if (!$ninVerified && !$verificationBoosted && !$cacVerified): ?>
+            <!-- Verification Booster Banner -->
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #1e40af; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #1e3a8a; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">✅</span>
+                            Get Verified Company Badge
+                        </h3>
+                        <p style="margin: 0; color: #1e40af; font-size: 0.875rem;">
+                            Show job seekers you're a verified employer. Add a verification badge to your company profile for ₦1,000.
+                        </p>
+                    </div>
+                    <div>
+                        <button onclick="initializePayment('employer_verification_booster', 1000, 'Verification Badge')" class="btn btn-primary" style="white-space: nowrap; background: #1e40af; border-color: #1e40af;">
+                            ✅ Get Verified (₦1,000)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php elseif ($verificationBoosted): ?>
+            <!-- Verified Badge Active -->
+            <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #059669; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 2rem;">✅</span>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 0.25rem 0; font-size: 1rem; color: #065f46; font-weight: 600;">
+                            Verified Company Badge Active
+                        </h3>
+                        <p style="margin: 0; color: #047857; font-size: 0.875rem;">
+                            Your company has a verified badge that appears on all your job postings and company profile.
+                        </p>
+                    </div>
+                </div>
+            </div>
             <?php endif; ?>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
@@ -623,6 +668,42 @@ $states = $stmt->fetchAll();
             } catch (error) {
                 console.error('Failed to load LGAs:', error);
             }
+        }
+        
+        // Payment initialization function
+        function initializePayment(serviceType, amount, description) {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            const formData = new FormData();
+            formData.append('action', 'initialize_payment');
+            formData.append('amount', amount);
+            formData.append('service_type', serviceType);
+            formData.append('description', description);
+            
+            fetch('/findajob/api/payment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data.payment_link) {
+                    // Redirect to Flutterwave payment page
+                    window.location.href = data.data.payment_link;
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to initialize payment'));
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Payment error:', error);
+                alert('Network error. Please try again.');
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
         }
         
         // Company Logo Upload Handler

@@ -14,6 +14,7 @@ $stmt = $pdo->prepare("
         u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
         u.email_verified, u.phone_verified, u.phone_verified_at,
         u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        u.subscription_status, u.subscription_plan, u.subscription_type, u.subscription_start, u.subscription_end,
         jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
         jsp.state_of_origin, jsp.lga_of_origin, jsp.city_of_birth, jsp.religion,
         jsp.current_state, jsp.current_city,
@@ -21,7 +22,7 @@ $stmt = $pdo->prepare("
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
         COALESCE(jsp.profile_picture, u.profile_picture) as profile_picture, 
         jsp.nin, jsp.nin_verified, jsp.nin_verified_at, jsp.bvn, jsp.verification_status,
-        jsp.subscription_type, jsp.subscription_expires,
+        jsp.verification_boosted, jsp.verification_boost_date, jsp.profile_boosted, jsp.profile_boost_until,
         jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
@@ -1065,6 +1066,78 @@ $profileCompletion = calculateProfileCompletion($user);
 
         <?php if (isset($error_message)): ?>
             <div class="alert error"><?php echo $error_message; ?></div>
+        <?php endif; ?>
+        
+        <!-- Boosters Info Banner -->
+        <?php 
+        $profileBoosted = $user['profile_boosted'] ?? 0;
+        $profileBoostUntil = $user['profile_boost_until'] ?? null;
+        $profileBoostActive = false;
+        if ($profileBoostUntil) {
+            $boostDate = new DateTime($profileBoostUntil);
+            $profileBoostActive = $boostDate > new DateTime();
+        }
+        
+        $verificationBoosted = $user['verification_boosted'] ?? 0;
+        ?>
+        
+        <?php if ($profileBoostActive): ?>
+        <!-- Active Profile Boost Banner -->
+        <div style="background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); border-left: 4px solid #7c3aed; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 2rem;">🚀</span>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.25rem 0; font-size: 1rem; color: #5b21b6; font-weight: 600;">
+                        Profile Boost Active
+                    </h3>
+                    <p style="margin: 0; color: #6b21a8; font-size: 0.875rem;">
+                        Your profile is featured and appears higher in employer searches until <?php echo date('M d, Y', strtotime($profileBoostUntil)); ?>.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php elseif ($profileCompletion >= 70): ?>
+        <!-- Profile Booster Available -->
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">🚀</span>
+                        Boost Your Profile Visibility
+                    </h3>
+                    <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
+                        Get featured placement and appear at the top of employer searches for 30 days. Only ₦500!
+                    </p>
+                </div>
+                <div>
+                    <button onclick="initializePayment('job_seeker_profile_booster', 500, 'Profile Booster (30 days)')" class="btn btn-primary" style="white-space: nowrap; background: #7c3aed; border-color: #7c3aed;">
+                        🚀 Boost for ₦500
+                    </button>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (!$user['nin_verified'] && !$verificationBoosted): ?>
+        <!-- Verification Booster Banner -->
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #1e40af; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #1e3a8a; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">✅</span>
+                        Get Verified Badge
+                    </h3>
+                    <p style="margin: 0; color: #1e40af; font-size: 0.875rem;">
+                        Show employers you're a verified candidate. Add a verification badge to your profile for ₦1,000.
+                    </p>
+                </div>
+                <div>
+                    <button onclick="initializePayment('job_seeker_verification_booster', 1000, 'Verification Badge')" class="btn btn-primary" style="white-space: nowrap; background: #1e40af; border-color: #1e40af;">
+                        ✅ Get Verified (₦1,000)
+                    </button>
+                </div>
+            </div>
+        </div>
         <?php endif; ?>
 
         <form method="POST" class="profile-sections">
@@ -2125,6 +2198,42 @@ $profileCompletion = calculateProfileCompletion($user);
             }
         }
 
+        // Payment initialization function
+        function initializePayment(serviceType, amount, description) {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            const formData = new FormData();
+            formData.append('action', 'initialize_payment');
+            formData.append('amount', amount);
+            formData.append('service_type', serviceType);
+            formData.append('description', description);
+            
+            fetch('/findajob/api/payment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data.payment_link) {
+                    // Redirect to Flutterwave payment page
+                    window.location.href = data.data.payment_link;
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to initialize payment'));
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Payment error:', error);
+                alert('Network error. Please try again.');
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
+        }
+        
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
         

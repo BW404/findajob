@@ -123,7 +123,7 @@ if (isLoggedIn()) {
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a href="<?php echo $is_auth_page ? '../user/profile.php' : '/findajob/pages/user/profile.php'; ?>">Settings</a></li>
-                                <li><a href="<?php echo $is_auth_page ? '../user/subscription.php' : '/findajob/pages/user/subscription.php'; ?>">Subscription</a></li>
+                                <li><a href="<?php echo $is_auth_page ? '../payment/plans.php' : '/findajob/pages/payment/plans.php'; ?>">Subscription</a></li>
                                 <li class="dropdown-divider"></li>
                                 <li><a href="<?php echo $is_auth_page ? 'logout.php' : '/findajob/pages/auth/logout.php'; ?>">Logout</a></li>
                             </ul>

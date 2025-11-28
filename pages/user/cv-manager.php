@@ -437,6 +437,24 @@ $page_title = 'CV Manager - FindAJob Nigeria';
             </div>
         </div>
         
+        <!-- Professional CV Service Banner -->
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">👑</span>
+                        Get a Professionally Written CV
+                    </h3>
+                    <p style="margin: 0; color: #78350f; font-size: 0.95rem;">
+                        Let our expert CV writers create a compelling, ATS-optimized resume that gets you noticed. 1-on-1 consultation, industry-specific optimization, and cover letter included. Starting from ₦15,500.
+                    </p>
+                </div>
+                <a href="../services/cv-creator.php#professional" class="btn btn-primary" style="white-space: nowrap; background: #f59e0b; border-color: #f59e0b;">
+                    💼 Learn More
+                </a>
+            </div>
+        </div>
+        
         <!-- Upload Section -->
         <?php if (count($user_cvs) < 5): ?>
         <div class="upload-section">

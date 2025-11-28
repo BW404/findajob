@@ -97,13 +97,21 @@ try {
         </div>
         
         <!-- Finance -->
-        <?php if (hasPermission(getCurrentUserId(), 'view_transactions')): ?>
+        <?php if (hasPermission(getCurrentUserId(), 'view_transactions') || isSuperAdmin(getCurrentUserId())): ?>
         <div class="nav-section">
             <div class="nav-section-title">Finance</div>
+            <?php if (hasPermission(getCurrentUserId(), 'view_transactions')): ?>
             <a href="transactions.php" class="nav-link <?= $current_page == 'transactions.php' ? 'active' : '' ?>">
                 <i class="fas fa-money-bill-wave"></i>
                 <span>Transactions</span>
             </a>
+            <?php endif; ?>
+            <?php if (isSuperAdmin(getCurrentUserId())): ?>
+            <a href="payment-settings.php" class="nav-link <?= $current_page == 'payment-settings.php' ? 'active' : '' ?>">
+                <i class="fas fa-credit-card"></i>
+                <span>Payment Settings</span>
+            </a>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
         

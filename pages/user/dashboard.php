@@ -15,13 +15,14 @@ $stmt = $pdo->prepare("
     SELECT 
         u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
         u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        u.subscription_status, u.subscription_plan, u.subscription_type, u.subscription_start, u.subscription_end,
         jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
         jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
         jsp.education_level, jsp.years_of_experience, jsp.job_status,
         jsp.salary_expectation_min, jsp.salary_expectation_max, jsp.skills, jsp.bio,
         jsp.profile_picture, jsp.nin, jsp.nin_verified, jsp.nin_verified_at, 
         jsp.bvn, jsp.verification_status,
-        jsp.subscription_type, jsp.subscription_expires,
+        jsp.verification_boosted, jsp.verification_boost_date, jsp.profile_boosted, jsp.profile_boost_until,
         jsp.created_at as profile_created_at, jsp.updated_at as profile_updated_at
     FROM users u 
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
@@ -714,6 +715,98 @@ try {
                 </div>
             <?php endif; ?>
 
+        <!-- Subscription Status Banner -->
+        <?php 
+        $subscriptionStatus = $user['subscription_status'] ?? 'free';
+        $subscriptionPlan = $user['subscription_plan'] ?? 'basic';
+        $subscriptionEnd = $user['subscription_end'] ?? null;
+        $isPro = $subscriptionPlan === 'pro' && $subscriptionStatus === 'active';
+        $isExpiringSoon = false;
+        $daysUntilExpiry = 0;
+        
+        if ($subscriptionEnd) {
+            $now = new DateTime();
+            $expiryDate = new DateTime($subscriptionEnd);
+            $daysUntilExpiry = $now->diff($expiryDate)->days;
+            $isExpiringSoon = $daysUntilExpiry <= 7 && $expiryDate > $now;
+        }
+        
+        $profileBoosted = $user['profile_boosted'] ?? 0;
+        $profileBoostUntil = $user['profile_boost_until'] ?? null;
+        $profileBoostActive = false;
+        if ($profileBoostUntil) {
+            $boostDate = new DateTime($profileBoostUntil);
+            $profileBoostActive = $boostDate > new DateTime();
+        }
+        ?>
+        
+        <?php if (!$isPro): ?>
+        <!-- Upgrade to Pro Banner -->
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">👑</span>
+                        Upgrade to Pro Plan
+                    </h3>
+                    <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
+                        Get priority job alerts, featured profile, unlimited CV downloads, and AI-powered recommendations. Starting from ₦6,000/month.
+                    </p>
+                </div>
+                <div>
+                    <a href="../payment/plans.php" class="btn btn-primary" style="white-space: nowrap; background: #f59e0b; border-color: #f59e0b;">
+                        🚀 View Plans
+                    </a>
+                </div>
+            </div>
+        </div>
+        <?php elseif ($isExpiringSoon): ?>
+        <!-- Expiring Soon Warning -->
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #dc2626; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">⚠️</span>
+                        Your Pro Plan Expires in <?php echo $daysUntilExpiry; ?> Days
+                    </h3>
+                    <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
+                        Renew now to continue enjoying priority job alerts, featured profile, and unlimited CV downloads.
+                    </p>
+                </div>
+                <div>
+                    <a href="../payment/plans.php" class="btn btn-primary" style="white-space: nowrap; background: #dc2626; border-color: #dc2626;">
+                        🔄 Renew Now
+                    </a>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
+        <!-- Active Pro Status -->
+        <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #059669; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #065f46; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">👑</span>
+                        Pro Plan Active <?php if ($profileBoostActive): ?><span style="margin-left: 0.5rem;">🚀 Profile Boosted</span><?php endif; ?>
+                    </h3>
+                    <p style="margin: 0; color: #047857; font-size: 0.875rem;">
+                        Your subscription <?php echo $subscriptionEnd ? 'expires on ' . date('M d, Y', strtotime($subscriptionEnd)) : 'is active'; ?>.
+                        <?php if ($profileBoostActive): ?>
+                        Profile boost active until <?php echo date('M d, Y', strtotime($profileBoostUntil)); ?>.
+                        <?php endif; ?>
+                    </p>
+                </div>
+                <?php if (!$profileBoostActive): ?>
+                <div>
+                    <a href="../payment/plans.php#boosters" class="btn btn-primary" style="white-space: nowrap; background: #7c3aed; border-color: #7c3aed;">
+                        🚀 Boost Profile (₦500)
+                    </a>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Job Status Banner -->
         <?php
         $jobStatus = $user['job_status'] ?? 'looking';
@@ -938,7 +1031,7 @@ try {
                                 </div>
                             </a>
                             
-                            <a href="subscription.php" class="action-btn upgrade">
+                            <a href="../payment/plans.php" class="action-btn upgrade">
                                 <div class="action-icon">⭐</div>
                                 <div class="action-content">
                                     <div class="action-title">Upgrade to Pro</div>

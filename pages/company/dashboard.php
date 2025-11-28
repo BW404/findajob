@@ -9,7 +9,10 @@ $userId = getCurrentUserId();
 
 // Get employer profile data
 $stmt = $pdo->prepare("
-    SELECT u.*, ep.* 
+    SELECT u.*, 
+           u.subscription_status, u.subscription_plan, u.subscription_type, u.subscription_start, u.subscription_end,
+           ep.*,
+           ep.verification_boosted, ep.verification_boost_date, ep.job_boost_credits
     FROM users u 
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
     WHERE u.id = ?
@@ -120,6 +123,118 @@ try {
                 </div>
             </div>
             
+            <!-- Subscription & Credits Banner -->
+            <?php 
+            $subscriptionStatus = $user['subscription_status'] ?? 'free';
+            $subscriptionPlan = $user['subscription_plan'] ?? 'basic';
+            $subscriptionEnd = $user['subscription_end'] ?? null;
+            $isPro = $subscriptionPlan === 'pro' && $subscriptionStatus === 'active';
+            $jobBoostCredits = $user['job_boost_credits'] ?? 0;
+            $isExpiringSoon = false;
+            $daysUntilExpiry = 0;
+            
+            if ($subscriptionEnd) {
+                $now = new DateTime();
+                $expiryDate = new DateTime($subscriptionEnd);
+                $daysUntilExpiry = $now->diff($expiryDate)->days;
+                $isExpiringSoon = $daysUntilExpiry <= 7 && $expiryDate > $now;
+            }
+            ?>
+            
+            <?php if (!$isPro): ?>
+            <!-- Upgrade to Pro Banner -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">👑</span>
+                            Upgrade to Pro Plan
+                        </h3>
+                        <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
+                            Get unlimited job posts, priority placement, advanced analytics, and CV search. Starting from ₦30,000/month.
+                        </p>
+                    </div>
+                    <div>
+                        <a href="../payment/plans.php" class="btn btn-primary" style="white-space: nowrap; background: #f59e0b; border-color: #f59e0b;">
+                            🚀 View Plans
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php elseif ($isExpiringSoon): ?>
+            <!-- Expiring Soon Warning -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #dc2626; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">⚠️</span>
+                            Your Pro Plan Expires in <?php echo $daysUntilExpiry; ?> Days
+                        </h3>
+                        <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
+                            Renew now to continue enjoying unlimited job posts and premium features.
+                        </p>
+                    </div>
+                    <div>
+                        <a href="../payment/plans.php" class="btn btn-primary" style="white-space: nowrap; background: #dc2626; border-color: #dc2626;">
+                            🔄 Renew Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <!-- Active Pro Status with Boost Credits -->
+            <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #059669; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #065f46; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">👑</span>
+                            Pro Plan Active
+                            <?php if ($jobBoostCredits > 0): ?>
+                            <span style="margin-left: 1rem; padding: 0.25rem 0.75rem; background: #7c3aed; color: white; border-radius: 12px; font-size: 0.875rem;">
+                                🚀 <?php echo $jobBoostCredits; ?> Boost Credit<?php echo $jobBoostCredits !== 1 ? 's' : ''; ?>
+                            </span>
+                            <?php endif; ?>
+                        </h3>
+                        <p style="margin: 0; color: #047857; font-size: 0.875rem;">
+                            Your subscription <?php echo $subscriptionEnd ? 'expires on ' . date('M d, Y', strtotime($subscriptionEnd)) : 'is active'; ?>.
+                            <?php if ($jobBoostCredits > 0): ?>
+                            You can boost <?php echo $jobBoostCredits; ?> job<?php echo $jobBoostCredits !== 1 ? 's' : ''; ?> for 30 days premium placement.
+                            <?php else: ?>
+                            Get job booster credits to feature your listings at the top.
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                    <div>
+                        <a href="../payment/plans.php#boosters" class="btn btn-primary" style="white-space: nowrap; background: #7c3aed; border-color: #7c3aed;">
+                            🚀 Buy Boost Credits
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Job Boost Credits (for Free Users too) -->
+            <?php if (!$isPro && $jobBoostCredits > 0): ?>
+            <div style="background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); border-left: 4px solid #7c3aed; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #5b21b6; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">🚀</span>
+                            You Have <?php echo $jobBoostCredits; ?> Job Boost Credit<?php echo $jobBoostCredits !== 1 ? 's' : ''; ?>
+                        </h3>
+                        <p style="margin: 0; color: #6b21a8; font-size: 0.875rem;">
+                            Boost your job posts to appear at the top of search results for 30 days. Use credits when posting or editing jobs.
+                        </p>
+                    </div>
+                    <div>
+                        <a href="post-job.php" class="btn btn-primary" style="white-space: nowrap; background: #7c3aed; border-color: #7c3aed;">
+                            📝 Use Credits
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Alert Messages -->
             <?php if (!$user['email_verified']): ?>
                 <div class="alert alert-warning" style="margin-bottom: 2rem;">
