@@ -284,6 +284,36 @@ try {
             echo json_encode(['success' => true, 'stats' => $stats]);
             break;
 
+        case 'get_report':
+            // Get detailed report information
+            $report_id = (int)($_GET['report_id'] ?? 0);
+            
+            $stmt = $pdo->prepare("
+                SELECT 
+                    r.*,
+                    CONCAT(u.first_name, ' ', u.last_name) as reporter_name,
+                    u.email as reporter_email,
+                    CONCAT(admin.first_name, ' ', admin.last_name) as reviewer_name,
+                    CASE 
+                        WHEN r.reported_entity_type = 'job' THEN (SELECT title FROM jobs WHERE id = r.reported_entity_id)
+                        WHEN r.reported_entity_type = 'user' OR r.reported_entity_type = 'company' THEN (SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = r.reported_entity_id)
+                        ELSE NULL
+                    END as entity_name
+                FROM reports r
+                LEFT JOIN users u ON r.reporter_id = u.id
+                LEFT JOIN users admin ON r.reviewed_by = admin.id
+                WHERE r.id = ?
+            ");
+            $stmt->execute([$report_id]);
+            $report = $stmt->fetch();
+            
+            if ($report) {
+                echo json_encode(['success' => true, 'report' => $report]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Report not found']);
+            }
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
             break;

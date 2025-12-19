@@ -703,6 +703,24 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
             animation: heartbeat 0.3s ease;
         }
 
+        .report-job-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            transition: all 0.2s ease;
+            line-height: 1;
+            color: #dc2626;
+            opacity: 0.8;
+        }
+
+        .report-job-btn:hover {
+            opacity: 1;
+            transform: scale(1.15);
+            color: #b91c1c;
+        }
+
         @keyframes heartbeat {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.3); }
@@ -1154,6 +1172,8 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
         });
     </script>
 
+    <!-- Report Modal -->
+    <?php include '../../includes/report-modal.php'; ?>
 
 </body>
 </html>

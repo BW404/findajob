@@ -290,6 +290,14 @@ class JobSearch {
                         <button class="save-job-btn ${savedClass}" data-job-id="${job.id}" title="${isSaved ? 'Unsave job' : 'Save job'}" onclick="event.stopPropagation();">
                             <span class="save-icon">${saveIcon}</span>
                         </button>
+                        <button class="report-job-btn report-trigger" 
+                                data-entity-type="job" 
+                                data-entity-id="${job.id}" 
+                                data-entity-name="${this.escapeHtml(job.title)}" 
+                                title="Report this job" 
+                                onclick="event.stopPropagation();">
+                            <span class="report-icon">⚠️</span>
+                        </button>
                     </div>
                 </div>
                 

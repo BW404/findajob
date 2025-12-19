@@ -30,6 +30,9 @@ $query = "SELECT DISTINCT
           u.last_name,
           u.email,
           u.phone,
+          u.subscription_status,
+          u.subscription_plan,
+          u.subscription_end,
           jsp.skills,
           jsp.years_of_experience,
           jsp.education_level,
@@ -37,7 +40,14 @@ $query = "SELECT DISTINCT
           jsp.current_state,
           jsp.bio,
           jsp.nin_verified,
-          jsp.profile_picture
+          jsp.profile_picture,
+          jsp.profile_boosted,
+          jsp.profile_boost_until,
+          CASE 
+            WHEN u.subscription_status = 'active' AND u.subscription_plan = 'pro' AND (u.subscription_end IS NULL OR u.subscription_end > NOW()) THEN 1
+            WHEN jsp.profile_boosted = 1 AND (jsp.profile_boost_until IS NULL OR jsp.profile_boost_until > NOW()) THEN 1
+            ELSE 0
+          END as is_premium
           FROM cvs cv
           INNER JOIN users u ON cv.user_id = u.id
           LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
@@ -98,19 +108,19 @@ if (!empty($education_filter)) {
     $params[] = $education_filter;
 }
 
-// Sorting
+// Sorting - Always prioritize premium users first
 switch ($sort_by) {
     case 'oldest':
-        $query .= " ORDER BY cv.created_at ASC";
+        $query .= " ORDER BY is_premium DESC, cv.created_at ASC";
         break;
     case 'experience_high':
-        $query .= " ORDER BY jsp.years_of_experience DESC";
+        $query .= " ORDER BY is_premium DESC, jsp.years_of_experience DESC";
         break;
     case 'experience_low':
-        $query .= " ORDER BY jsp.years_of_experience ASC";
+        $query .= " ORDER BY is_premium DESC, jsp.years_of_experience ASC";
         break;
     default: // newest
-        $query .= " ORDER BY cv.created_at DESC";
+        $query .= " ORDER BY is_premium DESC, cv.created_at DESC";
 }
 
 // Get total count for pagination
@@ -320,6 +330,35 @@ $page_title = 'Search CVs - FindAJob Nigeria';
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             flex-shrink: 0;
+        }
+
+        .boosted-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.85;
+            }
+        }
+
+        .boosted-icon {
+            font-size: 0.85rem;
         }
 
         .cv-meta {
@@ -597,6 +636,12 @@ $page_title = 'Search CVs - FindAJob Nigeria';
                                             <?php if ($cv['nin_verified']): ?>
                                                 <span class="verified-badge" title="NIN Verified">✓</span>
                                             <?php endif; ?>
+                                            <?php if ($cv['is_premium']): ?>
+                                                <span class="boosted-badge" title="Premium Job Seeker - Boosted Profile">
+                                                    <i class="fas fa-rocket boosted-icon"></i>
+                                                    Boosted
+                                                </span>
+                                            <?php endif; ?>
                                         </h3>
                                         <?php if ($cv['cv_title']): ?>
                                             <div style="color: #6b7280; font-size: 1rem; margin-bottom: 0.5rem;">
@@ -665,6 +710,13 @@ $page_title = 'Search CVs - FindAJob Nigeria';
                                 <a href="mailto:<?php echo htmlspecialchars($cv['email']); ?>" class="btn btn-outline">
                                     <i class="fas fa-envelope"></i> Contact
                                 </a>
+                                <button class="btn btn-outline report-trigger" 
+                                        data-entity-type="user" 
+                                        data-entity-id="<?php echo $cv['user_id']; ?>" 
+                                        data-entity-name="<?php echo htmlspecialchars($cv['first_name'] . ' ' . $cv['last_name']); ?>"
+                                        style="color: #dc2626; border-color: #dc2626;">
+                                    <i class="fas fa-flag"></i> Report
+                                </button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -696,6 +748,9 @@ $page_title = 'Search CVs - FindAJob Nigeria';
             </main>
         </div>
     </div>
+
+    <!-- Report Modal -->
+    <?php include '../../includes/report-modal.php'; ?>
 
     <?php include '../../includes/footer.php'; ?>
 </body>

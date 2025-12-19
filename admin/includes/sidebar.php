@@ -30,6 +30,17 @@ try {
     error_log("Sidebar role fetch error: " . $e->getMessage());
 }
 ?>
+<style>
+.badge-count {
+    background: #dc2626;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: auto;
+}
+</style>
 <div class="admin-sidebar">
     <div class="sidebar-header">
         <h1><i class="fas fa-shield-alt"></i> FindAJob Admin</h1>
@@ -107,6 +118,28 @@ try {
             <?php endif; ?>
         </div>
         
+        <!-- Moderation -->
+        <div class="nav-section">
+            <div class="nav-section-title">Moderation</div>
+            <a href="reports.php" class="nav-link <?= $current_page == 'reports.php' ? 'active' : '' ?>">
+                <i class="fas fa-flag"></i>
+                <span>User Reports</span>
+                <?php
+                // Get pending reports count
+                try {
+                    global $pdo;
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'");
+                    $pending_reports = $stmt->fetchColumn();
+                    if ($pending_reports > 0) {
+                        echo '<span class="badge-count">' . $pending_reports . '</span>';
+                    }
+                } catch (Exception $e) {
+                    // Silently fail
+                }
+                ?>
+            </a>
+        </div>
+        
         <!-- Finance -->
         <?php if (hasPermission(getCurrentUserId(), 'view_transactions')): ?>
         <div class="nav-section">
@@ -141,9 +174,9 @@ try {
         <?php if (hasPermission(getCurrentUserId(), 'view_reports')): ?>
         <div class="nav-section">
             <div class="nav-section-title">Analytics</div>
-            <a href="reports.php" class="nav-link <?= $current_page == 'reports.php' ? 'active' : '' ?>">
+            <a href="analytics.php" class="nav-link <?= $current_page == 'analytics.php' ? 'active' : '' ?>">
                 <i class="fas fa-chart-bar"></i>
-                <span>Reports</span>
+                <span>Analytics</span>
             </a>
         </div>
         <?php endif; ?>

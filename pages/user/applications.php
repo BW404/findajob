@@ -623,6 +623,14 @@ foreach ($statResults as $stat) {
                                 <a href="../jobs/details.php?id=<?php echo $app['job_id']; ?>" class="btn btn-outline btn-sm">
                                     <i class="fas fa-eye"></i> View Job
                                 </a>
+                                <button class="btn btn-outline btn-sm report-trigger" 
+                                        data-entity-type="job" 
+                                        data-entity-id="<?php echo $app['job_id']; ?>" 
+                                        data-entity-name="<?php echo htmlspecialchars($app['job_title']); ?>" 
+                                        title="Report this job"
+                                        style="color: #dc2626; border-color: #dc2626;">
+                                    <i class="fas fa-flag"></i>
+                                </button>
                             </div>
                         </div>
                     </div>

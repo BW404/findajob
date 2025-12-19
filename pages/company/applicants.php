@@ -321,6 +321,14 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                 </a>
                                             <?php endif; ?>
                                             
+                                            <button class="btn btn-outline btn-sm report-trigger" 
+                                                    data-entity-type="application" 
+                                                    data-entity-id="<?php echo $application['id']; ?>" 
+                                                    data-entity-name="Application by <?php echo htmlspecialchars($application['applicant_name']); ?>"
+                                                    style="color: #dc2626; border-color: #dc2626;">
+                                                <i class="fas fa-flag"></i> Report Application
+                                            </button>
+                                            
                                             <?php if ($isPro): ?>
                                                 <a href="send-private-offer.php?job_seeker_id=<?php echo $application['job_seeker_id']; ?>" 
                                                    class="btn btn-success btn-sm">
@@ -425,5 +433,8 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
             transition: all 0.2s ease;
         }
     </style>
+
+    <!-- Report Modal -->
+    <?php include '../../includes/report-modal.php'; ?>
 </body>
 </html>

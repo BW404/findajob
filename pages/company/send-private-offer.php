@@ -424,8 +424,11 @@ $categories = [
                                     <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
                                         ${user.first_name.charAt(0).toUpperCase()}
                                     </div>
-                                    <div>
-                                        <strong>${user.first_name} ${user.last_name}</strong>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <strong>${user.first_name} ${user.last_name}</strong>
+                                            ${user.is_premium ? '<span style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase;">⚡ BOOSTED</span>' : ''}
+                                        </div>
                                         <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">${user.email}</p>
                                     </div>
                                 </div>

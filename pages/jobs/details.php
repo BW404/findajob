@@ -456,12 +456,34 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                             <?php endif; // end if hasApplied ?>
                         </div>
                     </div>
+                    
+                    <!-- Report Button -->
+                    <?php if (isLoggedIn()): ?>
+                    <div class="card" style="padding:1rem; border-radius:10px; background:var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-top:1rem;">
+                        <button class="btn btn-outline btn-block report-trigger" 
+                                data-entity-type="job" 
+                                data-entity-id="<?php echo $jobId; ?>" 
+                                data-entity-name="<?php echo htmlspecialchars($job['title']); ?>" 
+                                style="width:100%; text-align:center; padding:0.75rem 1rem; font-size:0.9rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; border:2px solid #dc2626; background:white; color:#dc2626; border-radius:8px; transition:all 0.3s;">
+                            <i class="fas fa-flag"></i>
+                            Report this Job
+                        </button>
+                        <p style="margin:0.75rem 0 0; font-size:0.8rem; color:var(--text-secondary); text-align:center; line-height:1.4;">
+                            Report inappropriate content, scams, or misleading information
+                        </p>
+                    </div>
+                    <?php endif; ?>
                 </aside>
             </div>
         </main>
     </div>
 
     <?php include '../../includes/footer.php'; ?>
+    
+    <!-- Report Modal -->
+    <?php if (isLoggedIn()): ?>
+        <?php include '../../includes/report-modal.php'; ?>
+    <?php endif; ?>
 
     <!-- Bottom Navigation for Mobile (PWA style) -->
     <nav class="app-bottom-nav">

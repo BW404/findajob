@@ -262,11 +262,21 @@ function searchJobSeekers($query, $limit) {
             u.first_name,
             u.last_name,
             u.email,
+            u.subscription_status,
+            u.subscription_plan,
+            u.subscription_end,
             jsp.profile_picture,
             jsp.years_of_experience,
             jsp.skills,
             jsp.education_level,
-            jsp.job_status
+            jsp.job_status,
+            jsp.profile_boosted,
+            jsp.profile_boost_until,
+            CASE 
+                WHEN u.subscription_status = 'active' AND u.subscription_plan = 'pro' AND (u.subscription_end IS NULL OR u.subscription_end > NOW()) THEN 1
+                WHEN jsp.profile_boosted = 1 AND (jsp.profile_boost_until IS NULL OR jsp.profile_boost_until > NOW()) THEN 1
+                ELSE 0
+            END as is_premium
         FROM users u
         LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
         WHERE u.user_type = 'job_seeker' 
@@ -278,6 +288,7 @@ function searchJobSeekers($query, $limit) {
             OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?
         )
         ORDER BY 
+            is_premium DESC,
             CASE 
                 WHEN u.first_name LIKE ? THEN 1
                 WHEN u.last_name LIKE ? THEN 2
