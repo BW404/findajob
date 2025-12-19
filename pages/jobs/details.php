@@ -40,6 +40,12 @@ if (file_exists($constPath)) {
     require_once $constPath;
 }
 
+// Pro features for application limits
+$proFeaturesPath = __DIR__ . '/../../includes/pro-features.php';
+if (file_exists($proFeaturesPath)) {
+    require_once $proFeaturesPath;
+}
+
 // Quick DB sanity when debugging — produce visible output
 if (isset($_GET['debug']) && $_GET['debug']) {
     echo "<div style='padding:12px;background:#fff4e5;border:1px solid #ffd59e;color:#3a2b00;font-family:system-ui,Segoe UI,Arial;margin:12px;'>";
@@ -108,13 +114,42 @@ try {
 
 // Check if current user has already applied (if logged in)
 $hasApplied = false;
+$dailyLimitReached = false;
+$applicationsToday = 0;
+$dailyLimit = 10; // Default for Basic users
+
 if (isLoggedIn() && isJobSeeker()) {
+    $currentUserId = getCurrentUserId();
+    
     try {
         $checkApplied = $pdo->prepare("SELECT id FROM job_applications WHERE job_id = ? AND job_seeker_id = ? LIMIT 1");
-        $checkApplied->execute([$jobId, getCurrentUserId()]);
+        $checkApplied->execute([$jobId, $currentUserId]);
         $hasApplied = $checkApplied->fetch() ? true : false;
     } catch (Exception $e) {
         // Ignore if table doesn't exist
+    }
+    
+    // Check Pro status and daily application limit
+    if (function_exists('getUserSubscription')) {
+        $subscription = getUserSubscription($pdo, $currentUserId);
+        $isPro = $subscription['is_pro'];
+        $limits = getFeatureLimits($isPro);
+        $dailyLimit = $limits['applications_per_day'];
+        
+        if (!$isPro) {
+            // Check today's applications
+            $today_start = date('Y-m-d 00:00:00');
+            $today_end = date('Y-m-d 23:59:59');
+            $todayStmt = $pdo->prepare("
+                SELECT COUNT(*) 
+                FROM job_applications 
+                WHERE job_seeker_id = ? 
+                AND applied_at BETWEEN ? AND ?
+            ");
+            $todayStmt->execute([$currentUserId, $today_start, $today_end]);
+            $applicationsToday = $todayStmt->fetchColumn();
+            $dailyLimitReached = $applicationsToday >= $dailyLimit;
+        }
     }
 }
 
@@ -286,7 +321,25 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                                 </div>
                             <?php endif; ?>
                             
-                            <?php if ($hasApplied): ?>
+                            <?php if ($dailyLimitReached && !$hasApplied): ?>
+                                <!-- Daily Limit Reached -->
+                                <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-lock"></i>
+                                        <strong>Daily Application Limit Reached</strong>
+                                    </div>
+                                    <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; opacity: 0.95;">
+                                        You've used all <?php echo $dailyLimit; ?> applications today on the Basic plan.
+                                    </p>
+                                    <a href="/findajob/pages/payment/plans.php" class="btn" style="background: white; color: #dc2626; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; text-decoration: none; display: inline-block; font-size: 0.9rem;">
+                                        <i class="fas fa-crown"></i> Upgrade to Pro
+                                    </a>
+                                </div>
+                                <button class="btn btn-secondary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; cursor:not-allowed; opacity: 0.6;" disabled>
+                                    🔒 Apply (Limit Reached)
+                                </button>
+                                
+                            <?php elseif ($hasApplied): ?>
                                 <!-- Already Applied -->
                                 <button class="btn btn-secondary btn-block" style="text-align:center; padding:0.85rem 1rem; font-weight:600; cursor:not-allowed;" disabled>
                                     ✓ Already Applied

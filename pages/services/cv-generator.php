@@ -2,10 +2,16 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/pro-features.php';
 
 requireJobSeeker();
 
 $userId = getCurrentUserId();
+
+// Get user subscription
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
 
 // Get user profile data for pre-filling
 $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -455,6 +461,21 @@ if ($editingCvId) {
             <h1><i class="fas fa-magic"></i> AI-Powered CV Generator</h1>
             <p style="color: #6b7280;">Create a professional CV with AI assistance in minutes</p>
         </div>
+
+        <!-- Pro Feature Info -->
+        <?php if (!$isPro): ?>
+            <div style="background: #f3f4f6; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #6b7280; display: flex; align-items: center; gap: 1rem;">
+                <i class="fas fa-info-circle" style="color: #6b7280; font-size: 1.25rem;"></i>
+                <div style="flex: 1;">
+                    <p style="margin: 0; color: #4b5563; font-weight: 600;">
+                        ✨ Free AI CV Generator - Available to all users
+                    </p>
+                    <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.9rem;">
+                        Create professional CVs with AI assistance. For expert-written CVs, check out our <a href="premium-cv.php" style="color: #dc2626; font-weight: 600;">Premium CV Service</a>
+                    </p>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <div class="generator-layout">
             <!-- Progress Sidebar -->

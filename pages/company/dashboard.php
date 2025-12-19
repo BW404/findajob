@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/database.php';
 require_once '../../config/session.php';
+require_once '../../config/maintenance-check.php';
 require_once '../../config/constants.php';
 
 requireEmployer();
@@ -19,6 +20,10 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
 
 // Get job posting count (with error handling)
 $jobStats = ['job_count' => 0, 'applications_count' => 0, 'views_count' => 0];
@@ -79,45 +84,22 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="has-bottom-nav">
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
-                    <a href="dashboard.php" class="nav-link" style="text-decoration: none; color: var(--primary); font-weight: 600;">Dashboard</a>
-                    <a href="post-job.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Post Job</a>
-                    <a href="active-jobs.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Active Jobs</a>
-                    <a href="all-applications.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Applications</a>
-                    <a href="applicants.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Applicants</a>
-                    <a href="analytics.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Analytics</a>
-                    <a href="profile.php" class="nav-link" style="text-decoration: none; color: var(--text-primary); font-weight: 500;">Profile</a>
-                    <span style="margin-left: 1rem;">Welcome, <?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name']); ?>!</span>
-                    <?php if ($_SERVER['SERVER_NAME'] === 'localhost'): ?>
-                        <a href="/findajob/temp_mail.php" target="_blank" class="btn btn-secondary" style="margin-left: 1rem;">📧 Dev Emails</a>
-                    <?php endif; ?>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include '../../includes/employer-header.php'; ?>
 
     <main class="container">
-        <div style="padding: 2rem 0;">
+        <div style="padding: 0;">
             <!-- Dashboard Header -->
-            <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <div>
-                    <h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: var(--text-primary);">
-                        <?php echo htmlspecialchars($user['company_name'] ?? 'Employer'); ?> Dashboard
+                    <h1 style="margin: 0 0 0.25rem 0; color: var(--text-primary);">
+                        🏢 <?php echo htmlspecialchars($user['company_name'] ?? 'Employer'); ?> Dashboard
                     </h1>
-                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 1.1rem;">
-                        Welcome back, <?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name']); ?>! 
-                        Manage your jobs and find the perfect candidates.
+                    <p style="margin: 0; color: var(--text-secondary);">
+                        Welcome back, <?php echo htmlspecialchars($user['provider_first_name'] ?? $user['first_name']); ?>! Manage your jobs and find the perfect candidates.
                     </p>
                 </div>
                 <div class="dashboard-actions">
-                    <a href="post-job.php" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 1.5rem;">
+                    <a href="post-job.php" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Post New Job
                     </a>
                 </div>
@@ -485,6 +467,59 @@ try {
                     </div>
                 </div>
                 </a>
+                
+                <a href="transactions.php" style="text-decoration: none; color: inherit;">
+                <div class="stat-card" style="
+                    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+                    color: white; 
+                    padding: 2.5rem 2rem; 
+                    border-radius: 16px; 
+                    text-align: left;
+                    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.15);
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(124, 58, 237, 0.25)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(124, 58, 237, 0.15)';">
+                
+                    <div style="position: absolute; top: -20px; right: -20px; opacity: 0.1; font-size: 6rem;">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div style="position: relative; z-index: 2;">
+                        <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                            <div style="
+                                width: 48px; height: 48px; 
+                                background: rgba(255, 255, 255, 0.2); 
+                                border-radius: 12px; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center;
+                                margin-right: 1rem;
+                            ">
+                                <i class="fas fa-receipt" style="font-size: 1.3rem;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9rem; opacity: 0.9; font-weight: 500;">My Transactions</div>
+                                <div style="font-size: 1.8rem; font-weight: 700; line-height: 1;">
+                                    <?php 
+                                    try {
+                                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ?");
+                                        $stmt->execute([$userId]);
+                                        echo $stmt->fetchColumn();
+                                    } catch (PDOException $e) {
+                                        echo '0';
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.85rem; opacity: 0.8; line-height: 1.4;">
+                            <i class="fas fa-history" style="margin-right: 0.5rem;"></i>View your payment history
+                        </div>
+                    </div>
+                </div>
+                </a>
             </div>
 
             <!-- Dashboard Content Grid -->
@@ -699,8 +734,15 @@ try {
                                     font-weight: bold;
                                     box-shadow: 0 8px 20px rgba(220, 38, 38, 0.3);
                                     position: relative;
+                                    overflow: hidden;
                                 ">
-                                    <?php echo strtoupper(substr($user['company_name'] ?? $user['first_name'] ?? 'C', 0, 1)); ?>
+                                    <?php if (!empty($user['company_logo'])): ?>
+                                        <img src="../../uploads/profile-pictures/<?php echo htmlspecialchars($user['company_logo']); ?>" 
+                                             alt="Company Logo" 
+                                             style="width: 100%; height: 100%; object-fit: cover;">
+                                    <?php else: ?>
+                                        <?php echo strtoupper(substr($user['company_name'] ?? $user['first_name'] ?? 'C', 0, 1)); ?>
+                                    <?php endif; ?>
                                     <?php if ($user['email_verified']): ?>
                                         <div style="
                                             position: absolute; 

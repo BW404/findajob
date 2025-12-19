@@ -1,8 +1,10 @@
 <?php
 require_once '../../config/database.php';
 require_once '../../config/session.php';
+require_once '../../config/maintenance-check.php';
 require_once '../../config/constants.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/internship-badges.php';
 
 
 
@@ -14,7 +16,7 @@ $userId = getCurrentUserId();
 $stmt = $pdo->prepare("
     SELECT 
         u.id, u.user_type, u.email, u.first_name, u.last_name, u.phone, 
-        u.email_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
+        u.email_verified, u.phone_verified, u.is_active, u.created_at as user_created_at, u.updated_at as user_updated_at,
         u.subscription_status, u.subscription_plan, u.subscription_type, u.subscription_start, u.subscription_end,
         jsp.id as profile_id, jsp.user_id, jsp.date_of_birth, jsp.gender, 
         jsp.state_of_origin, jsp.lga_of_origin, jsp.current_state, jsp.current_city,
@@ -213,6 +215,217 @@ try {
     
 } catch (PDOException $e) {
     error_log("Recent activities error: " . $e->getMessage());
+}
+
+// Get notifications for job seeker
+$notifications = [];
+$unreadCount = 0;
+try {
+    // Get private job offer notifications
+    $stmt = $pdo->prepare("
+        SELECT 
+            pon.id,
+            pon.notification_type,
+            pon.is_read,
+            pon.created_at,
+            pjo.id as offer_id,
+            pjo.job_title,
+            pjo.status as offer_status,
+            u.first_name as employer_first_name,
+            u.last_name as employer_last_name,
+            ep.company_name
+        FROM private_offer_notifications pon
+        LEFT JOIN private_job_offers pjo ON pon.offer_id = pjo.id
+        LEFT JOIN users u ON pjo.employer_id = u.id
+        LEFT JOIN employer_profiles ep ON u.id = ep.user_id
+        WHERE pon.user_id = ?
+        ORDER BY pon.created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute([$userId]);
+    $privateOfferNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($privateOfferNotifications as $notif) {
+        $notifications[] = [
+            'id' => $notif['id'],
+            'type' => $notif['notification_type'],
+            'title' => $notif['job_title'] ?? 'Private Job Offer',
+            'message' => getNotificationMessage($notif),
+            'company' => $notif['company_name'] ?? ($notif['employer_first_name'] . ' ' . $notif['employer_last_name']),
+            'is_read' => $notif['is_read'],
+            'created_at' => $notif['created_at'],
+            'link' => 'private-offers.php?id=' . $notif['offer_id']
+        ];
+        
+        if (!$notif['is_read']) {
+            $unreadCount++;
+        }
+    }
+    
+    // Get application status change notifications (last 7 days)
+    $stmt = $pdo->prepare("
+        SELECT 
+            ja.id,
+            ja.status,
+            ja.updated_at,
+            ja.applied_at,
+            j.id as job_id,
+            j.title as job_title,
+            j.company_name
+        FROM job_applications ja
+        LEFT JOIN jobs j ON ja.job_id = j.id
+        WHERE ja.job_seeker_id = ?
+        AND ja.status IN ('shortlisted', 'interview', 'accepted', 'rejected')
+        AND ja.updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY ja.updated_at DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$userId]);
+    $applicationNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($applicationNotifications as $notif) {
+        $notifications[] = [
+            'id' => 'app_' . $notif['id'],
+            'type' => 'application_status_' . $notif['status'],
+            'title' => $notif['job_title'],
+            'message' => getApplicationStatusMessage($notif['status']),
+            'company' => $notif['company_name'],
+            'is_read' => 0, // Mark as unread for better visibility
+            'created_at' => $notif['updated_at'],
+            'link' => '../jobs/details.php?id=' . $notif['job_id']
+        ];
+        $unreadCount++;
+    }
+    
+    // Get new job matches (jobs posted in last 24 hours matching user profile)
+    if ($user['current_state'] || $user['skills']) {
+        $userSkills = $user['skills'] ? explode(',', $user['skills']) : [];
+        $skillSearch = '%' . implode('%', array_slice($userSkills, 0, 3)) . '%';
+        
+        $stmt = $pdo->prepare("
+            SELECT 
+                j.id,
+                j.title,
+                j.company_name,
+                j.created_at,
+                j.location
+            FROM jobs j
+            WHERE j.status = 'active'
+            AND j.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            AND (
+                j.location LIKE ? 
+                OR j.description LIKE ?
+            )
+            ORDER BY j.created_at DESC
+            LIMIT 5
+        ");
+        $stmt->execute([
+            '%' . $user['current_state'] . '%',
+            $skillSearch
+        ]);
+        $jobMatches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($jobMatches as $job) {
+            $notifications[] = [
+                'id' => 'job_' . $job['id'],
+                'type' => 'new_job_match',
+                'title' => $job['title'],
+                'message' => 'New job matching your profile!',
+                'company' => $job['company_name'],
+                'is_read' => 0,
+                'created_at' => $job['created_at'],
+                'link' => '../jobs/details.php?id=' . $job['id']
+            ];
+            $unreadCount++;
+        }
+    }
+    
+    // Get profile completion reminder (if profile < 60% complete)
+    if ($stats['profile_completeness'] < 60 && !isset($_SESSION['profile_reminder_dismissed'])) {
+        $notifications[] = [
+            'id' => 'profile_incomplete',
+            'type' => 'profile_reminder',
+            'title' => 'Complete Your Profile',
+            'message' => 'Your profile is ' . $stats['profile_completeness'] . '% complete. Complete it to get more job offers!',
+            'company' => 'FindAJob',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'link' => 'profile.php'
+        ];
+        $unreadCount++;
+    }
+    
+    // Get CV upload reminder (if no CVs uploaded)
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_cvs WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $cvCount = $stmt->fetchColumn();
+    
+    if ($cvCount == 0 && !isset($_SESSION['cv_reminder_dismissed'])) {
+        $notifications[] = [
+            'id' => 'no_cv',
+            'type' => 'cv_reminder',
+            'title' => 'Upload Your CV',
+            'message' => 'Upload your CV to apply for jobs with one click!',
+            'company' => 'FindAJob',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'link' => 'cv-manager.php'
+        ];
+        $unreadCount++;
+    }
+    
+    // Get subscription expiry notification (Pro users expiring in 7 days)
+    if ($isPro && $daysUntilExpiry > 0 && $daysUntilExpiry <= 7 && !isset($_SESSION['subscription_expiry_dismissed'])) {
+        $notifications[] = [
+            'id' => 'subscription_expiry',
+            'type' => 'subscription_expiry',
+            'title' => 'Pro Subscription Expiring Soon',
+            'message' => 'Your Pro subscription expires in ' . $daysUntilExpiry . ' day' . ($daysUntilExpiry > 1 ? 's' : '') . '!',
+            'company' => 'FindAJob Pro',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'link' => '../payment/plans.php'
+        ];
+        $unreadCount++;
+    }
+    
+    // Sort all notifications by date
+    usort($notifications, function($a, $b) {
+        return strtotime($b['created_at']) - strtotime($a['created_at']);
+    });
+    
+    $notifications = array_slice($notifications, 0, 15);
+    
+} catch (PDOException $e) {
+    error_log("Notifications error: " . $e->getMessage());
+}
+
+function getNotificationMessage($notif) {
+    switch ($notif['notification_type']) {
+        case 'new_offer':
+            return 'You received a private job offer!';
+        case 'offer_viewed':
+            return 'Your private offer response was viewed';
+        case 'offer_expired':
+            return 'A private job offer has expired';
+        default:
+            return 'New notification';
+    }
+}
+
+function getApplicationStatusMessage($status) {
+    switch ($status) {
+        case 'shortlisted':
+            return 'Your application has been shortlisted! 🎉';
+        case 'interview':
+            return 'You have been invited for an interview! 🎯';
+        case 'accepted':
+            return 'Congratulations! Your application was accepted! 🎊';
+        case 'rejected':
+            return 'Your application status has been updated';
+        default:
+            return 'Application status changed';
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -682,6 +895,174 @@ try {
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Notification Styles */
+        .notifications-panel {
+            margin-bottom: 1.5rem;
+        }
+
+        .notification-bubble {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            background: var(--primary);
+            color: white;
+            border-radius: 11px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .mark-read-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .mark-read-btn:hover {
+            background: var(--primary-light);
+        }
+
+        .notifications-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item:hover {
+            background: #f9fafb;
+        }
+
+        .notification-item.unread {
+            background: #fef3f4;
+        }
+
+        .notification-item.unread:hover {
+            background: #fde8e9;
+        }
+
+        .notification-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .notification-icon.new_offer {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+
+        .notification-icon.application_status_shortlisted,
+        .notification-icon.application_status_interview {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .notification-icon.application_status_accepted {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        }
+
+        .notification-icon.application_status_rejected {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        }
+
+        .notification-icon.new_job_match {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        }
+
+        .notification-icon.profile_reminder {
+            background: linear-gradient(135deg, #fbcfe8 0%, #f9a8d4 100%);
+        }
+
+        .notification-icon.cv_reminder {
+            background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
+        }
+
+        .notification-icon.subscription_expiry {
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+        }
+
+        .notification-icon.offer_expired {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .notification-content p {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .notification-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .notification-company {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .notification-time {
+            color: #9ca3af;
+        }
+
+        .unread-dot {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
     </style>
 </head>
 <body>
@@ -720,7 +1101,7 @@ try {
         $subscriptionStatus = $user['subscription_status'] ?? 'free';
         $subscriptionPlan = $user['subscription_plan'] ?? 'basic';
         $subscriptionEnd = $user['subscription_end'] ?? null;
-        $isPro = $subscriptionPlan === 'pro' && $subscriptionStatus === 'active';
+        $isPro = (strpos($subscriptionPlan, 'pro') !== false) && $subscriptionStatus === 'active';
         $isExpiringSoon = false;
         $daysUntilExpiry = 0;
         
@@ -747,10 +1128,13 @@ try {
                 <div style="flex: 1; min-width: 250px;">
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
                         <span style="font-size: 1.5rem;">👑</span>
-                        Upgrade to Pro Plan
+                        Upgrade to Pro Plan<?php if ($profileBoostActive): ?> <span style="margin-left: 0.5rem;">🚀 Profile Boosted</span><?php endif; ?>
                     </h3>
                     <p style="margin: 0; color: #78350f; font-size: 0.875rem;">
                         Get priority job alerts, featured profile, unlimited CV downloads, and AI-powered recommendations. Starting from ₦6,000/month.
+                        <?php if ($profileBoostActive): ?>
+                        <br><strong>Profile Boost:</strong> Active until <?php echo date('M d, Y', strtotime($profileBoostUntil)); ?> (<?php echo floor((new DateTime($profileBoostUntil))->diff(new DateTime())->days); ?> days remaining)
+                        <?php endif; ?>
                     </p>
                 </div>
                 <div>
@@ -790,19 +1174,23 @@ try {
                         Pro Plan Active <?php if ($profileBoostActive): ?><span style="margin-left: 0.5rem;">🚀 Profile Boosted</span><?php endif; ?>
                     </h3>
                     <p style="margin: 0; color: #047857; font-size: 0.875rem;">
-                        Your subscription <?php echo $subscriptionEnd ? 'expires on ' . date('M d, Y', strtotime($subscriptionEnd)) : 'is active'; ?>.
+                        <strong>Plan:</strong> Pro <?php echo ucfirst($subscriptionType ?? 'Monthly'); ?> • 
+                        <strong>Expires:</strong> <?php echo $subscriptionEnd ? date('M d, Y', strtotime($subscriptionEnd)) : 'Active'; ?>
                         <?php if ($profileBoostActive): ?>
-                        Profile boost active until <?php echo date('M d, Y', strtotime($profileBoostUntil)); ?>.
+                        <br><strong>Profile Boost:</strong> Active until <?php echo date('M d, Y', strtotime($profileBoostUntil)); ?> (<?php echo floor((new DateTime($profileBoostUntil))->diff(new DateTime())->days); ?> days remaining)
                         <?php endif; ?>
                     </p>
                 </div>
-                <?php if (!$profileBoostActive): ?>
-                <div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <?php if (!$profileBoostActive): ?>
                     <a href="../payment/plans.php#boosters" class="btn btn-primary" style="white-space: nowrap; background: #7c3aed; border-color: #7c3aed;">
                         🚀 Boost Profile (₦500)
                     </a>
+                    <?php endif; ?>
+                    <a href="../payment/plans.php" class="btn" style="white-space: nowrap; background: #6b7280; color: white; border-color: #6b7280;">
+                        📋 Manage Plan
+                    </a>
                 </div>
-                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -910,6 +1298,25 @@ try {
                         </div>
                     </div>
                 </div>
+                
+                <a href="transactions.php" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+                    <div class="stat-icon">💳</div>
+                    <div class="stat-content">
+                        <h3>Transactions</h3>
+                        <div class="stat-number"><?php 
+                        try {
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ?");
+                            $stmt->execute([$userId]);
+                            echo $stmt->fetchColumn();
+                        } catch (PDOException $e) {
+                            echo '0';
+                        }
+                        ?></div>
+                        <div class="stat-change neutral">
+                            View history
+                        </div>
+                    </div>
+                </a>
         </div>
 
         <!-- Main Dashboard Content -->
@@ -921,7 +1328,7 @@ try {
                         <div class="card-header">
                             <!-- add profile picture -->
                             <h3>Profile Summary</h3>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                                 <?php if ($user['nin_verified']): ?>
                                     <span class="status-badge verified" title="NIN Verified">
                                         🛡️ NIN Verified
@@ -931,6 +1338,11 @@ try {
                                     <span class="status-badge verified">✓ Email Verified</span>
                                 <?php else: ?>
                                     <span class="status-badge unverified">⚠ Email Unverified</span>
+                                <?php endif; ?>
+                                <?php if (isset($user['phone_verified']) && $user['phone_verified']): ?>
+                                    <span class="status-badge verified" title="Phone Verified">
+                                        ✓ Phone Verified
+                                    </span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -959,6 +1371,19 @@ try {
                                     <span><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
                                     <?php if ($user['nin_verified']): ?>
                                         <span class="verified-checkmark" title="NIN Verified">✓</span>
+                                    <?php endif; ?>
+                                    <?php 
+                                    $badgeCount = getInternshipBadgeCount($userId, $pdo);
+                                    if ($badgeCount > 0): 
+                                        // Get average rating from badges
+                                        $ratingStmt = $pdo->prepare("SELECT AVG(performance_rating) as avg_rating FROM internship_badges WHERE job_seeker_id = ? AND is_visible = 1 AND performance_rating IS NOT NULL");
+                                        $ratingStmt->execute([$userId]);
+                                        $ratingResult = $ratingStmt->fetch();
+                                        $avgRating = $ratingResult['avg_rating'] ? number_format($ratingResult['avg_rating'], 1) : '5.0';
+                                    ?>
+                                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 12px; font-weight: 700; margin-left: 0.5rem; box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);" title="Average rating from <?php echo $badgeCount; ?> internship<?php echo $badgeCount > 1 ? 's' : ''; ?>">
+                                            <i class="fas fa-star" style="font-size: 0.7rem;"></i> <?php echo $avgRating; ?>
+                                        </span>
                                     <?php endif; ?>
                                 </h4>
                                 <p class="profile-title"><?php echo htmlspecialchars($user['job_title'] ?? 'Job Seeker'); ?></p>
@@ -1031,6 +1456,7 @@ try {
                                 </div>
                             </a>
                             
+                            <?php if (!$isPro): ?>
                             <a href="../payment/plans.php" class="action-btn upgrade">
                                 <div class="action-icon">⭐</div>
                                 <div class="action-content">
@@ -1038,8 +1464,88 @@ try {
                                     <div class="action-desc">Unlock premium features</div>
                                 </div>
                             </a>
+                            <?php else: ?>
+                            <a href="transactions.php" class="action-btn">
+                                <div class="action-icon">💳</div>
+                                <div class="action-content">
+                                    <div class="action-title">My Transactions</div>
+                                    <div class="action-desc">View payment history</div>
+                                </div>
+                            </a>
+                            <?php endif; ?>
                         </div>
                     </div>
+
+                    <?php 
+                    // Display Internship Badges
+                    require_once '../../includes/internship-badges.php';
+                    $badgeCount = getInternshipBadgeCount($userId, $pdo);
+                    if ($badgeCount > 0): 
+                    ?>
+                    <!-- Internship Badges -->
+                    <div class="dashboard-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%); border: 2px solid #f59e0b;">
+                        <div class="card-header" style="border-bottom: 2px solid rgba(245, 158, 11, 0.3);">
+                            <h3 style="display: flex; align-items: center; gap: 0.75rem; color: #78350f;">
+                                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-award" style="color: white; font-size: 1.2rem;"></i>
+                                </div>
+                                <span>My Internship Certificates</span>
+                                <span style="background: rgba(255, 255, 255, 0.9); color: #92400e; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">
+                                    <?php echo $badgeCount; ?> Badge<?php echo $badgeCount > 1 ? 's' : ''; ?>
+                                </span>
+                            </h3>
+                        </div>
+                        <?php 
+                        // Get recent badges (limit to 2 for dashboard)
+                        $badges_stmt = $pdo->prepare("
+                            SELECT * FROM internship_badges 
+                            WHERE job_seeker_id = ? AND is_visible = 1
+                            ORDER BY awarded_at DESC
+                            LIMIT 2
+                        ");
+                        $badges_stmt->execute([$userId]);
+                        $recent_badges = $badges_stmt->fetchAll();
+                        ?>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; padding: 1.5rem;">
+                            <?php foreach ($recent_badges as $badge): ?>
+                            <div style="background: white; border-radius: 12px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 4px solid #f59e0b;">
+                                <div style="display: flex; align-items: start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div style="width: 35px; height: 35px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <i class="fas fa-certificate" style="color: white; font-size: 1rem;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0 0 0.25rem 0; color: #1a202c; font-size: 1rem; font-weight: 700;">
+                                            <?php echo htmlspecialchars($badge['job_title']); ?>
+                                        </h4>
+                                        <p style="margin: 0; color: #f59e0b; font-weight: 600; font-size: 0.85rem;">
+                                            <?php echo htmlspecialchars($badge['company_name']); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: #64748b;">
+                                    <div><i class="fas fa-calendar" style="color: #f59e0b;"></i> <?php echo date('M Y', strtotime($badge['start_date'])); ?> - <?php echo date('M Y', strtotime($badge['end_date'])); ?></div>
+                                    <div><i class="fas fa-clock" style="color: #f59e0b;"></i> <?php echo $badge['duration_months']; ?> month<?php echo $badge['duration_months'] > 1 ? 's' : ''; ?></div>
+                                    <?php if ($badge['performance_rating']): ?>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                        <i class="fas fa-star" style="color: #fbbf24;"></i>
+                                        <?php for($i = 1; $i <= 5; $i++): ?>
+                                            <i class="fas fa-star" style="color: <?php echo $i <= $badge['performance_rating'] ? '#fbbf24' : '#e5e7eb'; ?>; font-size: 0.75rem;"></i>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if ($badgeCount > 2): ?>
+                        <div style="text-align: center; padding: 0 1.5rem 1.5rem;">
+                            <a href="profile.php#internship-badges" style="display: inline-block; background: rgba(255, 255, 255, 0.9); color: #92400e; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s;">
+                                View All <?php echo $badgeCount; ?> Badges <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
 
                     <!-- AI-Powered Recommended Jobs -->
                     <div class="dashboard-card">
@@ -1063,11 +1569,16 @@ try {
                                 ">
                                     ✨ Powered by AI
                                 </span>
+                                <span style="background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                    👑 PRO
+                                </span>
+                                <?php if ($isPro): ?>
                                 <a href="ai-recommendations.php" class="view-all" style="
                                     color: #667eea;
                                     font-weight: 600;
                                     transition: all 0.2s ease;
                                 ">View All →</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div id="ai-recommendations-container" class="jobs-list">
@@ -1106,6 +1617,98 @@ try {
 
                 <!-- Right Column -->
                 <div class="dashboard-right">
+                    <!-- Notifications Panel -->
+                    <div class="dashboard-card notifications-panel">
+                        <div class="card-header">
+                            <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+                                🔔 Notifications
+                                <?php if ($unreadCount > 0): ?>
+                                <span class="notification-bubble"><?php echo $unreadCount; ?></span>
+                                <?php endif; ?>
+                            </h3>
+                            <?php if (count($notifications) > 0): ?>
+                            <button onclick="markAllAsRead()" class="mark-read-btn">Mark all read</button>
+                            <?php endif; ?>
+                        </div>
+                        <div class="notifications-list">
+                            <?php if (count($notifications) > 0): ?>
+                                <?php foreach (array_slice($notifications, 0, 5) as $notification): ?>
+                                    <div class="notification-item <?php echo !$notification['is_read'] ? 'unread' : ''; ?>" 
+                                         data-notification-id="<?php echo $notification['id']; ?>">
+                                        <div class="notification-icon <?php echo $notification['type']; ?>">
+                                            <?php 
+                                            switch($notification['type']) {
+                                                case 'new_offer':
+                                                    echo '📨';
+                                                    break;
+                                                case 'application_status_shortlisted':
+                                                    echo '⭐';
+                                                    break;
+                                                case 'application_status_interview':
+                                                    echo '🎯';
+                                                    break;
+                                                case 'application_status_accepted':
+                                                    echo '🎉';
+                                                    break;
+                                                case 'application_status_rejected':
+                                                    echo '📋';
+                                                    break;
+                                                case 'new_job_match':
+                                                    echo '💼';
+                                                    break;
+                                                case 'profile_reminder':
+                                                    echo '👤';
+                                                    break;
+                                                case 'cv_reminder':
+                                                    echo '📄';
+                                                    break;
+                                                case 'subscription_expiry':
+                                                    echo '⚠️';
+                                                    break;
+                                                case 'offer_viewed':
+                                                    echo '👁️';
+                                                    break;
+                                                case 'offer_expired':
+                                                    echo '⏰';
+                                                    break;
+                                                default:
+                                                    echo '🔔';
+                                            }
+                                            ?>
+                                        </div>
+                                        <div class="notification-content">
+                                            <a href="<?php echo htmlspecialchars($notification['link']); ?>" 
+                                               onclick="markAsRead(<?php echo is_numeric($notification['id']) ? $notification['id'] : 0; ?>)"
+                                               style="text-decoration: none; color: inherit;">
+                                                <h4><?php echo htmlspecialchars($notification['title']); ?></h4>
+                                                <p><?php echo htmlspecialchars($notification['message']); ?></p>
+                                                <div class="notification-meta">
+                                                    <span class="notification-company"><?php echo htmlspecialchars($notification['company']); ?></span>
+                                                    <span class="notification-time"><?php echo timeAgo($notification['created_at']); ?></span>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <?php if (!$notification['is_read']): ?>
+                                        <div class="unread-dot"></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                                <?php if (count($notifications) > 5): ?>
+                                <div style="text-align: center; padding: 1rem;">
+                                    <a href="notifications.php" class="btn btn-secondary btn-sm">View All Notifications</a>
+                                </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="notification-item" style="text-align: center; padding: 2rem;">
+                                    <div class="notification-content">
+                                        <h4 style="color: var(--text-secondary);">No Notifications</h4>
+                                        <p style="margin: 0.5rem 0; color: var(--text-secondary);">You're all caught up!</p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <!-- Recent Applications -->
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -1427,10 +2030,17 @@ try {
         document.body.classList.add('has-bottom-nav');
 
         // Load AI Recommendations
+        const isPro = <?php echo $isPro ? 'true' : 'false'; ?>;
         loadAIRecommendations();
 
         async function loadAIRecommendations() {
             const container = document.getElementById('ai-recommendations-container');
+            
+            // Check if user is Pro
+            if (!isPro) {
+                renderProUpgradePrompt();
+                return;
+            }
             
             try {
                 const response = await fetch('/findajob/api/ai-job-recommendations.php');
@@ -1439,9 +2049,12 @@ try {
                 console.log('AI Recommendations Response Status:', response.status);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    const errorData = await response.json();
+                    if (response.status === 403 && errorData.upgrade_url) {
+                        renderProUpgradePrompt();
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${errorData.error || 'Unknown error'}`);
                 }
                 
                 const data = await response.json();
@@ -1465,6 +2078,27 @@ try {
                 console.error('Failed to load AI recommendations:', error);
                 renderErrorState(error.message || 'Network error');
             }
+        }
+
+        function renderProUpgradePrompt() {
+            const container = document.getElementById('ai-recommendations-container');
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+                    <h3 style="margin: 0 0 0.75rem 0; font-size: 1.5rem; font-weight: 700;">
+                        Unlock AI-Powered Job Recommendations
+                    </h3>
+                    <p style="margin: 0 0 1.5rem 0; opacity: 0.95; max-width: 400px; margin-left: auto; margin-right: auto;">
+                        Get personalized job matches based on your skills, experience, and preferences with our advanced AI engine.
+                    </p>
+                    <a href="../payment/plans.php?feature=ai_recommendations" 
+                       style="display: inline-block; background: white; color: #667eea; padding: 0.875rem 2rem; 
+                              border-radius: 8px; font-weight: 600; text-decoration: none; 
+                              box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s;">
+                        <i class="fas fa-crown"></i> Upgrade to Pro
+                    </a>
+                </div>
+            `;
         }
 
         function renderRecommendations(recommendations) {
@@ -2159,6 +2793,85 @@ try {
             height: 300px;
         }
     </style>
+
+    <script>
+    // Mark single notification as read
+    async function markAsRead(notificationId) {
+        if (!notificationId || notificationId === 0) return;
+        
+        try {
+            const response = await fetch('../../api/notifications.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'mark_read',
+                    notification_id: notificationId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const notifElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                if (notifElement) {
+                    notifElement.classList.remove('unread');
+                    const dot = notifElement.querySelector('.unread-dot');
+                    if (dot) dot.remove();
+                }
+                
+                // Update bubble count
+                const bubble = document.querySelector('.notification-bubble');
+                if (bubble) {
+                    let count = parseInt(bubble.textContent) - 1;
+                    if (count <= 0) {
+                        bubble.remove();
+                    } else {
+                        bubble.textContent = count;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    }
+    
+    // Mark all notifications as read
+    async function markAllAsRead() {
+        try {
+            const response = await fetch('../../api/notifications.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'mark_all_read'
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove all unread styling
+                document.querySelectorAll('.notification-item.unread').forEach(item => {
+                    item.classList.remove('unread');
+                });
+                
+                // Remove all unread dots
+                document.querySelectorAll('.unread-dot').forEach(dot => {
+                    dot.remove();
+                });
+                
+                // Remove bubble
+                const bubble = document.querySelector('.notification-bubble');
+                if (bubble) bubble.remove();
+                
+                // Hide mark all read button
+                const markReadBtn = document.querySelector('.mark-read-btn');
+                if (markReadBtn) markReadBtn.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
+    }
+    </script>
 
     <?php include '../../includes/footer.php'; ?>
 </body>

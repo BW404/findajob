@@ -4,7 +4,16 @@ require_once '../../config/session.php';
 
 requireEmployer();
 
-$employer_id = getCurrentUserId();
+$userId = getCurrentUserId();
+
+// Get user data for header
+$stmt = $pdo->prepare("SELECT u.*, ep.* FROM users u LEFT JOIN employer_profiles ep ON u.id = ep.user_id WHERE u.id = ?");
+$stmt->execute([$userId]);
+$user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
 
 // Get filter parameters
 $status_filter = $_GET['status'] ?? 'all';
@@ -20,7 +29,7 @@ $query = "SELECT j.*,
           LEFT JOIN job_applications ja ON j.id = ja.job_id
           WHERE j.employer_id = ?";
 
-$params = [$employer_id];
+$params = [$userId];
 
 if ($status_filter !== 'all') {
     $query .= " AND j.status = ?";
@@ -66,7 +75,7 @@ $stats_query = "SELECT
                 LEFT JOIN job_applications ja ON j.id = ja.job_id
                 WHERE j.employer_id = ?";
 $stats_stmt = $pdo->prepare($stats_query);
-$stats_stmt->execute([$employer_id]);
+$stats_stmt->execute([$userId]);
 $stats = $stats_stmt->fetch();
 ?>
 <!DOCTYPE html>
@@ -78,25 +87,8 @@ $stats = $stats_stmt->fetch();
     <link rel="stylesheet" href="../../assets/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
-                    <a href="dashboard.php" class="nav-link">Dashboard</a>
-                    <a href="post-job.php" class="nav-link">Post Job</a>
-                    <a href="active-jobs.php" class="nav-link" style="color: var(--primary); font-weight: 600;">Active Jobs</a>
-                    <a href="all-applications.php" class="nav-link">Applications</a>
-                    <a href="applicants.php" class="nav-link">Applicants</a>
-                    <a href="profile.php" class="nav-link">Profile</a>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+<body class="has-bottom-nav">
+    <?php include '../../includes/employer-header.php'; ?>
 
     <main class="container" style="padding: 3rem 0;">
         <!-- Page Header -->

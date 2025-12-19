@@ -1,10 +1,16 @@
 <?php
 require_once '../../config/database.php';
 require_once '../../config/session.php';
+require_once '../../includes/pro-features.php';
 
 requireJobSeeker();
 
 $user_id = getCurrentUserId();
+
+// Get user subscription
+$subscription = getUserSubscription($pdo, $user_id);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
 
 // Get filter parameters
 $sort_by = $_GET['sort'] ?? 'newest';
@@ -60,6 +66,11 @@ try {
 } catch (PDOException $e) {
     $total_saved = 0;
 }
+
+// Check saved jobs limit for Basic users
+$saved_jobs_limit = $limits['saved_jobs'];
+$approaching_limit = !$isPro && $total_saved >= ($saved_jobs_limit * 0.8);
+$limit_reached = !$isPro && $total_saved >= $saved_jobs_limit;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -244,6 +255,55 @@ try {
                 <?php echo $total_saved; ?> job<?php echo $total_saved !== 1 ? 's' : ''; ?> saved for later
             </p>
         </div>
+
+        <!-- Pro Feature Limits Warning -->
+        <?php if (!$isPro): ?>
+            <!-- Limit Reached Warning -->
+            <?php if ($limit_reached): ?>
+                <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <i class="fas fa-lock" style="font-size: 2rem;"></i>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700;">🔒 Saved Jobs Limit Reached</h3>
+                            <p style="margin: 0; opacity: 0.95;">You've reached the maximum of <?php echo $saved_jobs_limit; ?> saved jobs on the Basic plan. Remove some jobs or upgrade to Pro for unlimited saves.</p>
+                        </div>
+                    </div>
+                    <a href="../payment/plans.php" class="btn" style="background: white; color: #dc2626; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block;">
+                        <i class="fas fa-crown"></i> Upgrade to Pro
+                    </a>
+                </div>
+            <!-- Approaching Limit Warning -->
+            <?php elseif ($approaching_limit): ?>
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-weight: 600;">⚠️ Almost at your saved jobs limit: <?php echo $total_saved; ?>/<?php echo $saved_jobs_limit; ?> jobs saved</p>
+                            <p style="margin: 0.5rem 0 0 0; opacity: 0.95; font-size: 0.9rem;">Upgrade to Pro for unlimited saved jobs and more features!</p>
+                        </div>
+                        <a href="../payment/plans.php" class="btn" style="background: white; color: #f59e0b; padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 600; text-decoration: none; white-space: nowrap;">
+                            <i class="fas fa-crown"></i> Go Pro
+                        </a>
+                    </div>
+                </div>
+            <!-- Normal Counter -->
+            <?php else: ?>
+                <div style="background: #f3f4f6; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #6b7280;">
+                    <p style="margin: 0; color: #4b5563; font-weight: 600;">
+                        📋 <?php echo $total_saved; ?>/<?php echo $saved_jobs_limit; ?> saved jobs used
+                        <a href="../payment/plans.php" style="color: #dc2626; text-decoration: none; margin-left: 1rem;">
+                            <i class="fas fa-crown"></i> Upgrade for unlimited
+                        </a>
+                    </p>
+                </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <!-- Pro Badge -->
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-crown" style="font-size: 1.25rem;"></i>
+                <p style="margin: 0; font-weight: 600;">👑 Pro - Unlimited Saved Jobs</p>
+            </div>
+        <?php endif; ?>
 
         <!-- Search and Filters -->
         <div style="background: var(--surface); padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">

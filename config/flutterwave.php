@@ -75,15 +75,35 @@ define('PRICING_PLANS', [
         'price' => 6000,
         'duration' => '30 days',
         'type' => 'subscription',
-        'user_type' => 'job_seeker'
+        'user_type' => 'job_seeker',
+        'features' => [
+            'Multiple CV uploads and management',
+            'Advanced profile fields and data',
+            'Top of employer search results',
+            'AI-powered job recommendations',
+            'Daily job alerts via email & SMS',
+            'Advanced application tracking',
+            'Priority customer support',
+            'Profile analytics and insights'
+        ]
     ],
     'job_seeker_pro_yearly' => [
         'name' => 'Job Seeker Pro (Yearly)',
-        'price' => 60000,
+        'price' => 10000,
         'duration' => '365 days',
         'type' => 'subscription',
         'user_type' => 'job_seeker',
-        'savings' => '12,000 savings!'
+        'savings' => '12,000 savings!',
+        'features' => [
+            'Multiple CV uploads and management',
+            'Advanced profile fields and data',
+            'Top of employer search results',
+            'AI-powered job recommendations',
+            'Daily job alerts via email & SMS',
+            'Advanced application tracking',
+            'Priority customer support',
+            'Profile analytics and insights'
+        ]
     ],
     'job_seeker_verification_booster' => [
         'name' => 'Job Seeker Verification',
@@ -102,6 +122,55 @@ define('PRICING_PLANS', [
         'benefits' => 'Appear at the top of employer searches • 5x more profile views • Priority in application lists • Highlighted profile badge'
     ],
     
+    // Premium CV Writing Services
+    'cv_pro' => [
+        'name' => 'CV Pro',
+        'price' => 15500,
+        'duration' => '5-7 working days',
+        'type' => 'cv_service',
+        'user_type' => 'job_seeker',
+        'features' => [
+            'Professionally written CV',
+            'Cover letter included',
+            '30 minute phone consultation',
+            'Delivered in 5-7 working days',
+            'ATS-optimized format',
+            'Industry-specific optimization'
+        ]
+    ],
+    'cv_pro_plus' => [
+        'name' => 'CV Pro+',
+        'price' => 33500,
+        'duration' => '10 working days',
+        'type' => 'cv_service',
+        'user_type' => 'job_seeker',
+        'features' => [
+            'Professionally written CV',
+            'Cover letter included',
+            '30 minute phone consultation',
+            'LinkedIn profile review',
+            'Delivered in 10 working days',
+            'ATS-optimized format',
+            'Industry-specific optimization',
+            'Premium design templates'
+        ]
+    ],
+    'remote_working_cv' => [
+        'name' => 'Remote Working CV',
+        'price' => 16000,
+        'duration' => '5-7 working days',
+        'type' => 'cv_service',
+        'user_type' => 'job_seeker',
+        'features' => [
+            'Professionally written CV optimized for remote positions',
+            'Cover letter included',
+            'LinkedIn profile review',
+            'Delivered in 5-7 working days',
+            'Remote work skills highlighted',
+            'International format compatibility'
+        ]
+    ],
+    
     // Employer Plans
     'employer_basic' => [
         'name' => 'Employer Basic Plan',
@@ -115,7 +184,19 @@ define('PRICING_PLANS', [
         'price' => 30000,
         'duration' => '30 days',
         'type' => 'subscription',
-        'user_type' => 'employer'
+        'user_type' => 'employer',
+        'features' => [
+            'Unlimited job postings',
+            'Featured job listings',
+            'Advanced candidate search filters',
+            'Priority in search results',
+            'Access to premium CV database',
+            'Application tracking & analytics',
+            'Bulk job posting',
+            'Priority customer support',
+            'Company branding & logo',
+            'Email & SMS job alerts to candidates'
+        ]
     ],
     'employer_pro_yearly' => [
         'name' => 'Employer Pro (Yearly)',
@@ -123,44 +204,68 @@ define('PRICING_PLANS', [
         'duration' => '365 days',
         'type' => 'subscription',
         'user_type' => 'employer',
-        'savings' => '60,000 savings!'
+        'savings' => '60,000 savings (2 months free)!',
+        'features' => [
+            'Unlimited job postings',
+            'Featured job listings',
+            'Advanced candidate search filters',
+            'Priority in search results',
+            'Access to premium CV database',
+            'Application tracking & analytics',
+            'Bulk job posting',
+            'Priority customer support',
+            'Company branding & logo',
+            'Email & SMS job alerts to candidates',
+            'Dedicated account manager',
+            'Quarterly hiring insights report'
+        ]
     ],
     'employer_verification_booster' => [
-        'name' => 'Employer Verification Booster',
+        'name' => 'Company Verification Badge',
         'price' => 1000,
         'duration' => 'one-time',
         'type' => 'booster',
-        'user_type' => 'employer'
+        'user_type' => 'employer',
+        'benefits' => 'Get a verified badge on your company profile • Build trust with job seekers • Stand out from competitors • Increase application rates by 3x'
     ],
     'employer_job_booster_1' => [
         'name' => 'Job Posting Booster (1 Job)',
         'price' => 5000,
-        'duration' => '30 days',
+        'duration' => '30 days per job',
         'type' => 'job_booster',
         'user_type' => 'employer',
-        'jobs_count' => 1
+        'jobs_count' => 1,
+        'benefits' => 'Boost 1 job to top of search results • 5x more visibility • Featured badge • 30 days boost duration'
     ],
     'employer_job_booster_3' => [
         'name' => 'Job Posting Booster (3 Jobs)',
         'price' => 10000,
-        'duration' => '30 days',
+        'duration' => '30 days per job',
         'type' => 'job_booster',
         'user_type' => 'employer',
-        'jobs_count' => 3
+        'jobs_count' => 3,
+        'savings' => 'Save ₦5,000',
+        'benefits' => 'Boost 3 jobs to top of search results • 5x more visibility • Featured badge • 30 days boost duration per job'
     ],
     'employer_job_booster_5' => [
         'name' => 'Job Posting Booster (5 Jobs)',
         'price' => 15000,
-        'duration' => '30 days',
+        'duration' => '30 days per job',
         'type' => 'job_booster',
         'user_type' => 'employer',
-        'jobs_count' => 5
+        'jobs_count' => 5,
+        'savings' => 'Save ₦10,000 (Best Value)',
+        'benefits' => 'Boost 5 jobs to top of search results • 5x more visibility • Featured badge • 30 days boost duration per job'
     ],
 ]);
 
-// Payment redirect URLs
-define('FLUTTERWAVE_REDIRECT_URL', 'http://localhost/findajob/pages/payment/verify.php');
-define('FLUTTERWAVE_CALLBACK_URL', 'http://localhost/findajob/api/payment-callback.php');
+// Payment redirect URLs - dynamically set based on current host
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$base_url = $protocol . '://' . $host . '/findajob';
+
+define('FLUTTERWAVE_REDIRECT_URL', $base_url . '/pages/payment/verify.php');
+define('FLUTTERWAVE_CALLBACK_URL', $base_url . '/api/payment-callback.php');
 
 /**
  * Initialize Flutterwave Payment

@@ -99,8 +99,8 @@ try {
         }
         
     } else if ($userType === 'employer') {
-        // Update employer_profiles (logo field)
-        $stmt = $pdo->prepare("UPDATE employer_profiles SET logo = ? WHERE user_id = ?");
+        // Update employer_profiles (company_logo field)
+        $stmt = $pdo->prepare("UPDATE employer_profiles SET company_logo = ? WHERE user_id = ?");
         $stmt->execute([$filename, $userId]);
         
         // Check if users table has profile_picture column
@@ -117,7 +117,7 @@ try {
         'success' => true,
         'message' => 'Profile picture uploaded successfully',
         'filename' => $filename,
-        'url' => '/findajob/uploads/profile-pictures/' . $filename
+        'url' => '../uploads/profile-pictures/' . $filename
     ]);
     
 } catch (Exception $e) {

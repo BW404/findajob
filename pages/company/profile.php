@@ -23,7 +23,7 @@ $stmt = $pdo->prepare("
            ep.provider_city_of_birth, ep.provider_religion,
            ep.provider_profile_picture, ep.provider_nin, ep.provider_nin_verified,
            ep.provider_nin_verified_at,
-           ep.company_logo, ep.company_cac_number, ep.company_type,
+           ep.company_logo, ep.company_cac_number,
            ep.company_cac_verified, ep.company_cac_verified_at,
            ep.verification_boosted, ep.verification_boost_date, ep.job_boost_credits,
            u.profile_picture
@@ -33,6 +33,10 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
 
 $success = '';
 $errors = [];
@@ -170,19 +174,7 @@ $states = $stmt->fetchAll();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="has-bottom-nav">
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div>
-                    <a href="dashboard.php" class="btn btn-outline">Dashboard</a>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include '../../includes/employer-header.php'; ?>
 
     <main class="container">
         <div style="padding: 2rem 0;">
@@ -581,7 +573,7 @@ $states = $stmt->fetchAll();
                              onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='rgba(220, 38, 38, 0.4)'"
                              onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(220, 38, 38, 0.2)'">
                             <?php if (!empty($user['company_logo'])): ?>
-                                <img src="/findajob/uploads/profile-pictures/<?php echo htmlspecialchars($user['company_logo']); ?>" 
+                                <img src="../../uploads/profile-pictures/<?php echo htmlspecialchars($user['company_logo']); ?>" 
                                      alt="Company Logo" id="companyLogoPreview"
                                      style="width: 100%; height: 100%; object-fit: cover;">
                             <?php else: ?>
@@ -747,7 +739,7 @@ $states = $stmt->fetchAll();
                     } else {
                         // Replace initials with image
                         logoContainer.innerHTML = `
-                            <img src="${data.url}" alt="Company Logo" id="companyLogoPreview"
+                            <img src="../../uploads/profile-pictures/${data.filename}" alt="Company Logo" id="companyLogoPreview"
                                  style="width: 100%; height: 100%; object-fit: cover;">
                             <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem; font-size: 0.75rem; opacity: 0; transition: opacity 0.3s ease;">
                                 <i class="fas fa-camera"></i> Change Logo

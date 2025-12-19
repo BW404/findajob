@@ -8,6 +8,14 @@ requireEmployer();
 
 $userId = getCurrentUserId();
 
+// Check if employer has Pro subscription
+$stmt = $pdo->prepare("SELECT subscription_type, subscription_end FROM users WHERE id = ?");
+$stmt->execute([$userId]);
+$subscription = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$isPro = ($subscription['subscription_type'] === 'pro' && 
+          (!$subscription['subscription_end'] || strtotime($subscription['subscription_end']) > time()));
+
 // Get job ID if specified
 $jobId = isset($_GET['job_id']) ? (int)$_GET['job_id'] : null;
 
@@ -96,20 +104,7 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div>
-                    <a href="dashboard.php" class="btn btn-outline">Dashboard</a>
-                    <a href="manage-jobs.php" class="btn btn-outline">Manage Jobs</a>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include '../../includes/employer-header.php'; ?>
 
     <main class="container">
         <div style="padding: 2rem 0;">
@@ -323,6 +318,20 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                 <a href="/findajob/uploads/cvs/<?php echo $application['cv_id']; ?>.pdf" 
                                                    target="_blank" class="btn btn-outline btn-sm">
                                                     <i class="fas fa-file-pdf"></i> View CV
+                                                </a>
+                                            <?php endif; ?>
+                                            
+                                            <?php if ($isPro): ?>
+                                                <a href="send-private-offer.php?job_seeker_id=<?php echo $application['job_seeker_id']; ?>" 
+                                                   class="btn btn-success btn-sm">
+                                                    <i class="fas fa-envelope"></i> Send Private Offer
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="../payment/plans.php" 
+                                                   class="btn btn-outline btn-sm" 
+                                                   title="Upgrade to Pro to send private offers"
+                                                   style="border-color: #f59e0b; color: #f59e0b;">
+                                                    <i class="fas fa-crown"></i> Send Private Offer (Pro)
                                                 </a>
                                             <?php endif; ?>
                                             

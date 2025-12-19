@@ -2,10 +2,21 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/pro-features.php';
 
 requireJobSeeker();
 
 $userId = getCurrentUserId();
+
+// Check Pro status - AI Job Finder is a Pro feature
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+
+if (!$isPro) {
+    // Redirect to upgrade page
+    header('Location: ../payment/plans.php?feature=ai_recommendations');
+    exit();
+}
 
 // Get user profile
 $stmt = $pdo->prepare("

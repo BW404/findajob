@@ -114,7 +114,7 @@ if (isLoggedIn()) {
                                 <li>✅ 7-day delivery guarantee</li>
                             </ul>
                             <div class="service-actions">
-                                <a href="../payment/plans.php#cv-service" class="btn btn-premium service-select-btn">
+                                <a href="premium-cv.php" class="btn btn-premium service-select-btn">
                                     💼 Get Expert CV
                                 </a>
                                 <p class="service-note">Get a professionally crafted CV that stands out to employers</p>

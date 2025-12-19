@@ -69,10 +69,10 @@ try {
     $newApplications = $stmt->fetchColumn();
     
     // Transactions Statistics
-    $stmt = $pdo->query("SELECT COUNT(*) FROM transactions WHERE status = 'completed'");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM transactions WHERE status = 'successful'");
     $completedTransactions = $stmt->fetchColumn();
     
-    $stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed'");
+    $stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'successful'");
     $totalRevenue = $stmt->fetchColumn();
     
     // CVs Statistics

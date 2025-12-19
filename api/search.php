@@ -25,6 +25,16 @@ try {
         $results['categories'] = searchCategories($query, $limit);
     }
     
+    if ($type === 'job_seekers') {
+        $results = searchJobSeekers($query, $limit);
+        echo json_encode([
+            'success' => true,
+            'query' => $query,
+            'results' => $results
+        ]);
+        exit;
+    }
+    
     echo json_encode([
         'success' => true,
         'query' => $query,
@@ -239,5 +249,60 @@ function searchCategories($query, $limit) {
     }
     
     return $categories;
+}
+
+function searchJobSeekers($query, $limit) {
+    global $pdo;
+    
+    if (empty($query)) return [];
+    
+    $stmt = $pdo->prepare("
+        SELECT 
+            u.id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            jsp.profile_picture,
+            jsp.years_of_experience,
+            jsp.skills,
+            jsp.education_level,
+            jsp.job_status
+        FROM users u
+        LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
+        WHERE u.user_type = 'job_seeker' 
+        AND u.is_active = 1
+        AND (
+            u.first_name LIKE ? 
+            OR u.last_name LIKE ? 
+            OR u.email LIKE ?
+            OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?
+        )
+        ORDER BY 
+            CASE 
+                WHEN u.first_name LIKE ? THEN 1
+                WHEN u.last_name LIKE ? THEN 2
+                WHEN u.email LIKE ? THEN 3
+                ELSE 4
+            END,
+            u.created_at DESC
+        LIMIT ?
+    ");
+    
+    $searchTerm = '%' . $query . '%';
+    $exactMatch = $query . '%';
+    
+    // Bind parameters
+    $stmt->bindValue(1, $searchTerm, PDO::PARAM_STR);
+    $stmt->bindValue(2, $searchTerm, PDO::PARAM_STR);
+    $stmt->bindValue(3, $searchTerm, PDO::PARAM_STR);
+    $stmt->bindValue(4, $searchTerm, PDO::PARAM_STR);
+    $stmt->bindValue(5, $exactMatch, PDO::PARAM_STR);
+    $stmt->bindValue(6, $exactMatch, PDO::PARAM_STR);
+    $stmt->bindValue(7, $exactMatch, PDO::PARAM_STR);
+    $stmt->bindValue(8, (int)$limit, PDO::PARAM_INT);
+    
+    $stmt->execute();
+    
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>

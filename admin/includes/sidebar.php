@@ -36,6 +36,13 @@ try {
         <p><?= htmlspecialchars($admin_role_name) ?> Panel</p>
     </div>
     
+    <?php if (defined('MAINTENANCE_MODE_ACTIVE') && MAINTENANCE_MODE_ACTIVE): ?>
+    <div style="background: #dc2626; color: white; padding: 12px 20px; margin: 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <i class="fas fa-tools"></i> <strong>MAINTENANCE MODE</strong>
+        <div style="font-size: 11px; margin-top: 4px; opacity: 0.9;">Site is under maintenance</div>
+    </div>
+    <?php endif; ?>
+    
     <nav class="sidebar-nav">
         <!-- Dashboard -->
         <div class="nav-section">
@@ -88,6 +95,10 @@ try {
                 <span>CV Manager</span>
             </a>
             <?php endif; ?>
+            <a href="premium-cv-manager.php" class="nav-link <?= $current_page == 'premium-cv-manager.php' ? 'active' : '' ?>">
+                <i class="fas fa-crown"></i>
+                <span>Premium CV Requests</span>
+            </a>
             <?php if (hasPermission(getCurrentUserId(), 'view_ads')): ?>
             <a href="ads.php" class="nav-link <?= $current_page == 'ads.php' ? 'active' : '' ?>">
                 <i class="fas fa-ad"></i>
@@ -97,21 +108,13 @@ try {
         </div>
         
         <!-- Finance -->
-        <?php if (hasPermission(getCurrentUserId(), 'view_transactions') || isSuperAdmin(getCurrentUserId())): ?>
+        <?php if (hasPermission(getCurrentUserId(), 'view_transactions')): ?>
         <div class="nav-section">
             <div class="nav-section-title">Finance</div>
-            <?php if (hasPermission(getCurrentUserId(), 'view_transactions')): ?>
             <a href="transactions.php" class="nav-link <?= $current_page == 'transactions.php' ? 'active' : '' ?>">
                 <i class="fas fa-money-bill-wave"></i>
                 <span>Transactions</span>
             </a>
-            <?php endif; ?>
-            <?php if (isSuperAdmin(getCurrentUserId())): ?>
-            <a href="payment-settings.php" class="nav-link <?= $current_page == 'payment-settings.php' ? 'active' : '' ?>">
-                <i class="fas fa-credit-card"></i>
-                <span>Payment Settings</span>
-            </a>
-            <?php endif; ?>
         </div>
         <?php endif; ?>
         

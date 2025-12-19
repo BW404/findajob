@@ -4,7 +4,16 @@ require_once '../../config/session.php';
 
 requireEmployer();
 
-$employer_id = getCurrentUserId();
+$userId = getCurrentUserId();
+
+// Get user data for header
+$stmt = $pdo->prepare("SELECT u.*, ep.* FROM users u LEFT JOIN employer_profiles ep ON u.id = ep.user_id WHERE u.id = ?");
+$stmt->execute([$userId]);
+$user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
 
 // Get filter parameters
 $status_filter = $_GET['status'] ?? 'all';
@@ -24,7 +33,7 @@ $query = "SELECT ja.*,
           LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id
           WHERE j.employer_id = ?";
 
-$params = [$employer_id];
+$params = [$userId];
 
 if ($status_filter !== 'all') {
     $query .= " AND ja.application_status = ?";
@@ -78,7 +87,7 @@ $stats_query = "SELECT
                 INNER JOIN jobs j ON ja.job_id = j.id
                 WHERE j.employer_id = ?";
 $stats_stmt = $pdo->prepare($stats_query);
-$stats_stmt->execute([$employer_id]);
+$stats_stmt->execute([$userId]);
 $stats = $stats_stmt->fetch();
 
 // Get jobs list for filter dropdown
@@ -89,7 +98,7 @@ $jobs_query = "SELECT j.id, j.title, COUNT(ja.id) as app_count
                GROUP BY j.id
                ORDER BY j.created_at DESC";
 $jobs_stmt = $pdo->prepare($jobs_query);
-$jobs_stmt->execute([$employer_id]);
+$jobs_stmt->execute([$userId]);
 $jobs = $jobs_stmt->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -101,24 +110,8 @@ $jobs = $jobs_stmt->fetchAll();
     <link rel="stylesheet" href="../../assets/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
-                    <a href="dashboard.php" class="nav-link">Dashboard</a>
-                    <a href="post-job.php" class="nav-link">Post Job</a>
-                    <a href="active-jobs.php" class="nav-link">Active Jobs</a>
-                    <a href="all-applications.php" class="nav-link" style="color: var(--primary); font-weight: 600;">Applications</a>
-                    <a href="applicants.php" class="nav-link">Applicants</a>
-                    <a href="profile.php" class="nav-link">Profile</a>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
+<body class="has-bottom-nav">
+    <?php include '../../includes/employer-header.php'; ?>
     </header>
 
     <main class="container" style="padding: 3rem 0;">

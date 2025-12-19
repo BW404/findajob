@@ -3,6 +3,7 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/pro-features.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -20,14 +21,30 @@ $user_id = $_SESSION['user_id'];
 $error_message = '';
 $success_message = '';
 
+// Check user subscription plan using helper functions
+$subscription = getUserSubscription($pdo, $user_id);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
+
+// Get current CV count
+$stmt = $pdo->prepare("SELECT COUNT(*) as cv_count FROM cvs WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$cv_count_row = $stmt->fetch();
+$current_cv_count = $cv_count_row['cv_count'] ?? 0;
+
+// CV limit from helper function
+$cv_limit = $limits['cv_uploads'];
+
 // Handle CV upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_cv'])) {
     $cv_name = trim($_POST['cv_name']);
     $cv_description = trim($_POST['cv_description']);
     $is_primary = isset($_POST['is_primary']) ? 1 : 0;
     
-    // Validate input
-    if (empty($cv_name)) {
+    // Check CV limit for non-Pro users
+    if (!$isPro && $current_cv_count >= $cv_limit) {
+        $error_message = 'You have reached the maximum number of CVs for your plan. Upgrade to Pro to upload unlimited CVs.';
+    } elseif (empty($cv_name)) {
         $error_message = 'Please provide a name for your CV';
     } elseif (empty($_FILES['cv_file']['name'])) {
         $error_message = 'Please select a CV file to upload';
@@ -52,15 +69,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_cv'])) {
             $unique_filename = 'cv_' . $user_id . '_' . time() . '.' . $file_extension;
             $upload_path = $upload_dir . $unique_filename;
             
+            // Get file type before moving (while tmp file still exists)
+            $file_type = mime_content_type($file['tmp_name']);
+            
             if (move_uploaded_file($file['tmp_name'], $upload_path)) {
                 // If this is set as primary, unset other primary CVs
                 if ($is_primary) {
                     $stmt = $pdo->prepare("UPDATE cvs SET is_primary = 0 WHERE user_id = ?");
                     $stmt->execute([$user_id]);
                 }
-                
-                // Get file type
-                $file_type = mime_content_type($file['tmp_name']);
                 
                 // Insert CV record into database
                 $stmt = $pdo->prepare("
@@ -402,8 +419,10 @@ $page_title = 'CV Manager - FindAJob Nigeria';
                 <div class="stat-label">Primary CV</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">5</div>
-                <div class="stat-label">Max CVs Allowed</div>
+                <div class="stat-number" style="<?php echo $isPro ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;' : ''; ?>">
+                    <?php echo $isPro ? '∞' : $cv_limit; ?>
+                </div>
+                <div class="stat-label">Max CVs Allowed <?php echo $isPro ? '<span style="color: #10b981; font-weight: 600;">👑 Pro</span>' : ''; ?></div>
             </div>
         </div>
         
@@ -420,10 +439,33 @@ $page_title = 'CV Manager - FindAJob Nigeria';
             </div>
         <?php endif; ?>
         
+        <!-- Premium CV Writing Service Banner -->
+        <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <div style="display: inline-block; background: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.75rem;">
+                        👑 PREMIUM SERVICE
+                    </div>
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
+                        <i class="fas fa-crown"></i> Expert CV Writing Service
+                    </h3>
+                    <p style="margin: 0; opacity: 0.95; font-size: 1rem;">
+                        Get a professionally written CV by certified writers. Includes cover letter, consultation, and LinkedIn optimization. Starting from ₦15,500!
+                    </p>
+                </div>
+                <a href="../services/premium-cv.php" style="background: white; color: #dc2626; padding: 0.875rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s;">
+                    <i class="fas fa-star"></i> Get Expert CV
+                </a>
+            </div>
+        </div>
+        
         <!-- AI CV Generator Promo -->
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div style="flex: 1;">
+                    <div style="display: inline-block; background: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.75rem;">
+                        ✨ FREE TOOL
+                    </div>
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
                         <i class="fas fa-magic"></i> Create CV with AI
                     </h3>
@@ -437,28 +479,39 @@ $page_title = 'CV Manager - FindAJob Nigeria';
             </div>
         </div>
         
-        <!-- Professional CV Service Banner -->
-        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <div style="flex: 1; min-width: 250px;">
-                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.5rem;">👑</span>
-                        Get a Professionally Written CV
-                    </h3>
-                    <p style="margin: 0; color: #78350f; font-size: 0.95rem;">
-                        Let our expert CV writers create a compelling, ATS-optimized resume that gets you noticed. 1-on-1 consultation, industry-specific optimization, and cover letter included. Starting from ₦15,500.
+        <!-- Upload Section -->
+        <?php if (!$isPro && $current_cv_count >= $cv_limit): ?>
+        <div class="alert alert-warning" style="margin-bottom: 2rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 8px;">
+            <div style="display: flex; align-items: start; gap: 1rem;">
+                <div style="font-size: 2rem;">🔒</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #92400e;">CV Upload Limit Reached</h3>
+                    <p style="margin: 0 0 1rem 0; color: #78350f;">
+                        You have reached the maximum of <strong><?php echo $cv_limit; ?> CV</strong> for your Basic plan. Upgrade to Pro to upload unlimited CVs!
                     </p>
+                    <a href="../payment/plans.php" class="btn btn-primary" style="background: #f59e0b; border-color: #f59e0b;">
+                        👑 Upgrade to Pro
+                    </a>
                 </div>
-                <a href="../services/cv-creator.php#professional" class="btn btn-primary" style="white-space: nowrap; background: #f59e0b; border-color: #f59e0b;">
-                    💼 Learn More
-                </a>
             </div>
         </div>
-        
-        <!-- Upload Section -->
-        <?php if (count($user_cvs) < 5): ?>
+        <?php elseif (count($user_cvs) < 5): ?>
         <div class="upload-section">
-            <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">📤 Upload Existing CV</h2>
+            <h2 style="margin: 0 0 0.5rem 0; color: var(--text-primary); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <span>📤 Upload Existing CV</span>
+                <?php if (!$isPro): ?>
+                <span style="font-size: 0.875rem; color: #6b7280; font-weight: normal;">
+                    <?php echo $current_cv_count; ?> / <?php echo $cv_limit; ?> CV uploaded
+                </span>
+                <?php else: ?>
+                <span style="font-size: 0.875rem; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 4px 12px; border-radius: 20px; font-weight: 500;">
+                    👑 Pro - Unlimited CVs
+                </span>
+                <?php endif; ?>
+            </h2>
+            <p style="margin: 0 0 1.5rem 0; color: #6b7280; font-size: 0.875rem;">
+                Upload your CV and use it for job applications
+            </p>
             
             <form method="POST" enctype="multipart/form-data" class="upload-form">
                 <div class="form-group">

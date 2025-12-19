@@ -2,6 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
+require_once '../../includes/internship-badges.php';
 
 requireEmployer();
 
@@ -544,6 +545,13 @@ $page_title = htmlspecialchars($seeker['first_name'] . ' ' . $seeker['last_name'
                         </div>
                     </div>
                 </div>
+
+                <!-- Internship Badges -->
+                <?php if (hasInternshipBadge($seeker_id, $pdo)): ?>
+                <div class="profile-card" style="padding: 0; overflow: hidden;">
+                    <?php displayInternshipBadges($seeker_id, $pdo, true); ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Application History -->
                 <?php if (!empty($applications)): ?>

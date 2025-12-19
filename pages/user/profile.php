@@ -3,10 +3,17 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/pro-features.php';
+require_once '../../includes/internship-badges.php';
 
 requireJobSeeker();
 
 $userId = getCurrentUserId();
+
+// Get user subscription
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
 
 // Get user profile data with explicit column selection to avoid conflicts
 $stmt = $pdo->prepare("
@@ -1049,15 +1056,23 @@ $profileCompletion = calculateProfileCompletion($user);
                 Profile <?php echo $profileCompletion; ?>% Complete
             </div>
             
-            <?php if ($user['nin_verified']): ?>
-                <div class="verification-status verified">
-                    ✓ NIN Verified
-                </div>
-            <?php else: ?>
-                <div class="verification-status unverified">
-                    ⚠ Verify Your NIN
-                </div>
-            <?php endif; ?>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+                <?php if ($user['nin_verified']): ?>
+                    <div class="verification-status verified">
+                        ✓ NIN Verified
+                    </div>
+                <?php else: ?>
+                    <div class="verification-status unverified">
+                        ⚠ Verify Your NIN
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($user['phone_verified']) && $user['phone_verified']): ?>
+                    <div class="verification-status verified">
+                        ✓ Phone Verified
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
 
         <?php if (isset($success_message)): ?>
@@ -1671,6 +1686,18 @@ $profileCompletion = calculateProfileCompletion($user);
                     </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Internship Badges Section -->
+            <?php if (hasInternshipBadge($userId, $pdo)): ?>
+            <div class="profile-section" id="internship-badges">
+                <div class="section-header">
+                    <span class="section-icon">🏆</span>
+                    <h2>Internship Badges</h2>
+                </div>
+                
+                <?php displayInternshipBadges($userId, $pdo, true); ?>
+            </div>
+            <?php endif; ?>
 
             <button type="submit" class="btn-save">
                 Save Profile Changes

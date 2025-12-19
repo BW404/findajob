@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/session.php';
+require_once '../includes/pro-features.php';
 
 // Clear any opcode cache
 if (function_exists('opcache_invalidate')) {
@@ -19,6 +20,20 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'job_seeker') {
 }
 
 $userId = $_SESSION['user_id'];
+
+// Check Pro status - AI Job Finder is a Pro feature
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+
+if (!$isPro) {
+    http_response_code(403);
+    echo json_encode([
+        'error' => 'Pro feature required',
+        'message' => 'AI Job Recommendations is a Pro feature. Upgrade to access personalized job recommendations.',
+        'upgrade_url' => '/findajob/pages/payment/plans.php?feature=ai_recommendations'
+    ]);
+    exit;
+}
 
 try {
     // Get user profile with all relevant data

@@ -10,10 +10,12 @@ if (!isLoggedIn()) {
 
 $user_id = getCurrentUserId();
 
-// Get user info with verification status
+// Get user info with verification status and subscription
 $stmt = $pdo->prepare("
     SELECT u.user_type, u.first_name, u.last_name, u.email,
+           u.subscription_plan, u.subscription_status, u.subscription_type, u.subscription_end,
            jsp.nin_verified as js_nin_verified, jsp.verification_boosted as js_verification_boosted,
+           jsp.profile_boosted as js_profile_boosted, jsp.profile_boost_until as js_profile_boost_until,
            ep.company_cac_verified, ep.provider_nin_verified, ep.verification_boosted as ep_verification_boosted
     FROM users u
     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id AND u.user_type = 'job_seeker'
@@ -22,6 +24,12 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
+
+// Get current subscription info
+$current_plan = $user['subscription_plan'] ?? 'basic';
+$current_status = $user['subscription_status'] ?? 'free';
+$current_type = $user['subscription_type'] ?? null;
+$is_subscribed = ($current_status === 'active');
 
 $is_employer = ($user['user_type'] === 'employer');
 $is_job_seeker = ($user['user_type'] === 'job_seeker');
@@ -32,6 +40,13 @@ if ($is_job_seeker) {
     $is_verified = ($user['js_nin_verified'] == 1) || ($user['js_verification_boosted'] == 1);
 } elseif ($is_employer) {
     $is_verified = ($user['provider_nin_verified'] == 1) || ($user['company_cac_verified'] == 1) || ($user['ep_verification_boosted'] == 1);
+}
+
+// Check if profile is boosted
+$is_profile_boosted = false;
+if ($is_job_seeker && $user['js_profile_boosted'] == 1 && $user['js_profile_boost_until']) {
+    $boost_until = new DateTime($user['js_profile_boost_until']);
+    $is_profile_boosted = ($boost_until > new DateTime());
 }
 
 // Filter pricing plans based on user type
@@ -392,6 +407,47 @@ require_once '../../includes/header.php';
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
 
+        <?php if ($is_subscribed): ?>
+        <!-- Current Subscription Status -->
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #2563eb; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; color: #1e40af; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-crown" style="color: #f59e0b;"></i>
+                        Current Plan: <strong><?= ucfirst($current_plan) ?> <?= ucfirst($current_type ?? '') ?></strong>
+                        <?php if ($is_profile_boosted): ?>
+                        <span style="background: #7c3aed; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">
+                            🚀 Profile Boosted
+                        </span>
+                        <?php endif; ?>
+                    </h3>
+                    <p style="margin: 0; color: #1e40af; font-size: 0.875rem;">
+                        <?php 
+                        $sub_end = $user['subscription_end'] ?? null;
+                        if ($sub_end): 
+                            $end_date = new DateTime($sub_end);
+                            $now = new DateTime();
+                            $diff = $now->diff($end_date);
+                            if ($end_date > $now):
+                        ?>
+                        <i class="fas fa-calendar-check"></i> Active until <strong><?= date('M d, Y', strtotime($sub_end)) ?></strong> 
+                        (<?= $diff->days ?> days remaining)
+                        <?php else: ?>
+                        <i class="fas fa-calendar-times"></i> <span style="color: #dc2626;">Expired on <?= date('M d, Y', strtotime($sub_end)) ?></span>
+                        <?php endif; endif; ?>
+                        <?php if ($is_profile_boosted): 
+                            $boost_end = new DateTime($user['js_profile_boost_until']);
+                            $boost_diff = $now->diff($boost_end);
+                        ?>
+                        <br><i class="fas fa-rocket"></i> <strong>Profile Boost:</strong> Active until <strong><?= date('M d, Y', strtotime($user['js_profile_boost_until'])) ?></strong> 
+                        (<?= $boost_diff->days ?> days remaining)
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Subscription Plans -->
         <h2 class="section-title">Subscription Plans</h2>
         <p class="section-subtitle">Choose the plan that works best for you</p>
@@ -445,20 +501,42 @@ require_once '../../includes/header.php';
                                 <li><i class="fas fa-check"></i> Basic job search</li>
                                 <li><i class="fas fa-check"></i> Apply to jobs</li>
                                 <li><i class="fas fa-check"></i> Save favorite jobs</li>
+                                <li><i class="fas fa-check"></i> Single CV upload</li>
                                 <li><i class="fas fa-check"></i> Basic profile</li>
                             <?php else: ?>
-                                <li><i class="fas fa-check"></i> Priority application status</li>
-                                <li><i class="fas fa-check"></i> Profile boost in searches</li>
-                                <li><i class="fas fa-check"></i> Unlimited job applications</li>
-                                <li><i class="fas fa-check"></i> Advanced CV builder</li>
-                                <li><i class="fas fa-check"></i> Email job alerts</li>
-                                <li><i class="fas fa-check"></i> Priority support</li>
+                                <?php if (isset($plan['features']) && is_array($plan['features'])): ?>
+                                    <?php foreach ($plan['features'] as $feature): ?>
+                                        <li><i class="fas fa-check"></i> <?= htmlspecialchars($feature) ?></li>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <li><i class="fas fa-check"></i> Multiple CV uploads and management</li>
+                                    <li><i class="fas fa-check"></i> Advanced profile fields</li>
+                                    <li><i class="fas fa-check"></i> Top of employer searches</li>
+                                    <li><i class="fas fa-check"></i> AI-powered job recommendations</li>
+                                    <li><i class="fas fa-check"></i> Daily job alerts (email & SMS)</li>
+                                    <li><i class="fas fa-check"></i> Advanced application tracking</li>
+                                    <li><i class="fas fa-check"></i> Priority support</li>
+                                <?php endif; ?>
                             <?php endif; ?>
                         <?php endif; ?>
                     </ul>
                     
-                    <?php if ($plan['price'] == 0): ?>
+                    <?php 
+                    // Check if this is the current active plan
+                    $is_current_plan = false;
+                    if ($plan['price'] == 0 && $current_plan === 'basic') {
+                        $is_current_plan = true;
+                    } elseif (strpos($plan_key, 'pro_monthly') !== false && $current_plan === 'pro' && $current_type === 'monthly' && $is_subscribed) {
+                        $is_current_plan = true;
+                    } elseif (strpos($plan_key, 'pro_yearly') !== false && $current_plan === 'pro' && $current_type === 'yearly' && $is_subscribed) {
+                        $is_current_plan = true;
+                    }
+                    ?>
+                    
+                    <?php if ($is_current_plan): ?>
                         <button class="plan-button free" disabled>Current Plan</button>
+                    <?php elseif ($plan['price'] == 0): ?>
+                        <button class="plan-button free" disabled>Free Plan</button>
                     <?php else: ?>
                         <button 
                             class="plan-button" 
@@ -470,6 +548,27 @@ require_once '../../includes/header.php';
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <!-- Verification Badge Note -->
+        <?php if (!$is_employer): ?>
+        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #10b981; padding: 1.5rem; border-radius: 12px; margin: 2rem 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <div style="display: flex; align-items: start; gap: 1rem;">
+                <div style="font-size: 2rem;">✅</div>
+                <div>
+                    <h3 style="margin: 0 0 0.5rem 0; color: #065f46; font-size: 1.25rem;">
+                        Get Your Verified ID Badge
+                    </h3>
+                    <p style="margin: 0; color: #047857; line-height: 1.6;">
+                        The <strong>Verified ID badge (green tick ✅)</strong> is available to <strong>all users</strong> (Basic and Pro) who complete NIN verification. 
+                        This one-time payment gives you a verified badge on your profile, increasing trust with employers and boosting your application success rate.
+                    </p>
+                    <p style="margin: 0.75rem 0 0 0; color: #047857; font-weight: 600;">
+                        💰 One-time fee: ₦1,000 • See "Verification Booster" below
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Boosters -->
         <h2 class="section-title">Boost Your <?= $is_employer ? 'Jobs' : 'Profile' ?></h2>
@@ -485,6 +584,10 @@ require_once '../../includes/header.php';
                 // Check if this is a verification booster and user is already verified
                 $is_verification_booster = in_array($plan_key, ['job_seeker_verification_booster', 'employer_verification_booster']);
                 $already_verified = $is_verification_booster && $is_verified;
+                
+                // Check if this is a profile booster and user is already boosted
+                $is_profile_booster = ($plan_key === 'job_seeker_profile_booster');
+                $already_boosted = $is_profile_booster && $is_profile_boosted;
             ?>
                 <div class="booster-card">
                     <h3><?= htmlspecialchars($plan['name']) ?></h3>
@@ -515,6 +618,10 @@ require_once '../../includes/header.php';
                     <?php if ($already_verified): ?>
                         <button class="plan-button free" disabled style="background: white; color: #10b981; border: 2px solid #10b981; cursor: not-allowed;">
                             <i class="fas fa-check-circle"></i> Already Verified
+                        </button>
+                    <?php elseif ($already_boosted): ?>
+                        <button class="plan-button free" disabled style="background: white; color: #7c3aed; border: 2px solid #7c3aed; cursor: not-allowed;">
+                            <i class="fas fa-rocket"></i> Already Boosted
                         </button>
                     <?php else: ?>
                         <button 

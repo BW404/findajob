@@ -470,7 +470,7 @@ $page_title = 'Search CVs - FindAJob Nigeria';
     </style>
 </head>
 <body class="has-bottom-nav">
-    <?php include '../../includes/header.php'; ?>
+    <?php include '../../includes/employer-header.php'; ?>
 
     <div class="cv-search-container">
         <div class="search-header">

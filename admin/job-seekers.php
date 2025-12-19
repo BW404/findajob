@@ -73,8 +73,10 @@ $sql = "
     SELECT 
         u.id, u.first_name, u.last_name, u.email, u.phone, 
         u.is_active, u.email_verified, u.phone_verified, u.created_at,
+        u.subscription_plan, u.subscription_status, u.subscription_type, u.subscription_end,
         jsp.job_status, jsp.education_level, jsp.years_of_experience,
         jsp.nin_verified, jsp.verification_status,
+        jsp.profile_boosted, jsp.profile_boost_until,
         COUNT(DISTINCT ja.id) as application_count,
         COUNT(DISTINCT cv.id) as cv_count
     FROM users u
@@ -362,6 +364,7 @@ $pageTitle = 'Job Seekers Manager';
                             <tr>
                                 <th>User</th>
                                 <th>Contact</th>
+                                <th>Subscription Plan</th>
                                 <th>Job Status</th>
                                 <th>Experience</th>
                                 <th>Applications</th>
@@ -390,6 +393,56 @@ $pageTitle = 'Job Seekers Manager';
                                         <div><?= htmlspecialchars($js['email']) ?></div>
                                         <?php if ($js['phone']): ?>
                                             <small style="color: #6b7280;"><?= htmlspecialchars($js['phone']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $sub_plan = $js['subscription_plan'] ?? 'basic';
+                                        $sub_status = $js['subscription_status'] ?? 'free';
+                                        $sub_type = $js['subscription_type'] ?? '';
+                                        $sub_end = $js['subscription_end'] ?? null;
+                                        $is_pro = strpos($sub_plan, 'pro') !== false && $sub_status === 'active';
+                                        
+                                        // Check profile boost
+                                        $profile_boosted = $js['profile_boosted'] ?? 0;
+                                        $profile_boost_until = $js['profile_boost_until'] ?? null;
+                                        $boost_active = false;
+                                        if ($profile_boost_until) {
+                                            $boost_date = new DateTime($profile_boost_until);
+                                            $boost_active = $boost_date > new DateTime();
+                                        }
+                                        ?>
+                                        <div style="min-width: 140px;">
+                                            <?php if ($is_pro): ?>
+                                                <span class="badge badge-success" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 4px 8px; display: inline-block; margin-bottom: 4px;">
+                                                    👑 Pro <?= ucfirst($sub_type) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge badge-secondary" style="padding: 4px 8px; display: inline-block; margin-bottom: 4px;">Basic Plan</span>
+                                            <?php endif; ?>
+                                            <?php if ($boost_active): ?>
+                                                <br><span class="badge" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 3px 6px; font-size: 11px; display: inline-block;">🚀 Profile Boosted</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if ($is_pro && $sub_end): 
+                                            $end_date = new DateTime($sub_end);
+                                            $now = new DateTime();
+                                            $is_expired = $end_date <= $now;
+                                        ?>
+                                            <small style="color: <?= $is_expired ? '#dc2626' : '#059669' ?>; display: block; margin-top: 4px; font-size: 11px;">
+                                                <?php if ($is_expired): ?>
+                                                    ⚠️ Expired <?= date('M d, Y', strtotime($sub_end)) ?>
+                                                <?php else: 
+                                                    $diff = $now->diff($end_date);
+                                                ?>
+                                                    📅 Until <?= date('M d, Y', strtotime($sub_end)) ?> (<?= $diff->days ?>d)
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
+                                        <?php if ($boost_active): ?>
+                                            <small style="color: #7c3aed; display: block; margin-top: 2px; font-size: 11px;">
+                                                🚀 Until <?= date('M d, Y', strtotime($profile_boost_until)) ?>
+                                            </small>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -434,12 +487,18 @@ $pageTitle = 'Job Seekers Manager';
                                     </td>
                                     <td>
                                         <div class="action-btns">
-                                            <a href="view-job-seeker.php?id=<?= $js['id'] ?>" class="btn btn-sm btn-info" title="View Details">
+                                            <a href="view-job-seeker.php?id=<?= $js['id'] ?>" class="btn btn-sm btn-info" title="View Profile" target="_blank">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-danger" onclick="suspendUser(<?= $js['id'] ?>)" title="Suspend">
-                                                <i class="fas fa-ban"></i>
-                                            </button>
+                                            <?php if ($js['is_active']): ?>
+                                                <button class="btn btn-sm btn-danger" onclick="toggleUserStatus(<?= $js['id'] ?>, 0)" title="Suspend">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-success" onclick="toggleUserStatus(<?= $js['id'] ?>, 1)" title="Activate">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -476,22 +535,34 @@ $pageTitle = 'Job Seekers Manager';
     </div>
     
     <script>
-        function suspendUser(userId) {
-            if (!confirm('Are you sure you want to suspend this user?')) return;
+        function toggleUserStatus(userId, newStatus) {
+            const action = newStatus === 1 ? 'activate' : 'suspend';
+            const confirmMsg = newStatus === 1 ? 
+                'Are you sure you want to activate this user?' : 
+                'Are you sure you want to suspend this user?';
             
-            // Implement suspend functionality
+            if (!confirm(confirmMsg)) return;
+            
+            // Implement toggle status functionality
             fetch('../api/admin-actions.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: `action=suspend_user&user_id=${userId}`
+                body: `action=${action}_user&user_id=${userId}`
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert(data.message || 'Error suspending user');
+                    alert(data.message || 'Error updating user status');
                 }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error. Please try again.');
+            });
+        }
+    </script>
             });
         }
     </script>

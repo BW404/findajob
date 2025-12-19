@@ -3,10 +3,32 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/pro-features.php';
 
 requireJobSeeker();
 
 $userId = getCurrentUserId();
+
+// Get user subscription
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
+
+// Track daily applications (Pro feature limit)
+$today_start = date('Y-m-d 00:00:00');
+$today_end = date('Y-m-d 23:59:59');
+$todayStmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM job_applications 
+    WHERE job_seeker_id = ? 
+    AND applied_at BETWEEN ? AND ?
+");
+$todayStmt->execute([$userId, $today_start, $today_end]);
+$applications_today = $todayStmt->fetchColumn();
+
+$daily_limit = $limits['applications_per_day'];
+$approaching_daily_limit = !$isPro && $applications_today >= ($daily_limit * 0.8);
+$daily_limit_reached = !$isPro && $applications_today >= $daily_limit;
 
 // Get filter parameters
 $status_filter = $_GET['status'] ?? '';
@@ -425,6 +447,55 @@ foreach ($statResults as $stat) {
             <h1>My Applications</h1>
             <p>Track and manage all your job applications in one place</p>
         </div>
+
+        <!-- Pro Feature Limits Warning -->
+        <?php if (!$isPro): ?>
+            <!-- Daily Limit Reached Warning -->
+            <?php if ($daily_limit_reached): ?>
+                <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <i class="fas fa-lock" style="font-size: 2rem;"></i>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700;">🔒 Daily Application Limit Reached</h3>
+                            <p style="margin: 0; opacity: 0.95;">You've reached the maximum of <?php echo $daily_limit; ?> applications per day on the Basic plan. Try again tomorrow or upgrade to Pro for unlimited applications.</p>
+                        </div>
+                    </div>
+                    <a href="../payment/plans.php" class="btn" style="background: white; color: #dc2626; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block;">
+                        <i class="fas fa-crown"></i> Upgrade to Pro
+                    </a>
+                </div>
+            <!-- Approaching Limit Warning -->
+            <?php elseif ($approaching_daily_limit): ?>
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-weight: 600;">⚠️ Almost at your daily application limit: <?php echo $applications_today; ?>/<?php echo $daily_limit; ?> applications today</p>
+                            <p style="margin: 0.5rem 0 0 0; opacity: 0.95; font-size: 0.9rem;">Upgrade to Pro for unlimited applications per day and more features!</p>
+                        </div>
+                        <a href="../payment/plans.php" class="btn" style="background: white; color: #f59e0b; padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 600; text-decoration: none; white-space: nowrap;">
+                            <i class="fas fa-crown"></i> Go Pro
+                        </a>
+                    </div>
+                </div>
+            <!-- Normal Counter -->
+            <?php else: ?>
+                <div style="background: #f3f4f6; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #6b7280;">
+                    <p style="margin: 0; color: #4b5563; font-weight: 600;">
+                        📋 <?php echo $applications_today; ?>/<?php echo $daily_limit; ?> applications today
+                        <a href="../payment/plans.php" style="color: #dc2626; text-decoration: none; margin-left: 1rem;">
+                            <i class="fas fa-crown"></i> Upgrade for unlimited
+                        </a>
+                    </p>
+                </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <!-- Pro Badge -->
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-crown" style="font-size: 1.25rem;"></i>
+                <p style="margin: 0; font-weight: 600;">👑 Pro - Unlimited Applications Per Day</p>
+            </div>
+        <?php endif; ?>
 
         <!-- Statistics -->
         <div class="stats-row">

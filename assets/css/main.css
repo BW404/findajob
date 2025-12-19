@@ -625,7 +625,8 @@ body {
 .site-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 1rem 0;
+  padding: 0rem 0;
+  margin-bottom: 1rem;
 }
 
 .site-nav {
@@ -646,9 +647,9 @@ body {
 }
 
 .site-logo-img {
-  height: 90px;
+  height: 50px;
   width: auto;
-  max-width: 180px;
+  max-width: 150px;
 }
 
 /* Dashboard Styles */
@@ -2021,7 +2022,7 @@ body.install-banner-active {
 /* Safe area support for devices with notches */
 @supports (padding: max(0px)) {
     .site-header {
-        padding-top: max(1rem, env(safe-area-inset-top));
+        padding-top: max(0rem, env(safe-area-inset-top));
     }
     
     .app-bottom-nav {

@@ -146,18 +146,65 @@ function processPaymentService($transaction, $flw_data) {
                 break;
                 
             case 'cv_service':
-                // Activate CV service access
+            case 'cv_pro':
+            case 'cv_pro_plus':
+            case 'remote_working_cv':
+                // Update premium CV request payment status
+                if (isset($_SESSION['pending_cv_request_id'])) {
+                    $request_id = $_SESSION['pending_cv_request_id'];
+                    $stmt = $pdo->prepare("UPDATE premium_cv_requests SET payment_status = 'paid' WHERE id = ? AND user_id = ?");
+                    $stmt->execute([$request_id, $user_id]);
+                    unset($_SESSION['pending_cv_request_id']);
+                    unset($_SESSION['pending_cv_plan']);
+                    error_log("Premium CV request {$request_id} marked as paid");
+                } else {
+                    // Try to find by transaction metadata
+                    $metadata = json_decode($transaction['metadata'], true);
+                    if (isset($metadata['cv_request_id'])) {
+                        $stmt = $pdo->prepare("UPDATE premium_cv_requests SET payment_status = 'paid' WHERE id = ? AND user_id = ?");
+                        $stmt->execute([$metadata['cv_request_id'], $user_id]);
+                        error_log("Premium CV request {$metadata['cv_request_id']} marked as paid via metadata");
+                    }
+                }
                 break;
                 
             case 'subscription':
+            case 'job_seeker_pro_monthly':
+            case 'job_seeker_pro_yearly':
                 // Activate premium subscription
-                $subscription_end = date('Y-m-d H:i:s', strtotime('+30 days'));
-                $stmt = $pdo->prepare("UPDATE users SET subscription_status = 'active', subscription_end = ? WHERE id = ?");
-                $stmt->execute([$subscription_end, $user_id]);
+                $duration_days = ($service_type === 'job_seeker_pro_yearly') ? 365 : 30;
+                $subscription_end = date('Y-m-d H:i:s', strtotime("+{$duration_days} days"));
+                $subscription_start = date('Y-m-d H:i:s');
+                
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET 
+                        subscription_plan = 'pro',
+                        subscription_status = 'active',
+                        subscription_type = ?,
+                        subscription_start = ?,
+                        subscription_end = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$service_type, $subscription_start, $subscription_end, $user_id]);
+                error_log("Pro subscription activated for user {$user_id}, plan: {$service_type}");
                 break;
                 
             case 'nin_verification':
-                // Process NIN verification
+            case 'job_seeker_verification_booster':
+                // Mark user as ready for NIN verification (actual verification happens separately)
+                $boost_until = date('Y-m-d H:i:s', strtotime('+365 days')); // Verification lasts 1 year
+                $stmt = $pdo->prepare("UPDATE job_seeker_profiles SET verification_boosted = 1 WHERE user_id = ?");
+                $stmt->execute([$user_id]);
+                error_log("Verification booster activated for user {$user_id}");
+                break;
+                
+            case 'job_seeker_profile_booster':
+                // Boost profile visibility
+                $boost_until = date('Y-m-d H:i:s', strtotime('+30 days'));
+                $stmt = $pdo->prepare("UPDATE job_seeker_profiles SET profile_boosted = 1, profile_boost_until = ? WHERE user_id = ?");
+                $stmt->execute([$boost_until, $user_id]);
+                error_log("Profile booster activated for user {$user_id} until {$boost_until}");
                 break;
                 
             case 'job_booster':
@@ -167,6 +214,68 @@ function processPaymentService($transaction, $flw_data) {
                     $boosted_until = date('Y-m-d H:i:s', strtotime('+7 days'));
                     $stmt = $pdo->prepare("UPDATE jobs SET is_boosted = 1, boosted_until = ? WHERE id = ? AND user_id = ?");
                     $stmt->execute([$boosted_until, $metadata['job_id'], $user_id]);
+                }
+                break;
+                
+            // Employer Plans
+            case 'employer_pro_monthly':
+            case 'employer_pro_yearly':
+                // Activate employer Pro subscription
+                $duration_days = ($service_type === 'employer_pro_yearly') ? 365 : 30;
+                $subscription_end = date('Y-m-d H:i:s', strtotime("+{$duration_days} days"));
+                $subscription_start = date('Y-m-d H:i:s');
+                
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET 
+                        subscription_plan = 'pro',
+                        subscription_status = 'active',
+                        subscription_type = ?,
+                        subscription_start = ?,
+                        subscription_end = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$service_type, $subscription_start, $subscription_end, $user_id]);
+                error_log("Employer Pro subscription activated for user {$user_id}, plan: {$service_type}");
+                break;
+                
+            case 'employer_verification_booster':
+                // Mark employer as verification boosted
+                $stmt = $pdo->prepare("UPDATE employer_profiles SET verification_boosted = 1, verification_boost_date = NOW() WHERE user_id = ?");
+                $stmt->execute([$user_id]);
+                error_log("Employer verification booster activated for user {$user_id}");
+                break;
+                
+            case 'employer_job_booster_1':
+            case 'employer_job_booster_3':
+            case 'employer_job_booster_5':
+                // Add job boost credits
+                $credits_map = [
+                    'employer_job_booster_1' => 1,
+                    'employer_job_booster_3' => 3,
+                    'employer_job_booster_5' => 5
+                ];
+                $credits = $credits_map[$service_type] ?? 0;
+                
+                $stmt = $pdo->prepare("
+                    UPDATE employer_profiles 
+                    SET job_boost_credits = COALESCE(job_boost_credits, 0) + ?
+                    WHERE user_id = ?
+                ");
+                $stmt->execute([$credits, $user_id]);
+                error_log("Added {$credits} job boost credits for employer {$user_id}");
+                
+                // If specific job ID in metadata, boost it immediately and deduct credit
+                $metadata = json_decode($transaction['metadata'], true);
+                if (isset($metadata['job_id'])) {
+                    $boost_until = date('Y-m-d H:i:s', strtotime('+30 days'));
+                    $stmt = $pdo->prepare("
+                        UPDATE jobs 
+                        SET is_boosted = 1, boosted_until = ?
+                        WHERE id = ? AND user_id = ?
+                    ");
+                    $stmt->execute([$boost_until, $metadata['job_id'], $user_id]);
+                    error_log("Boosted job {$metadata['job_id']} for employer {$user_id}");
                 }
                 break;
         }

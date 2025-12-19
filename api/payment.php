@@ -74,11 +74,18 @@ try {
             ");
             
             $customer_name = $user['first_name'] . ' ' . $user['last_name'];
-            $metadata = json_encode([
+            $metadata_array = [
                 'user_id' => $user_id,
                 'service_type' => $service_type,
                 'created_at' => date('Y-m-d H:i:s')
-            ]);
+            ];
+            
+            // Add CV request ID if provided
+            if (!empty($_POST['cv_request_id'])) {
+                $metadata_array['cv_request_id'] = intval($_POST['cv_request_id']);
+            }
+            
+            $metadata = json_encode($metadata_array);
             
             $stmt->execute([
                 $user_id,
@@ -475,7 +482,17 @@ function processPaymentService($service_type, $user_id, $transaction) {
                 break;
                 
             case 'cv_service':
-                // Activate CV service
+            case 'cv_pro':
+            case 'cv_pro_plus':
+            case 'remote_working_cv':
+                // Update premium CV request payment status
+                if (isset($metadata['cv_request_id'])) {
+                    $stmt = $pdo->prepare("UPDATE premium_cv_requests SET payment_status = 'paid', updated_at = NOW() WHERE id = ? AND user_id = ?");
+                    $stmt->execute([$metadata['cv_request_id'], $user_id]);
+                    error_log("Premium CV request {$metadata['cv_request_id']} marked as paid for user {$user_id}");
+                } else {
+                    error_log("Warning: CV payment processed but no cv_request_id in metadata for transaction {$transaction['tx_ref']}");
+                }
                 break;
         }
         

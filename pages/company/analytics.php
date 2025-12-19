@@ -4,7 +4,16 @@ require_once '../../config/session.php';
 
 requireEmployer();
 
-$employer_id = getCurrentUserId();
+$userId = getCurrentUserId();
+
+// Get user data for header
+$stmt = $pdo->prepare("SELECT u.*, ep.* FROM users u LEFT JOIN employer_profiles ep ON u.id = ep.user_id WHERE u.id = ?");
+$stmt->execute([$userId]);
+$user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
 
 // Get overall statistics
 $overall_query = "SELECT 
@@ -16,7 +25,7 @@ $overall_query = "SELECT
                   LEFT JOIN job_applications ja ON j.id = ja.job_id
                   WHERE j.employer_id = ?";
 $overall_stmt = $pdo->prepare($overall_query);
-$overall_stmt->execute([$employer_id]);
+$overall_stmt->execute([$userId]);
 $overall = $overall_stmt->fetch();
 
 // Calculate conversion rate
@@ -33,7 +42,7 @@ $status_query = "SELECT
                  WHERE j.employer_id = ?
                  GROUP BY ja.application_status";
 $status_stmt = $pdo->prepare($status_query);
-$status_stmt->execute([$employer_id]);
+$status_stmt->execute([$userId]);
 $status_breakdown = $status_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
 // Get top performing jobs
@@ -50,7 +59,7 @@ $top_jobs_query = "SELECT j.id, j.title, j.views_count,
                    ORDER BY application_count DESC
                    LIMIT 5";
 $top_jobs_stmt = $pdo->prepare($top_jobs_query);
-$top_jobs_stmt->execute([$employer_id]);
+$top_jobs_stmt->execute([$userId]);
 $top_jobs = $top_jobs_stmt->fetchAll();
 
 // Get recent activity (last 30 days)
@@ -64,8 +73,101 @@ $activity_query = "SELECT
                    GROUP BY DATE(ja.applied_at)
                    ORDER BY date DESC";
 $activity_stmt = $pdo->prepare($activity_query);
-$activity_stmt->execute([$employer_id]);
+$activity_stmt->execute([$userId]);
 $activity = $activity_stmt->fetchAll();
+
+// ===== ADVANCED ANALYTICS =====
+
+// 1. APPLICATION TRACKING - Hiring funnel metrics
+$funnel_query = "SELECT 
+                 SUM(CASE WHEN ja.application_status = 'applied' THEN 1 ELSE 0 END) as applied,
+                 SUM(CASE WHEN ja.application_status = 'viewed' THEN 1 ELSE 0 END) as viewed,
+                 SUM(CASE WHEN ja.application_status = 'shortlisted' THEN 1 ELSE 0 END) as shortlisted,
+                 SUM(CASE WHEN ja.application_status = 'interviewed' THEN 1 ELSE 0 END) as interviewed,
+                 SUM(CASE WHEN ja.application_status = 'offered' THEN 1 ELSE 0 END) as offered,
+                 SUM(CASE WHEN ja.application_status = 'hired' THEN 1 ELSE 0 END) as hired,
+                 SUM(CASE WHEN ja.application_status = 'rejected' THEN 1 ELSE 0 END) as rejected
+                 FROM job_applications ja
+                 INNER JOIN jobs j ON ja.job_id = j.id
+                 WHERE j.employer_id = ?";
+$funnel_stmt = $pdo->prepare($funnel_query);
+$funnel_stmt->execute([$userId]);
+$funnel = $funnel_stmt->fetch();
+
+// Calculate conversion rates for hiring funnel
+$funnel_total = $funnel['applied'] + $funnel['viewed'] + $funnel['shortlisted'] + 
+                $funnel['interviewed'] + $funnel['offered'] + $funnel['hired'];
+$funnel_percentages = [
+    'applied' => $funnel_total > 0 ? round(($funnel['applied'] / $funnel_total) * 100, 1) : 0,
+    'viewed' => $funnel_total > 0 ? round(($funnel['viewed'] / $funnel_total) * 100, 1) : 0,
+    'shortlisted' => $funnel_total > 0 ? round(($funnel['shortlisted'] / $funnel_total) * 100, 1) : 0,
+    'interviewed' => $funnel_total > 0 ? round(($funnel['interviewed'] / $funnel_total) * 100, 1) : 0,
+    'offered' => $funnel_total > 0 ? round(($funnel['offered'] / $funnel_total) * 100, 1) : 0,
+    'hired' => $funnel_total > 0 ? round(($funnel['hired'] / $funnel_total) * 100, 1) : 0,
+];
+
+// 2. PERFORMANCE METRICS - Time to hire and response rates
+$performance_query = "SELECT 
+                      AVG(TIMESTAMPDIFF(DAY, ja.applied_at, 
+                          CASE 
+                              WHEN ja.application_status = 'hired' THEN ja.updated_at 
+                              ELSE NULL 
+                          END)) as avg_time_to_hire,
+                      AVG(TIMESTAMPDIFF(HOUR, ja.applied_at, ja.updated_at)) as avg_response_time,
+                      COUNT(CASE WHEN ja.updated_at <= DATE_ADD(ja.applied_at, INTERVAL 24 HOUR) THEN 1 END) as responses_within_24h,
+                      COUNT(*) as total_responses
+                      FROM job_applications ja
+                      INNER JOIN jobs j ON ja.job_id = j.id
+                      WHERE j.employer_id = ? 
+                      AND ja.updated_at > ja.applied_at";
+$performance_stmt = $pdo->prepare($performance_query);
+$performance_stmt->execute([$userId]);
+$performance = $performance_stmt->fetch();
+
+$response_rate_24h = $performance['total_responses'] > 0 
+    ? round(($performance['responses_within_24h'] / $performance['total_responses']) * 100, 1) 
+    : 0;
+
+// 3. HIRING ANALYTICS - Candidate quality and source effectiveness
+$quality_query = "SELECT 
+                  COUNT(CASE WHEN ja.application_status IN ('hired', 'offered') THEN 1 END) as quality_candidates,
+                  COUNT(*) as total_candidates,
+                  AVG(jsp.years_of_experience) as avg_experience,
+                  COUNT(CASE WHEN jsp.nin_verified = 1 THEN 1 END) as verified_candidates
+                  FROM job_applications ja
+                  INNER JOIN jobs j ON ja.job_id = j.id
+                  LEFT JOIN job_seeker_profiles jsp ON ja.job_seeker_id = jsp.user_id
+                  WHERE j.employer_id = ?";
+$quality_stmt = $pdo->prepare($quality_query);
+$quality_stmt->execute([$userId]);
+$quality = $quality_stmt->fetch();
+
+$quality_rate = $quality['total_candidates'] > 0 
+    ? round(($quality['quality_candidates'] / $quality['total_candidates']) * 100, 1) 
+    : 0;
+
+$verification_rate = $quality['total_candidates'] > 0 
+    ? round(($quality['verified_candidates'] / $quality['total_candidates']) * 100, 1) 
+    : 0;
+
+// Get hiring success rate by job
+$success_by_job_query = "SELECT j.title, j.id,
+                         COUNT(ja.id) as total_apps,
+                         COUNT(CASE WHEN ja.application_status = 'hired' THEN 1 END) as hired_count,
+                         CASE WHEN COUNT(ja.id) > 0 
+                              THEN ROUND((COUNT(CASE WHEN ja.application_status = 'hired' THEN 1 END) / COUNT(ja.id)) * 100, 1)
+                              ELSE 0 
+                         END as success_rate
+                         FROM jobs j
+                         LEFT JOIN job_applications ja ON j.id = ja.job_id
+                         WHERE j.employer_id = ?
+                         GROUP BY j.id
+                         HAVING total_apps > 0
+                         ORDER BY success_rate DESC
+                         LIMIT 5";
+$success_stmt = $pdo->prepare($success_by_job_query);
+$success_stmt->execute([$userId]);
+$success_by_job = $success_stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -77,27 +179,10 @@ $activity = $activity_stmt->fetchAll();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <header class="site-header">
-        <div class="container">
-            <nav class="site-nav">
-                <a href="/findajob" class="site-logo">
-                    <img src="/findajob/assets/images/logo_full.png" alt="FindAJob Nigeria" class="site-logo-img">
-                </a>
-                <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
-                    <a href="dashboard.php" class="nav-link">Dashboard</a>
-                    <a href="post-job.php" class="nav-link">Post Job</a>
-                    <a href="active-jobs.php" class="nav-link">Active Jobs</a>
-                    <a href="all-applications.php" class="nav-link">Applications</a>
-                    <a href="analytics.php" class="nav-link" style="color: var(--primary); font-weight: 600;">Analytics</a>
-                    <a href="profile.php" class="nav-link">Profile</a>
-                    <a href="../auth/logout.php" class="btn btn-secondary">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+<body class="has-bottom-nav">
+    <?php include '../../includes/employer-header.php'; ?>
 
-    <main class="container" style="padding: 3rem 0;">
+    <main class="container" style="padding: 2rem 0;">
         <!-- Page Header -->
         <div style="margin-bottom: 2rem;">
             <h1 style="margin: 0 0 0.5rem 0; font-size: 2.5rem; font-weight: 700; color: var(--text-primary);">
@@ -229,6 +314,284 @@ $activity = $activity_stmt->fetchAll();
                 Application Activity (Last 30 Days)
             </h2>
             <canvas id="activityChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <!-- Advanced Analytics Section -->
+        <div style="margin-top: 3rem;">
+            <h2 style="margin: 0 0 2rem 0; font-size: 2rem; font-weight: 800; color: var(--text-primary); text-align: center;">
+                <i class="fas fa-chart-bar" style="color: var(--primary); margin-right: 0.75rem;"></i>
+                Advanced Analytics
+            </h2>
+            
+            <!-- 1. Application Tracking - Hiring Funnel -->
+            <div style="background: var(--surface); padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1.5rem 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                        <i class="fas fa-chart-line" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    Application Tracking - Hiring Funnel
+                </h3>
+                <p style="margin: 0 0 2rem 0; color: var(--text-secondary);">
+                    Monitor application flows and identify bottlenecks in your hiring process
+                </p>
+                
+                <?php if ($funnel_total > 0): ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div style="background: linear-gradient(135deg, rgba(5,150,105,0.1) 0%, rgba(5,150,105,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #059669;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #059669; margin-bottom: 0.5rem;"><?php echo $funnel['applied']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Applied</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #059669;"><?php echo $funnel_percentages['applied']; ?>%</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #6366f1;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #6366f1; margin-bottom: 0.5rem;"><?php echo $funnel['viewed']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Viewed</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #6366f1;"><?php echo $funnel_percentages['viewed']; ?>%</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #f59e0b;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem;"><?php echo $funnel['shortlisted']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Shortlisted</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #f59e0b;"><?php echo $funnel_percentages['shortlisted']; ?>%</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(139,92,246,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #8b5cf6;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6; margin-bottom: 0.5rem;"><?php echo $funnel['interviewed']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Interviewed</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #8b5cf6;"><?php echo $funnel_percentages['interviewed']; ?>%</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #10b981;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #10b981; margin-bottom: 0.5rem;"><?php echo $funnel['offered']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Offered</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #10b981;"><?php echo $funnel_percentages['offered']; ?>%</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(220,38,38,0.1) 0%, rgba(220,38,38,0.05) 100%); padding: 1.5rem; border-radius: 12px; text-align: center; border-left: 4px solid #dc2626;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #dc2626; margin-bottom: 0.5rem;"><?php echo $funnel['hired']; ?></div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Hired</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #dc2626;"><?php echo $funnel_percentages['hired']; ?>%</div>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.02) 100%); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--primary);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-info-circle" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Funnel Insights</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                <?php 
+                                $conversion_to_hired = $funnel['applied'] > 0 ? round(($funnel['hired'] / $funnel['applied']) * 100, 1) : 0;
+                                echo "Your application-to-hire conversion rate is <strong>{$conversion_to_hired}%</strong>. ";
+                                if ($conversion_to_hired < 5) {
+                                    echo "Consider improving your screening process or job descriptions.";
+                                } elseif ($conversion_to_hired < 15) {
+                                    echo "Good conversion rate! Keep optimizing your hiring process.";
+                                } else {
+                                    echo "Excellent conversion rate! Your hiring process is highly effective.";
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fas fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No application data available yet. Start receiving applications to see your hiring funnel.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- 2. Performance Metrics -->
+            <div style="background: var(--surface); padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1.5rem 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                        <i class="fas fa-tachometer-alt" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    Performance Metrics
+                </h3>
+                <p style="margin: 0 0 2rem 0; color: var(--text-secondary);">
+                    Measure time-to-hire, response rates, and candidate engagement metrics
+                </p>
+                
+                <?php if ($performance['total_responses'] > 0): ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <div style="background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #6366f1;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Avg. Time to Hire</div>
+                            <i class="fas fa-clock" style="font-size: 1.5rem; color: #6366f1; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #6366f1;">
+                            <?php echo $performance['avg_time_to_hire'] ? round($performance['avg_time_to_hire']) : '-'; ?>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            <?php echo $performance['avg_time_to_hire'] ? 'days' : 'No hires yet'; ?>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Avg. Response Time</div>
+                            <i class="fas fa-stopwatch" style="font-size: 1.5rem; color: #f59e0b; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #f59e0b;">
+                            <?php echo round($performance['avg_response_time']); ?>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">hours</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(5,150,105,0.1) 0%, rgba(5,150,105,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #059669;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">24h Response Rate</div>
+                            <i class="fas fa-bolt" style="font-size: 1.5rem; color: #059669; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #059669;">
+                            <?php echo $response_rate_24h; ?>%
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            <?php echo $performance['responses_within_24h']; ?> of <?php echo $performance['total_responses']; ?> responses
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(99,102,241,0.02) 100%); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #6366f1; margin-top: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-lightbulb" style="font-size: 1.5rem; color: #6366f1;"></i>
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Performance Tip</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                <?php 
+                                if ($response_rate_24h < 40) {
+                                    echo "Try to respond to applications within 24 hours. Candidates are 4x more likely to stay interested with quick responses.";
+                                } elseif ($response_rate_24h < 70) {
+                                    echo "Good response time! Keep up the momentum to maintain candidate interest.";
+                                } else {
+                                    echo "Excellent response rate! Your quick responses help maintain high candidate engagement.";
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fas fa-tachometer-alt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No performance data available yet. Interact with applications to see metrics.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- 3. Hiring Analytics -->
+            <div style="background: var(--surface); padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1.5rem 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                        <i class="fas fa-filter" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    Hiring Analytics
+                </h3>
+                <p style="margin: 0 0 2rem 0; color: var(--text-secondary);">
+                    Analyze candidate quality, source effectiveness, and hiring success rates
+                </p>
+                
+                <?php if ($quality['total_candidates'] > 0): ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div style="background: linear-gradient(135deg, rgba(220,38,38,0.1) 0%, rgba(220,38,38,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #dc2626;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Quality Rate</div>
+                            <i class="fas fa-star" style="font-size: 1.5rem; color: #dc2626; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #dc2626;">
+                            <?php echo $quality_rate; ?>%
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            <?php echo $quality['quality_candidates']; ?> hired/offered candidates
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #10b981;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Verification Rate</div>
+                            <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: #10b981; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #10b981;">
+                            <?php echo $verification_rate; ?>%
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            <?php echo $quality['verified_candidates']; ?> verified candidates
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(139,92,246,0.05) 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #8b5cf6;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Avg. Experience</div>
+                            <i class="fas fa-briefcase" style="font-size: 1.5rem; color: #8b5cf6; opacity: 0.3;"></i>
+                        </div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #8b5cf6;">
+                            <?php echo $quality['avg_experience'] ? round($quality['avg_experience'], 1) : '-'; ?>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            <?php echo $quality['avg_experience'] ? 'years of experience' : 'No data'; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <?php if (!empty($success_by_job)): ?>
+                <div>
+                    <h4 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                        Hiring Success Rate by Job
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <?php foreach ($success_by_job as $job): ?>
+                        <div style="background: linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.02) 100%); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+                                        <?php echo htmlspecialchars($job['title']); ?>
+                                    </div>
+                                    <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                        <?php echo $job['hired_count']; ?> hired from <?php echo $job['total_apps']; ?> applications
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">
+                                        <?php echo $job['success_rate']; ?>%
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">success rate</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <div style="background: linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.02) 100%); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--primary); margin-top: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-chart-bar" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Quality Insights</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                <?php 
+                                if ($verification_rate > 50) {
+                                    echo "Great! Over half your candidates are verified, indicating high trust and quality.";
+                                } elseif ($verification_rate > 20) {
+                                    echo "Consider prioritizing verified candidates for better quality and reduced risk.";
+                                } else {
+                                    echo "Encourage candidates to verify their profiles for better hiring confidence.";
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fas fa-filter" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No hiring analytics available yet. Start hiring to see quality metrics.</p>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
 
         <!-- Insights and Tips -->

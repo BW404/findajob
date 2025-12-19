@@ -34,21 +34,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'update_general') {
-        // Update general settings (to be implemented with a settings table)
-        $success = 'General settings updated successfully';
+        // Update general settings
+        try {
+            // Handle maintenance mode (Super Admin only)
+            if (isSuperAdmin(getCurrentUserId()) && isset($_POST['maintenance_mode'])) {
+                $maintenance = $_POST['maintenance_mode'] === 'on' ? '1' : '0';
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO site_settings (setting_key, setting_value, updated_at) 
+                    VALUES ('maintenance_mode', ?, NOW()) 
+                    ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()
+                ");
+                $stmt->execute([$maintenance, $maintenance]);
+            } elseif (isSuperAdmin(getCurrentUserId())) {
+                // If checkbox not checked, set to 0
+                $stmt = $pdo->prepare("
+                    INSERT INTO site_settings (setting_key, setting_value, updated_at) 
+                    VALUES ('maintenance_mode', '0', NOW()) 
+                    ON DUPLICATE KEY UPDATE setting_value = '0', updated_at = NOW()
+                ");
+                $stmt->execute();
+            }
+            
+            $success = 'General settings updated successfully';
+        } catch (Exception $e) {
+            $error = 'Error updating settings: ' . $e->getMessage();
+        }
     } elseif ($action === 'update_email') {
         // Update email settings
         $success = 'Email settings updated successfully';
     } elseif ($action === 'update_payment') {
-        // Update payment settings
-        $success = 'Payment settings updated successfully';
+        // Update payment settings - Super Admin only
+        if (isSuperAdmin(getCurrentUserId())) {
+            try {
+                $pdo->beginTransaction();
+                
+                $settings = [
+                    'flutterwave_public_key' => trim($_POST['flutterwave_public_key'] ?? ''),
+                    'flutterwave_secret_key' => trim($_POST['flutterwave_secret_key'] ?? ''),
+                    'flutterwave_encryption_key' => trim($_POST['flutterwave_encryption_key'] ?? ''),
+                    'flutterwave_environment' => trim($_POST['flutterwave_environment'] ?? 'test'),
+                    'flutterwave_webhook_url' => trim($_POST['flutterwave_webhook_url'] ?? '')
+                ];
+                
+                if (!in_array($settings['flutterwave_environment'], ['test', 'live'])) {
+                    throw new Exception('Invalid environment');
+                }
+                
+                foreach ($settings as $key => $value) {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO site_settings (setting_key, setting_value, updated_at) 
+                        VALUES (?, ?, NOW()) 
+                        ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()
+                    ");
+                    $stmt->execute([$key, $value, $value]);
+                }
+                
+                $pdo->commit();
+                $success = 'Payment settings saved successfully!';
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $error = 'Error saving payment settings: ' . $e->getMessage();
+            }
+        } else {
+            $error = 'Access denied. Super Admin only.';
+        }
+    } elseif ($action === 'update_pricing') {
+        // Update pricing - Super Admin only
+        if (isSuperAdmin(getCurrentUserId())) {
+            try {
+                // Get all pricing fields
+                $pricing_updates = [];
+                foreach ($_POST as $key => $value) {
+                    if (strpos($key, 'price_') === 0) {
+                        $plan_key = str_replace('price_', '', $key);
+                        $pricing_updates[$plan_key] = floatval($value);
+                    }
+                }
+                
+                // Read the current flutterwave.php file
+                $config_file = '../config/flutterwave.php';
+                $config_content = file_get_contents($config_file);
+                
+                // Update prices in the content
+                foreach ($pricing_updates as $plan_key => $new_price) {
+                    // Match the price line for this specific plan key
+                    // Pattern: 'plan_key' => [ ... 'price' => NUMBER,
+                    $pattern = "/('" . preg_quote($plan_key, '/') . "'\\s*=>\\s*\\[[^\\]]*'price'\\s*=>\\s*)(\\d+)/s";
+                    $replacement = '${1}' . intval($new_price);
+                    $config_content = preg_replace($pattern, $replacement, $config_content);
+                }
+                
+                // Write back to file
+                if (file_put_contents($config_file, $config_content)) {
+                    $success = 'Pricing updated successfully!';
+                } else {
+                    $error = 'Failed to write to configuration file. Check file permissions.';
+                }
+            } catch (Exception $e) {
+                $error = 'Error updating pricing: ' . $e->getMessage();
+            }
+        } else {
+            $error = 'Access denied. Super Admin only.';
+        }
     } elseif ($action === 'update_api') {
         // Update API settings
         $success = 'API settings updated successfully';
     }
 }
 
-// Get current settings from constants file
+// Get current settings from database and constants
+try {
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('maintenance_mode', 'maintenance_message')");
+    $dbSettings = [];
+    while ($row = $stmt->fetch()) {
+        $dbSettings[$row['setting_key']] = $row['setting_value'];
+    }
+} catch (Exception $e) {
+    $dbSettings = [];
+}
+
 $settings = [
     'site_name' => 'FindAJob Nigeria',
     'site_url' => 'http://localhost/findajob',
@@ -56,8 +161,29 @@ $settings = [
     'dev_mode' => defined('DEV_MODE') ? DEV_MODE : false,
     'items_per_page' => 20,
     'max_cv_size' => '5MB',
-    'allowed_cv_formats' => 'PDF, DOC, DOCX'
+    'allowed_cv_formats' => 'PDF, DOC, DOCX',
+    'maintenance_mode' => ($dbSettings['maintenance_mode'] ?? '0') === '1',
+    'maintenance_message' => $dbSettings['maintenance_message'] ?? 'We are currently performing scheduled maintenance. Please check back soon.'
 ];
+
+// Fetch current payment settings
+$paymentSettings = [];
+try {
+    $stmt = $pdo->query("
+        SELECT setting_key, setting_value 
+        FROM site_settings 
+        WHERE setting_key LIKE 'flutterwave_%'
+    ");
+    while ($row = $stmt->fetch()) {
+        $paymentSettings[$row['setting_key']] = $row['setting_value'];
+    }
+} catch (Exception $e) {
+    error_log("Error fetching payment settings: " . $e->getMessage());
+}
+
+// Load pricing plans
+require_once '../config/flutterwave.php';
+$pricingPlans = PRICING_PLANS;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -349,6 +475,12 @@ $settings = [
             background: #4b5563;
         }
 
+        .btn-primary:disabled,
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .form-actions {
             display: flex;
             gap: 10px;
@@ -460,6 +592,26 @@ $settings = [
                         <small>Enable detailed error messages and email capture</small>
                     </div>
 
+                    <?php if (isSuperAdmin(getCurrentUserId())): ?>
+                    <div class="form-group">
+                        <div class="toggle-group">
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="maintenance_mode" <?= ($settings['maintenance_mode'] ?? false) ? 'checked' : '' ?>>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <label>Maintenance Mode</label>
+                        </div>
+                        <small>Put site under maintenance - only admins can access</small>
+                    </div>
+                    
+                    <?php if ($settings['maintenance_mode'] ?? false): ?>
+                    <div class="warning-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Site is currently in maintenance mode.</strong> Regular users cannot access the platform.
+                    </div>
+                    <?php endif; ?>
+                    <?php endif; ?>
+
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Changes
@@ -526,47 +678,178 @@ $settings = [
 
             <!-- Payment Settings -->
             <div class="settings-card">
-                <h2><i class="fas fa-credit-card"></i> Payment Gateway</h2>
-                <p>Configure Paystack integration</p>
+                <h2><i class="fas fa-credit-card"></i> Payment Gateway (Flutterwave)</h2>
+                <p>Configure payment integration and API keys</p>
+                
+                <?php if (isSuperAdmin(getCurrentUserId())): ?>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_payment">
+                        
+                        <div class="form-group">
+                            <label>Flutterwave Public Key</label>
+                            <input type="text" name="flutterwave_public_key" 
+                                   value="<?= htmlspecialchars($paymentSettings['flutterwave_public_key'] ?? '') ?>" 
+                                   placeholder="FLWPUBK_TEST-xxxxxxxxxxxxx" required>
+                            <small>Your Flutterwave public API key</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Flutterwave Secret Key</label>
+                            <input type="password" name="flutterwave_secret_key" 
+                                   value="<?= htmlspecialchars($paymentSettings['flutterwave_secret_key'] ?? '') ?>" 
+                                   placeholder="FLWSECK_TEST-xxxxxxxxxxxxx" required>
+                            <small>Your Flutterwave secret API key (keep secure)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Flutterwave Encryption Key</label>
+                            <input type="password" name="flutterwave_encryption_key" 
+                                   value="<?= htmlspecialchars($paymentSettings['flutterwave_encryption_key'] ?? '') ?>" 
+                                   placeholder="FLWSECK_TESTxxxxx" required>
+                            <small>Encryption key for secure transactions</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Webhook URL</label>
+                            <input type="url" name="flutterwave_webhook_url" 
+                                   value="<?= htmlspecialchars($paymentSettings['flutterwave_webhook_url'] ?? '') ?>" 
+                                   placeholder="https://yourdomain.com/api/flutterwave-webhook.php">
+                            <small>URL for payment notifications</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Environment Mode</label>
+                            <select name="flutterwave_environment" required>
+                                <option value="test" <?= ($paymentSettings['flutterwave_environment'] ?? 'test') === 'test' ? 'selected' : '' ?>>
+                                    Test Mode (Use test keys)
+                                </option>
+                                <option value="live" <?= ($paymentSettings['flutterwave_environment'] ?? 'test') === 'live' ? 'selected' : '' ?>>
+                                    Live Mode (Use live keys)
+                                </option>
+                            </select>
+                            <small>Switch between test and live payment processing</small>
+                        </div>
+
+                        <div class="warning-box">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Never share your secret keys. Make sure to use test keys during development.
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Payment Settings
+                            </button>
+                        </div>
+                    </form>
+                <?php else: ?>
+                    <div class="warning-box">
+                        <i class="fas fa-lock"></i>
+                        <strong>Restricted Access:</strong> Only super administrators can modify payment settings.
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+                        <p style="margin-bottom: 10px; font-weight: 600;">Current Status:</p>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+                                <i class="fas fa-circle" style="color: #10b981; font-size: 8px; margin-right: 8px;"></i>
+                                Payment gateway is active
+                            </li>
+                            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+                                <i class="fas fa-circle" style="color: <?= ($paymentSettings['flutterwave_environment'] ?? 'test') === 'live' ? '#dc2626' : '#f59e0b' ?>; font-size: 8px; margin-right: 8px;"></i>
+                                Running in <?= ucfirst($paymentSettings['flutterwave_environment'] ?? 'test') ?> mode
+                            </li>
+                            <li style="padding: 8px 0;">
+                                <i class="fas fa-circle" style="color: #3b82f6; font-size: 8px; margin-right: 8px;"></i>
+                                <?= count($pricingPlans) ?> pricing plans configured
+                            </li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Pricing Management -->
+            <?php if (isSuperAdmin(getCurrentUserId())): ?>
+            <div class="settings-card">
+                <h2><i class="fas fa-tags"></i> Pricing Plans</h2>
+                <p>Manage subscription and booster pricing</p>
                 
                 <form method="POST">
-                    <input type="hidden" name="action" value="update_payment">
+                    <input type="hidden" name="action" value="update_pricing">
                     
-                    <div class="form-group">
-                        <label>Paystack Public Key</label>
-                        <input type="text" name="paystack_public_key" placeholder="pk_test_xxxxxxxxxxxxx">
-                        <small>Your Paystack public API key</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Paystack Secret Key</label>
-                        <input type="password" name="paystack_secret_key" placeholder="sk_test_xxxxxxxxxxxxx">
-                        <small>Your Paystack secret API key (keep secure)</small>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="toggle-group">
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="paystack_live_mode">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <label>Live Mode</label>
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="font-size: 18px; margin-bottom: 15px; color: #dc2626;">Job Seeker Plans</h3>
+                        <div style="display: grid; gap: 15px;">
+                            <?php
+                            $jobSeekerPlans = array_filter($pricingPlans, function($plan) {
+                                return $plan['user_type'] === 'job_seeker';
+                            });
+                            foreach ($jobSeekerPlans as $key => $plan):
+                            ?>
+                                <div style="padding: 15px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #dc2626;">
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex: 2;">
+                                            <label style="font-weight: 600; color: #1f2937;"><?= htmlspecialchars($plan['name']) ?></label>
+                                            <small style="color: #6b7280;"><?= htmlspecialchars($plan['duration']) ?></small>
+                                        </div>
+                                        <div class="form-group" style="flex: 1;">
+                                            <label>Price (₦)</label>
+                                            <input type="number" name="price_<?= $key ?>" 
+                                                   value="<?= $plan['price'] ?>" 
+                                                   min="0" step="100" required
+                                                   style="font-weight: 600; font-size: 16px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                        <small>Use live keys instead of test keys</small>
                     </div>
 
-                    <div class="warning-box">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Never share your secret key. Make sure to use test keys during development.
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="font-size: 18px; margin-bottom: 15px; color: #dc2626;">Employer Plans</h3>
+                        <div style="display: grid; gap: 15px;">
+                            <?php
+                            $employerPlans = array_filter($pricingPlans, function($plan) {
+                                return $plan['user_type'] === 'employer';
+                            });
+                            foreach ($employerPlans as $key => $plan):
+                            ?>
+                                <div style="padding: 15px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #dc2626;">
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex: 2;">
+                                            <label style="font-weight: 600; color: #1f2937;"><?= htmlspecialchars($plan['name']) ?></label>
+                                            <small style="color: #6b7280;">
+                                                <?= htmlspecialchars($plan['duration']) ?>
+                                                <?php if (isset($plan['jobs_count'])): ?>
+                                                    • <?= $plan['jobs_count'] ?> Job<?= $plan['jobs_count'] > 1 ? 's' : '' ?>
+                                                <?php endif; ?>
+                                            </small>
+                                        </div>
+                                        <div class="form-group" style="flex: 1;">
+                                            <label>Price (₦)</label>
+                                            <input type="number" name="price_<?= $key ?>" 
+                                                   value="<?= $plan['price'] ?>" 
+                                                   min="0" step="100" required
+                                                   style="font-weight: 600; font-size: 16px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        Price changes take effect immediately. All prices are in Nigerian Naira (₦).
                     </div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Payment Settings
+                            <i class="fas fa-save"></i> Update All Prices
                         </button>
                     </div>
                 </form>
             </div>
+            <?php endif; ?>
 
             <!-- API & Integration Settings -->
             <div class="settings-card">

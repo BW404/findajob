@@ -2,6 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/pro-features.php';
 
 // Check if GET request (show application form) or POST (process application)
 $isFormSubmission = $_SERVER['REQUEST_METHOD'] === 'POST';
@@ -30,6 +31,31 @@ if (!isLoggedIn() || !isJobSeeker()) {
 $userId = getCurrentUserId();
 $errors = [];
 $success = false;
+
+// Check Pro feature limits (daily applications)
+$subscription = getUserSubscription($pdo, $userId);
+$isPro = $subscription['is_pro'];
+$limits = getFeatureLimits($isPro);
+
+if (!$isPro && $isFormSubmission) {
+    // Check daily application limit for Basic users
+    $today_start = date('Y-m-d 00:00:00');
+    $today_end = date('Y-m-d 23:59:59');
+    $todayStmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM job_applications 
+        WHERE job_seeker_id = ? 
+        AND applied_at BETWEEN ? AND ?
+    ");
+    $todayStmt->execute([$userId, $today_start, $today_end]);
+    $applications_today = $todayStmt->fetchColumn();
+    
+    if ($applications_today >= $limits['applications_per_day']) {
+        // Redirect to applications page with limit error
+        header('Location: /findajob/pages/user/applications.php?error=daily_limit');
+        exit;
+    }
+}
 
 try {
     // Ensure job exists and is active

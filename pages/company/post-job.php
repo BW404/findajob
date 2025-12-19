@@ -35,6 +35,16 @@ if (!isLoggedIn() || !isEmployer()) {
 }
 
 $userId = getCurrentUserId();
+
+// Get user data for header
+$stmt = $pdo->prepare("SELECT u.*, ep.* FROM users u LEFT JOIN employer_profiles ep ON u.id = ep.user_id WHERE u.id = ?");
+$stmt->execute([$userId]);
+$user = $stmt->fetch();
+
+// Check if employer has Pro subscription
+$isPro = ($user['subscription_type'] === 'pro' && 
+          (!$user['subscription_end'] || strtotime($user['subscription_end']) > time()));
+
 $success_message = '';
 $error_message = '';
 $job_id = null;
@@ -817,21 +827,9 @@ if (empty($user_display_name)) {
     </style>
 </head>
 <body class="has-bottom-nav">
-    <div class="container">
-        <!-- Header -->
-        <div style="text-align: center; margin-bottom: 3rem;">
-            <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; padding: 1rem 2rem; border-radius: 50px; margin-bottom: 1.5rem; box-shadow: 0 8px 25px rgba(220, 38, 38, 0.25);">
-                <i class="fas fa-<?php echo $isEditing ? 'edit' : 'plus-circle'; ?>" style="font-size: 1.5rem; margin-right: 0.75rem;"></i>
-                <span style="font-size: 1.1rem; font-weight: 600;"><?php echo $isEditing ? 'Edit Job' : 'Post New Job'; ?></span>
-            </div>
-            <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0 0 1rem; line-height: 1.2;">
-                <?php echo $isEditing ? 'Update Your Job Posting' : 'Find Your Next Great Hire'; ?>
-            </h1>
-            <p style="font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto; line-height: 1.6;">
-                <?php echo $isEditing ? 'Make changes to your job posting and update it to reflect current requirements.' : 'Reach thousands of qualified professionals across Nigeria with our comprehensive job posting platform.'; ?>
-            </p>
-        </div>
-
+    <?php include '../../includes/employer-header.php'; ?>
+    
+    <main class="container" style="padding-top: 2rem;">
         <!-- Progress Indicators -->
         <div style="display: flex; justify-content: center; margin-bottom: 3rem;">
             <div class="progress-steps" style="display: flex; align-items: center; gap: 2rem;">
@@ -1464,7 +1462,7 @@ if (empty($user_display_name)) {
                 </div>
             </form>
         </div>
-    </div>
+    </main>
 
     <script>
         let currentStep = 1;

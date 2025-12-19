@@ -98,11 +98,19 @@ if (isLoggedIn()) {
                         <?php if (isJobSeeker()): ?>
                             <li><a href="<?php echo $is_auth_page ? '../user/dashboard.php' : '/findajob/pages/user/dashboard.php'; ?>" class="nav-link">Dashboard</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../jobs/browse.php' : '/findajob/pages/jobs/browse.php'; ?>" class="nav-link">Browse Jobs</a></li>
+                            <li><a href="<?php echo $is_auth_page ? '../user/private-offers.php' : '/findajob/pages/user/private-offers.php'; ?>" class="nav-link" style="position: relative;">
+                                Private Offers
+                                <span id="privateOffersNotificationJobSeeker" style="display: none; position: absolute; top: -5px; right: -10px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px;"></span>
+                            </a></li>
                             <li><a href="<?php echo $is_auth_page ? '../user/applications.php' : '/findajob/pages/user/applications.php'; ?>" class="nav-link">My Applications</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../user/profile.php' : '/findajob/pages/user/profile.php'; ?>" class="nav-link">Profile</a></li>
                         <?php else: ?>
                             <li><a href="<?php echo $is_auth_page ? '../company/dashboard.php' : '/findajob/pages/company/dashboard.php'; ?>" class="nav-link">Dashboard</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../company/post-job.php' : '/findajob/pages/company/post-job.php'; ?>" class="nav-link">Post Job</a></li>
+                            <li><a href="<?php echo $is_auth_page ? '../company/private-offers.php' : '/findajob/pages/company/private-offers.php'; ?>" class="nav-link" style="position: relative;">
+                                Private Offers
+                                <span id="privateOffersNotificationEmployer" style="display: none; position: absolute; top: -5px; right: -10px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px;"></span>
+                            </a></li>
                             <li><a href="<?php echo $is_auth_page ? '../company/applicants.php' : '/findajob/pages/company/applicants.php'; ?>" class="nav-link">Applicants</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../company/profile.php' : '/findajob/pages/company/profile.php'; ?>" class="nav-link">Company</a></li>
                         <?php endif; ?>
