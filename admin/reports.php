@@ -31,10 +31,26 @@ $admin = $stmt->fetch();
 
 // Handle report actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $report_id = $_POST['report_id'] ?? null;
-    $action = $_POST['action'];
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Invalid security token. Please refresh and try again.']);
+        exit;
+    }
+    
+    $report_id = isset($_POST['report_id']) ? intval($_POST['report_id']) : null;
+    $action = trim($_POST['action']);
     
     if ($report_id) {
+        // Verify report exists before processing
+        $stmt = $pdo->prepare("SELECT id FROM reports WHERE id = ?");
+        $stmt->execute([$report_id]);
+        if (!$stmt->fetch()) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Report not found']);
+            exit;
+        }
+        
         try {
             if ($action === 'review') {
                 $stmt = $pdo->prepare("
@@ -48,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $success = "Report marked as under review";
                 
             } elseif ($action === 'resolve') {
-                $admin_notes = $_POST['admin_notes'] ?? '';
+                $admin_notes = trim(strip_tags($_POST['admin_notes'] ?? ''));
                 $stmt = $pdo->prepare("
                     UPDATE reports 
                     SET status = 'resolved',
@@ -61,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $success = "Report marked as resolved";
                 
             } elseif ($action === 'dismiss') {
-                $admin_notes = $_POST['admin_notes'] ?? '';
+                $admin_notes = trim(strip_tags($_POST['admin_notes'] ?? ''));
                 $stmt = $pdo->prepare("
                     UPDATE reports 
                     SET status = 'dismissed',
@@ -72,10 +88,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ");
                 $stmt->execute([$admin_notes, $user_id, $report_id]);
                 $success = "Report dismissed";
+                
+            } elseif ($action === 'suspend_user') {
+                $suspension_reason = trim(strip_tags($_POST['suspension_reason'] ?? 'Suspended due to report violations'));
+                $suspension_days = max(1, min(365, intval($_POST['suspension_days'] ?? 7))); // Limit 1-365 days
+                
+                // Get the reported user ID
+                $stmt = $pdo->prepare("SELECT reported_entity_type, reported_entity_id FROM reports WHERE id = ?");
+                $stmt->execute([$report_id]);
+                $report = $stmt->fetch();
+                
+                $target_user_id = null;
+                
+                if ($report['reported_entity_type'] === 'user') {
+                    $target_user_id = $report['reported_entity_id'];
+                } elseif ($report['reported_entity_type'] === 'job') {
+                    // Get job owner
+                    $stmt = $pdo->prepare("SELECT employer_id FROM jobs WHERE id = ?");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $job = $stmt->fetch();
+                    if ($job) $target_user_id = $job['employer_id'];
+                } elseif ($report['reported_entity_type'] === 'application') {
+                    // Get applicant
+                    $stmt = $pdo->prepare("SELECT user_id FROM job_applications WHERE id = ?");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $app = $stmt->fetch();
+                    if ($app) $target_user_id = $app['user_id'];
+                }
+                
+                if ($target_user_id) {
+                    $suspension_expires = date('Y-m-d H:i:s', strtotime("+{$suspension_days} days"));
+                    $stmt = $pdo->prepare("
+                        UPDATE users 
+                        SET is_suspended = 1,
+                            suspension_reason = ?,
+                            suspended_at = NOW(),
+                            suspended_by = ?,
+                            suspension_expires = ?
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$suspension_reason, $user_id, $suspension_expires, $target_user_id]);
+                    
+                    // Log suspension action
+                    error_log("SUSPENSION: Admin {$user_id} suspended user {$target_user_id} for {$suspension_days} days. Report ID: {$report_id}. Reason: {$suspension_reason}");
+                    
+                    // Update report status
+                    $stmt = $pdo->prepare("
+                        UPDATE reports 
+                        SET status = 'suspended',
+                            admin_notes = CONCAT('User suspended for ', ?, ' days. ', COALESCE(admin_notes, '')),
+                            reviewed_by = ?,
+                            reviewed_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$suspension_days, $user_id, $report_id]);
+                    
+                    $success = "User account suspended for {$suspension_days} days";
+                } else {
+                    $error = "Could not determine user to suspend";
+                }
+                
+            } elseif ($action === 'unsuspend_user') {
+                // Get the reported user ID
+                $stmt = $pdo->prepare("SELECT reported_entity_type, reported_entity_id FROM reports WHERE id = ?");
+                $stmt->execute([$report_id]);
+                $report = $stmt->fetch();
+                
+                $target_user_id = null;
+                
+                if ($report['reported_entity_type'] === 'user') {
+                    $target_user_id = $report['reported_entity_id'];
+                } elseif ($report['reported_entity_type'] === 'job') {
+                    $stmt = $pdo->prepare("SELECT employer_id FROM jobs WHERE id = ?");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $job = $stmt->fetch();
+                    if ($job) $target_user_id = $job['employer_id'];
+                } elseif ($report['reported_entity_type'] === 'application') {
+                    $stmt = $pdo->prepare("SELECT job_seeker_id FROM job_applications WHERE id = ?");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $app = $stmt->fetch();
+                    if ($app) $target_user_id = $app['job_seeker_id'];
+                }
+                
+                if ($target_user_id) {
+                    $stmt = $pdo->prepare("
+                        UPDATE users 
+                        SET is_suspended = 0,
+                            suspension_reason = NULL,
+                            suspended_at = NULL,
+                            suspended_by = NULL,
+                            suspension_expires = NULL
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$target_user_id]);
+                    
+                    // Log unsuspension action
+                    error_log("UNSUSPENSION: Admin {$user_id} unsuspended user {$target_user_id}. Report ID: {$report_id}");
+                    
+                    // Update report status back to resolved
+                    $stmt = $pdo->prepare("
+                        UPDATE reports 
+                        SET status = 'resolved',
+                            admin_notes = CONCAT(COALESCE(admin_notes, ''), ' [Unsuspended on ', NOW(), ']')
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$report_id]);
+                    
+                    $success = "User account unsuspended successfully";
+                } else {
+                    $error = "Could not determine user to unsuspend";
+                }
             }
         } catch (Exception $e) {
-            $error = "Failed to update report: " . $e->getMessage();
+            error_log("Admin Reports Error: " . $e->getMessage() . " | User: " . $user_id . " | Report: " . $report_id);
+            
+            if (defined('DEV_MODE') && DEV_MODE) {
+                $error = "Failed to update report: " . $e->getMessage();
+            } else {
+                $error = "Failed to update report. Please try again.";
+            }
         }
+    }
+    
+    // Return JSON response for AJAX requests
+    if (isset($success) || isset($error)) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => isset($success),
+            'message' => $success ?? $error ?? 'Unknown error'
+        ]);
+        exit;
     }
 }
 
@@ -431,6 +573,11 @@ $page_title = 'Reports Management - FindAJob Admin';
             color: #1f2937;
         }
         
+        .status-suspended {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
         .reason-badge {
             display: inline-block;
             padding: 0.25rem 0.625rem;
@@ -754,6 +901,7 @@ $page_title = 'Reports Management - FindAJob Admin';
                             <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending</option>
                             <option value="under_review" <?php echo $status_filter === 'under_review' ? 'selected' : ''; ?>>Under Review</option>
                             <option value="resolved" <?php echo $status_filter === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
+                            <option value="suspended" <?php echo $status_filter === 'suspended' ? 'selected' : ''; ?>>🚫 Suspended</option>
                             <option value="dismissed" <?php echo $status_filter === 'dismissed' ? 'selected' : ''; ?>>Dismissed</option>
                         </select>
                     </div>
@@ -913,9 +1061,14 @@ $page_title = 'Reports Management - FindAJob Admin';
     
     <script>
     async function viewReport(reportId) {
+        console.log('ViewReport called with ID:', reportId);
         try {
-            const response = await fetch(`../api/admin-actions.php?action=get_report&report_id=${reportId}`);
+            const response = await fetch(`../api/admin-actions.php?action=get_report&report_id=${reportId}`, {
+                credentials: 'same-origin'
+            });
+            console.log('Response status:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
             
             if (data.success) {
                 const report = data.report;
@@ -928,6 +1081,9 @@ $page_title = 'Reports Management - FindAJob Admin';
                 const statusText = report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                 const statusClass = 'status-' + report.status;
                 
+                // Verification icons helper
+                const verificationIcon = (verified) => verified ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>' : '<i class="fas fa-times-circle" style="color: #dc2626;"></i>';
+                
                 modalBody.innerHTML = `
                     <div class="info-grid">
                         <div class="info-item">
@@ -936,7 +1092,18 @@ $page_title = 'Reports Management - FindAJob Admin';
                         </div>
                         <div class="info-item">
                             <label>Reporter</label>
-                            <div class="value">${report.reporter_name}</div>
+                            <div class="value">
+                                ${report.reporter_name}
+                                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                    ${verificationIcon(report.reporter_email_verified)} Email
+                                    ${verificationIcon(report.reporter_phone_verified)} Phone
+                                    ${report.reporter_is_suspended ? '<span style="color: #dc2626; font-size: 11px;">🚫 Suspended</span>' : ''}
+                                </div>
+                                <a href="/findajob/${report.reporter_user_type === 'employer' ? 'pages/company/profile.php' : 'admin/view-job-seeker.php'}?id=${report.reporter_id}" 
+                                   target="_blank" class="btn btn-sm btn-info" style="margin-top: 6px; font-size: 12px;">
+                                    <i class="fas fa-external-link-alt"></i> View Full Profile
+                                </a>
+                            </div>
                         </div>
                         <div class="info-item">
                             <label>Reporter Type</label>
@@ -979,11 +1146,63 @@ $page_title = 'Reports Management - FindAJob Admin';
                     ` : ''}
                     
                     ${report.entity_name ? `
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">Reported Entity</label>
-                            <div style="padding: 0.75rem; background: #f9fafb; border-radius: 8px;">
-                                ${report.entity_name}
-                            </div>
+                        <div class="description-box" style="border-left-color: #f59e0b; background: #fffbeb;">
+                            <h4 style="color: #92400e;">Reported Entity: ${report.entity_name}</h4>
+                            ${report.entity_details ? `
+                                ${report.reported_entity_type === 'user' ? `
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px;">
+                                        <div><strong>Email:</strong> ${report.entity_details.email}</div>
+                                        <div><strong>Type:</strong> ${report.entity_details.user_type}</div>
+                                        <div><strong>Status:</strong> ${report.entity_details.is_active ? '✓ Active' : '❌ Inactive'}</div>
+                                        <div><strong>Suspended:</strong> ${report.entity_details.is_suspended ? '🚫 Yes' : '✓ No'}</div>
+                                        <div><strong>Email Verified:</strong> ${report.entity_details.email_verified ? '✓' : '❌'}</div>
+                                        <div><strong>Phone Verified:</strong> ${report.entity_details.phone_verified ? '✓' : '❌'}</div>
+                                        <div><strong>Member Since:</strong> ${new Date(report.entity_details.created_at).toLocaleDateString()}</div>
+                                        ${report.entity_details.user_type === 'employer' ? `
+                                            <div><strong>Posted Jobs:</strong> ${report.entity_details.posted_jobs}</div>
+                                        ` : `
+                                            <div><strong>Applications:</strong> ${report.entity_details.applications_count}</div>
+                                        `}
+                                    </div>
+                                    <a href="/findajob/${report.entity_details.user_type === 'employer' ? 'pages/company/profile.php' : 'admin/view-job-seeker.php'}?id=${report.entity_details.id}" 
+                                       target="_blank" class="btn btn-primary" style="margin-top: 12px; display: inline-block;">
+                                        <i class="fas fa-user"></i> View Full Profile
+                                    </a>
+                                ` : report.reported_entity_type === 'job' ? `
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px;">
+                                        <div><strong>Company:</strong> ${report.entity_details.company_name || 'N/A'}</div>
+                                        <div><strong>Status:</strong> ${report.entity_details.status}</div>
+                                        <div><strong>Location:</strong> ${report.entity_details.location || 'N/A'}</div>
+                                        <div><strong>Type:</strong> ${report.entity_details.job_type || 'N/A'}</div>
+                                        <div><strong>Salary:</strong> ₦${parseInt(report.entity_details.salary_min || 0).toLocaleString()} - ₦${parseInt(report.entity_details.salary_max || 0).toLocaleString()}</div>
+                                        <div><strong>Applications:</strong> ${report.entity_details.applications_count}</div>
+                                        <div><strong>Posted:</strong> ${new Date(report.entity_details.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                    <h5 style="margin-top: 16px; color: #1f2937;">Employer Information</h5>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px;">
+                                        <div><strong>Name:</strong> ${report.entity_details.employer_name}</div>
+                                        <div><strong>Email:</strong> ${report.entity_details.email}</div>
+                                        <div><strong>Suspended:</strong> ${report.entity_details.employer_suspended ? '🚫 Yes' : '✓ No'}</div>
+                                        <div><strong>Suspended:</strong> ${report.entity_details.employer_suspended ? '🚫 Yes' : '✓ No'}</div>
+                                        <div><strong>Email Verified:</strong> ${report.entity_details.email_verified ? '✓' : '❌'}</div>
+                                        <div><strong>Phone Verified:</strong> ${report.entity_details.phone_verified ? '✓' : '❌'}</div>
+                                        <div><strong>Total Jobs:</strong> ${report.entity_details.employer_total_jobs}</div>
+                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                        <a href="/findajob/pages/jobs/details.php?id=${report.reported_entity_id}" 
+                                           target="_blank" class="btn btn-primary">
+                                            <i class="fas fa-briefcase"></i> View Job Details
+                                        </a>
+                                        <a href="/findajob/pages/company/profile.php?id=${report.entity_details.employer_id}" 
+                                           target="_blank" class="btn btn-secondary">
+                                            <i class="fas fa-user"></i> View Employer Profile
+                                        </a>
+                                    </div>
+                                ` : ''}
+                            ` : `
+                                <div style="padding: 0.75rem; background: #f9fafb; border-radius: 8px; margin-top: 8px;">
+                                    ${report.entity_name}
+                                </div>
+                            `}
                         </div>
                     ` : ''}
                     
@@ -1001,29 +1220,66 @@ $page_title = 'Reports Management - FindAJob Admin';
                 // Add action buttons to footer
                 if (report.status === 'pending' || report.status === 'under_review') {
                     modalBody.innerHTML += `
-                        <div class="modal-footer">
-                            <button onclick="closeModal()" class="btn btn-outline">
-                                <i class="fas fa-times"></i> Close
-                            </button>
-                            ${report.status === 'pending' ? `
-                                <button onclick="updateReportStatus(${report.id}, 'review')" class="btn btn-secondary">
-                                    <i class="fas fa-eye"></i> Mark as Under Review
+                        <div class="modal-footer" style="flex-direction: column; gap: 1rem;">
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; width: 100%;">
+                                <button onclick="closeModal()" class="btn btn-outline">
+                                    <i class="fas fa-times"></i> Close
                                 </button>
-                            ` : ''}
-                            <button onclick="updateReportStatus(${report.id}, 'dismiss')" class="btn btn-secondary">
-                                <i class="fas fa-ban"></i> Dismiss
-                            </button>
-                            <button onclick="updateReportStatus(${report.id}, 'resolve')" class="btn btn-success">
-                                <i class="fas fa-check"></i> Mark as Resolved
-                            </button>
+                                ${report.status === 'pending' ? `
+                                    <button onclick="updateReportStatus(${report.id}, 'review')" class="btn btn-secondary">
+                                        <i class="fas fa-eye"></i> Mark as Under Review
+                                    </button>
+                                ` : ''}
+                                <button onclick="updateReportStatus(${report.id}, 'dismiss')" class="btn btn-secondary">
+                                    <i class="fas fa-ban"></i> Dismiss
+                                </button>
+                                <button onclick="updateReportStatus(${report.id}, 'resolve')" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Mark as Resolved
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; width: 100%; padding-top: 0.5rem; border-top: 1px solid #e5e7eb;">
+                                <button onclick="showSuspendForm(${report.id})" class="btn btn-primary" style="background: #dc2626;">
+                                    <i class="fas fa-user-slash"></i> Suspend Account
+                                </button>
+                                <button onclick="unsuspendUser(${report.id})" class="btn btn-outline">
+                                    <i class="fas fa-user-check"></i> Unsuspend Account
+                                </button>
+                            </div>
                         </div>
                     `;
                 } else {
+                    // For resolved/suspended/dismissed reports, show close and action buttons
+                    let actionButtons = '';
+                    
+                    if (report.status === 'suspended' || (report.admin_notes && report.admin_notes.includes('User suspended') && !report.admin_notes.includes('[Unsuspended'))) {
+                        // User is currently suspended - show unsuspend button
+                        actionButtons = `
+                            <button onclick="unsuspendUser(${report.id})" class="btn btn-outline" style="border-color: #10b981; color: #10b981;">
+                                <i class="fas fa-user-check"></i> Unsuspend Account
+                            </button>
+                        `;
+                    } else if (report.admin_notes && report.admin_notes.includes('[Unsuspended')) {
+                        // User was suspended but now unsuspended - show suspend again button
+                        actionButtons = `
+                            <button onclick="showSuspendForm(${report.id})" class="btn btn-outline" style="border-color: #dc2626; color: #dc2626;">
+                                <i class="fas fa-user-slash"></i> Suspend Again
+                            </button>
+                        `;
+                    } else if (report.reported_entity_type === 'user' || report.reported_entity_type === 'job' || report.reported_entity_type === 'application') {
+                        // For reports about users, jobs, or applications - show suspend option
+                        actionButtons = `
+                            <button onclick="showSuspendForm(${report.id})" class="btn btn-outline" style="border-color: #dc2626; color: #dc2626;">
+                                <i class="fas fa-user-slash"></i> Suspend Account
+                            </button>
+                        `;
+                    }
+                    
                     modalBody.innerHTML += `
                         <div class="modal-footer">
                             <button onclick="closeModal()" class="btn btn-primary">
                                 <i class="fas fa-times"></i> Close
                             </button>
+                            ${actionButtons}
                         </div>
                     `;
                 }
@@ -1047,6 +1303,7 @@ $page_title = 'Reports Management - FindAJob Admin';
         const formData = new FormData(form);
         formData.append('action', action);
         formData.append('report_id', reportId);
+        formData.append('csrf_token', '<?php echo generateCSRFToken(); ?>');
         
         try {
             const response = await fetch('reports.php', {
@@ -1054,12 +1311,98 @@ $page_title = 'Reports Management - FindAJob Admin';
                 body: formData
             });
             
-            if (response.ok) {
+            const result = await response.json();
+            
+            if (result.success) {
                 location.reload();
+            } else {
+                alert(result.message || 'Failed to update report');
             }
         } catch (error) {
             console.error('Error updating report:', error);
             alert('Failed to update report');
+        }
+    }
+    
+    function showSuspendForm(reportId) {
+        const days = prompt('Enter number of days to suspend the account (1-365):', '7');
+        if (days && !isNaN(days) && days > 0 && days <= 365) {
+            const reason = prompt('Enter suspension reason:', 'Account suspended due to report violations');
+            if (reason && reason.trim().length > 0) {
+                suspendUser(reportId, days, reason.trim());
+            } else {
+                alert('Suspension reason is required');
+            }
+        } else if (days !== null) {
+            alert('Please enter a valid number of days between 1 and 365');
+        }
+    }
+    
+    async function suspendUser(reportId, days, reason) {
+        const formData = new FormData();
+        formData.append('action', 'suspend_user');
+        formData.append('report_id', reportId);
+        formData.append('suspension_days', days);
+        formData.append('suspension_reason', reason);
+        formData.append('csrf_token', '<?php echo generateCSRFToken(); ?>');
+        
+        try {
+            const response = await fetch('reports.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(result.message || 'User account suspended successfully');
+                location.reload();
+            } else {
+                alert(result.message || 'Failed to suspend user');
+            }
+        } catch (error) {
+            console.error('Error suspending user:', error);
+            alert('Failed to suspend user');
+        }
+    }
+    
+    async function unsuspendUser(reportId) {
+        if (!confirm('Are you sure you want to unsuspend this account?')) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('action', 'unsuspend_user');
+        formData.append('report_id', reportId);
+        formData.append('csrf_token', '<?php echo generateCSRFToken(); ?>');
+        
+        try {
+            const response = await fetch('reports.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const text = await response.text();
+            console.log('Response:', text);
+            
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                alert('Server error: Invalid response format');
+                return;
+            }
+            
+            if (result.success) {
+                alert(result.message || 'User account unsuspended successfully');
+                location.reload();
+            } else {
+                alert(result.message || 'Failed to unsuspend user');
+            }
+        } catch (error) {
+            console.error('Error unsuspending user:', error);
+            alert('Failed to unsuspend user');
         }
     }
     

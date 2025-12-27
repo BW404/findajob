@@ -266,6 +266,26 @@ $page_title = 'Job Seeker Login - FindAJob Nigeria';
                     <p>Sign in to continue your job search</p>
                 </div>
                 
+                <!-- Suspension Alert -->
+                <?php if (isset($_GET['suspended']) || isset($_SESSION['suspension_message'])): ?>
+                <div class="alert" style="background: #fee2e2; border: 2px solid #dc2626; color: #991b1b; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
+                    <strong style="display: block; margin-bottom: 0.5rem;">⚠️ Account Suspended</strong>
+                    <p style="margin: 0; line-height: 1.6;">
+                        <?php 
+                        echo htmlspecialchars($_SESSION['suspension_message'] ?? 'Your account has been temporarily suspended.');
+                        if (isset($_SESSION['suspension_expires'])) {
+                            echo '<br><strong>Expires:</strong> ' . date('F j, Y g:i A', strtotime($_SESSION['suspension_expires']));
+                        }
+                        unset($_SESSION['suspension_message']);
+                        unset($_SESSION['suspension_expires']);
+                        ?>
+                    </p>
+                    <p style="margin: 0.75rem 0 0; font-size: 0.9rem;">
+                        Please contact admin at <strong>support@findajob.com.ng</strong> for assistance.
+                    </p>
+                </div>
+                <?php endif; ?>
+                
                 <div id="alertContainer"></div>
                 
                 <div class="form-group">

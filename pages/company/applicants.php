@@ -343,6 +343,19 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
                                                 </a>
                                             <?php endif; ?>
                                             
+                                            <!-- Schedule Interview Button -->
+                                            <button class="btn btn-success btn-sm" onclick="openInterviewModal(<?php echo $application['id']; ?>, '<?php echo htmlspecialchars($displayName, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($application['job_title'], ENT_QUOTES); ?>')">
+                                                <i class="fas fa-calendar-alt"></i> Schedule Interview
+                                            </button>
+                                            
+                                            <?php if (!empty($application['interview_date'])): ?>
+                                                <div style="padding: 0.5rem; background: #dbeafe; border-radius: 4px; font-size: 0.85rem; text-align: center;">
+                                                    <i class="fas fa-clock" style="color: #1d4ed8;"></i>
+                                                    <strong>Interview:</strong><br>
+                                                    <?php echo date('M j, Y g:i A', strtotime($application['interview_date'])); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            
                                             <div class="dropdown" style="position: relative;">
                                                 <button class="btn btn-primary btn-sm dropdown-toggle" onclick="toggleStatusDropdown(<?php echo $application['id']; ?>)">
                                                     <i class="fas fa-edit"></i> Update Status
@@ -383,7 +396,181 @@ if ($_POST && isset($_POST['action']) && isset($_POST['application_id'])) {
         </div>
     </main>
 
+    <!-- Interview Scheduling Modal -->
+    <div id="interviewModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--surface); border-radius: 12px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.5rem;">
+                    <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
+                    Schedule Interview
+                </h3>
+                <button onclick="closeInterviewModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 1.5rem;">
+                <form id="interviewForm">
+                    <input type="hidden" id="modal_application_id" name="application_id">
+                    
+                    <div style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div><strong>Candidate:</strong> <span id="modal_candidate_name"></span></div>
+                        <div style="margin-top: 0.5rem;"><strong>Position:</strong> <span id="modal_job_title"></span></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-calendar"></i> Interview Date *
+                        </label>
+                        <input type="date" name="interview_date" id="interview_date" required
+                               min="<?php echo date('Y-m-d'); ?>"
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-clock"></i> Interview Time *
+                        </label>
+                        <input type="time" name="interview_time" id="interview_time" required
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-video"></i> Interview Type *
+                        </label>
+                        <select name="interview_type" id="interview_type" required onchange="toggleInterviewLink()"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                            <option value="">Select interview type...</option>
+                            <option value="video">Video Call (Google Meet, Zoom, Teams, etc.)</option>
+                            <option value="online">Online Interview</option>
+                            <option value="phone">Phone Interview</option>
+                            <option value="in_person">In-Person Interview</option>
+                        </select>
+                    </div>
+                    
+                    <div id="interview_link_container" style="margin-bottom: 1rem; display: none;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-link"></i> Interview Link *
+                            <small style="color: var(--text-secondary); font-weight: normal;">(Google Meet, Zoom, MS Teams, etc.)</small>
+                        </label>
+                        <input type="url" name="interview_link" id="interview_link" 
+                               placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                        <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
+                            Enter the full meeting link (e.g., Google Meet, Zoom, Microsoft Teams)
+                        </small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-sticky-note"></i> Additional Notes (Optional)
+                        </label>
+                        <textarea name="interview_notes" id="interview_notes" rows="4"
+                                  placeholder="Add any additional instructions or information for the candidate..."
+                                  style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button type="button" onclick="closeInterviewModal()" class="btn btn-outline">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Schedule Interview
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function openInterviewModal(applicationId, candidateName, jobTitle) {
+            document.getElementById('modal_application_id').value = applicationId;
+            document.getElementById('modal_candidate_name').textContent = candidateName;
+            document.getElementById('modal_job_title').textContent = jobTitle;
+            document.getElementById('interviewModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeInterviewModal() {
+            document.getElementById('interviewModal').style.display = 'none';
+            document.getElementById('interviewForm').reset();
+            document.body.style.overflow = '';
+        }
+        
+        function toggleInterviewLink() {
+            const interviewType = document.getElementById('interview_type').value;
+            const linkContainer = document.getElementById('interview_link_container');
+            const linkInput = document.getElementById('interview_link');
+            
+            if (interviewType === 'video' || interviewType === 'online') {
+                linkContainer.style.display = 'block';
+                linkInput.required = true;
+            } else {
+                linkContainer.style.display = 'none';
+                linkInput.required = false;
+                linkInput.value = '';
+            }
+        }
+        
+        // Handle interview form submission
+        document.getElementById('interviewForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('action', 'schedule_interview');
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scheduling...';
+            
+            try {
+                const response = await fetch('../../api/interview.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
+                });
+                
+                // Try to parse JSON response
+                let result;
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    // If not JSON, read as text for debugging
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    throw new Error('Server returned invalid response. Please check the console for details.');
+                }
+                
+                if (result.success) {
+                    alert('Interview scheduled successfully! The candidate will receive an email notification.');
+                    closeInterviewModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to schedule interview'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while scheduling the interview: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+        
+        // Close modal when clicking outside
+        document.getElementById('interviewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeInterviewModal();
+            }
+        });
+
         function toggleStatusDropdown(applicationId) {
             const dropdown = document.getElementById(`status-dropdown-${applicationId}`);
             const allDropdowns = document.querySelectorAll('.dropdown-menu');

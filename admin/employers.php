@@ -32,6 +32,7 @@ $offset = ($page - 1) * $per_page;
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
+$suspension_filter = isset($_GET['suspension']) ? $_GET['suspension'] : '';
 
 // Build query
 $where_conditions = ["u.user_type = 'employer'"];
@@ -47,9 +48,15 @@ if ($search) {
 }
 
 if ($status_filter === 'active') {
-    $where_conditions[] = "u.is_active = 1";
+    $where_conditions[] = "u.is_active = 1 AND (u.is_suspended = 0 OR u.is_suspended IS NULL)";
 } elseif ($status_filter === 'inactive') {
     $where_conditions[] = "u.is_active = 0";
+}
+
+if ($suspension_filter === 'suspended') {
+    $where_conditions[] = "u.is_suspended = 1";
+} elseif ($suspension_filter === 'not_suspended') {
+    $where_conditions[] = "(u.is_suspended = 0 OR u.is_suspended IS NULL)";
 }
 
 $where_sql = implode(' AND ', $where_conditions);
@@ -66,6 +73,7 @@ $sql = "
     SELECT 
         u.id, u.first_name, u.last_name, u.email, u.phone,
         u.is_active, u.email_verified, u.phone_verified, u.created_at,
+        u.is_suspended, u.suspension_reason, u.suspension_expires,
         ep.company_name, ep.company_size, ep.industry,
         ep.company_cac_verified, ep.provider_nin_verified,
         COUNT(DISTINCT j.id) as total_jobs,
@@ -238,6 +246,15 @@ $pageTitle = 'Employers Manager';
                         </select>
                     </div>
                     
+                    <div class="filter-group">
+                        <label>Suspension</label>
+                        <select name="suspension" class="form-control">
+                            <option value="">All</option>
+                            <option value="suspended" <?= $suspension_filter === 'suspended' ? 'selected' : '' ?>>🚫 Suspended</option>
+                            <option value="not_suspended" <?= $suspension_filter === 'not_suspended' ? 'selected' : '' ?>>✓ Not Suspended</option>
+                        </select>
+                    </div>
+                    
                     <div class="filter-group" style="align-self: flex-end;">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-search"></i> Filter
@@ -297,7 +314,19 @@ $pageTitle = 'Employers Manager';
                                         </div>
                                     </td>
                                     <td>
-                                        <?php if ($emp['is_active']): ?>
+                                        <?php if ($emp['is_suspended']): ?>
+                                            <?php
+                                            $expired = $emp['suspension_expires'] && strtotime($emp['suspension_expires']) < time();
+                                            ?>
+                                            <span class="badge badge-danger" style="background: #dc2626; display: flex; align-items: center; gap: 4px; width: fit-content;">
+                                                <i class="fas fa-user-slash"></i> Suspended
+                                            </span>
+                                            <?php if ($emp['suspension_expires']): ?>
+                                                <small style="color: <?= $expired ? '#10b981' : '#dc2626' ?>; display: block; margin-top: 4px; font-size: 10px;">
+                                                    <?= $expired ? '✓ Expired' : 'Until ' . date('M d, Y', strtotime($emp['suspension_expires'])) ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        <?php elseif ($emp['is_active']): ?>
                                             <span class="badge badge-success">Active</span>
                                         <?php else: ?>
                                             <span class="badge badge-danger">Inactive</span>
@@ -309,9 +338,15 @@ $pageTitle = 'Employers Manager';
                                             <a href="view-employer.php?id=<?= $emp['id'] ?>" class="btn btn-sm btn-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-danger" onclick="suspendUser(<?= $emp['id'] ?>)">
-                                                <i class="fas fa-ban"></i>
-                                            </button>
+                                            <?php if ($emp['is_suspended']): ?>
+                                                <button class="btn btn-sm btn-success" onclick="unsuspendAccount(<?= $emp['id'] ?>)" title="Unsuspend">
+                                                    <i class="fas fa-user-check"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-danger" onclick="suspendUser(<?= $emp['id'] ?>)">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -362,6 +397,32 @@ $pageTitle = 'Employers Manager';
                 } else {
                     alert(data.message || 'Error suspending employer');
                 }
+            });
+        }
+        
+        function unsuspendAccount(userId) {
+            if (!confirm('Are you sure you want to unsuspend this account?')) return;
+            
+            const formData = new FormData();
+            formData.append('action', 'unsuspend_account');
+            formData.append('user_id', userId);
+            
+            fetch('../api/admin-actions.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Account unsuspended successfully');
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to unsuspend account');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error. Please try again.');
             });
         }
     </script>

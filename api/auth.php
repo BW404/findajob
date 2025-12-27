@@ -93,7 +93,8 @@ class AuthAPI {
         try {
             // Get user with optional user type filter
             $sql = "
-                SELECT id, user_type, email, password_hash, first_name, email_verified, is_active 
+                SELECT id, user_type, email, password_hash, first_name, email_verified, is_active,
+                       is_suspended, suspension_reason, suspension_expires
                 FROM users 
                 WHERE email = ? AND is_active = 1
             ";
@@ -121,6 +122,40 @@ class AuthAPI {
             
             if (!password_verify($password, $user['password_hash'])) {
                 return ['success' => false, 'message' => 'Invalid email or password'];
+            }
+            
+            // Check if account is suspended
+            if ($user['is_suspended']) {
+                // Check if suspension has expired
+                if ($user['suspension_expires'] && strtotime($user['suspension_expires']) < time()) {
+                    // Auto-unsuspend if expired
+                    $stmt = $this->pdo->prepare("
+                        UPDATE users 
+                        SET is_suspended = 0,
+                            suspension_reason = NULL,
+                            suspended_at = NULL,
+                            suspended_by = NULL,
+                            suspension_expires = NULL
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$user['id']]);
+                } else {
+                    // Account is still suspended
+                    $expiry_msg = '';
+                    if ($user['suspension_expires']) {
+                        $expiry_date = date('F j, Y g:i A', strtotime($user['suspension_expires']));
+                        $expiry_msg = " Your suspension will expire on {$expiry_date}.";
+                    }
+                    
+                    return [
+                        'success' => false, 
+                        'suspended' => true,
+                        'message' => 'Your account has been temporarily suspended. ' . 
+                                   ($user['suspension_reason'] ? $user['suspension_reason'] . '.' : 'Reason: Violation of platform terms.') .
+                                   $expiry_msg . 
+                                   ' Please contact admin at support@findajob.com.ng for assistance.'
+                    ];
+                }
             }
             
             // Check if too many failed attempts

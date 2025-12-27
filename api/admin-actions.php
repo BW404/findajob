@@ -261,6 +261,33 @@ try {
             
             echo json_encode(['success' => true, 'message' => ucfirst($verification_type) . ' verified successfully']);
             break;
+        
+        case 'unsuspend_account':
+            if (!hasAnyPermission($user_id, ['edit_job_seekers', 'edit_employers'])) {
+                echo json_encode(['success' => false, 'message' => 'Permission denied']);
+                exit;
+            }
+
+            $target_user_id = (int)($_POST['user_id'] ?? 0);
+            
+            if (!$target_user_id) {
+                echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+                exit;
+            }
+            
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET is_suspended = 0,
+                    suspension_reason = NULL,
+                    suspended_at = NULL,
+                    suspended_by = NULL,
+                    suspension_expires = NULL
+                WHERE id = ?
+            ");
+            $stmt->execute([$target_user_id]);
+            
+            echo json_encode(['success' => true, 'message' => 'Account unsuspended successfully']);
+            break;
 
         // Statistics
         case 'get_dashboard_stats':
@@ -285,14 +312,29 @@ try {
             break;
 
         case 'get_report':
+            // Ensure admin has permission to view reports
+            if (!hasAnyPermission($user_id, ['view_reports', 'manage_reports'])) {
+                echo json_encode(['success' => false, 'message' => 'Permission denied']);
+                exit;
+            }
+            
             // Get detailed report information
             $report_id = (int)($_GET['report_id'] ?? 0);
+            
+            if ($report_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid report ID']);
+                exit;
+            }
             
             $stmt = $pdo->prepare("
                 SELECT 
                     r.*,
                     CONCAT(u.first_name, ' ', u.last_name) as reporter_name,
                     u.email as reporter_email,
+                    u.user_type as reporter_user_type,
+                    u.email_verified as reporter_email_verified,
+                    u.phone_verified as reporter_phone_verified,
+                    u.is_suspended as reporter_is_suspended,
                     CONCAT(admin.first_name, ' ', admin.last_name) as reviewer_name,
                     CASE 
                         WHEN r.reported_entity_type = 'job' THEN (SELECT title FROM jobs WHERE id = r.reported_entity_id)
@@ -308,6 +350,32 @@ try {
             $report = $stmt->fetch();
             
             if ($report) {
+                // Get additional details based on entity type
+                if ($report['reported_entity_type'] === 'user') {
+                    $stmt = $pdo->prepare("
+                        SELECT id, email, user_type, is_active, is_suspended, 
+                               email_verified, phone_verified, created_at,
+                               (SELECT COUNT(*) FROM jobs WHERE employer_id = users.id) as posted_jobs,
+                               (SELECT COUNT(*) FROM job_applications WHERE job_seeker_id = users.id) as applications_count
+                        FROM users WHERE id = ?
+                    ");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $report['entity_details'] = $stmt->fetch();
+                } elseif ($report['reported_entity_type'] === 'job') {
+                    $stmt = $pdo->prepare("
+                        SELECT j.*, u.id as employer_id, u.email, u.is_suspended as employer_suspended,
+                               u.email_verified, u.phone_verified,
+                               CONCAT(u.first_name, ' ', u.last_name) as employer_name,
+                               (SELECT COUNT(*) FROM jobs WHERE employer_id = u.id) as employer_total_jobs,
+                               (SELECT COUNT(*) FROM job_applications WHERE job_id = j.id) as applications_count
+                        FROM jobs j
+                        LEFT JOIN users u ON j.employer_id = u.id
+                        WHERE j.id = ?
+                    ");
+                    $stmt->execute([$report['reported_entity_id']]);
+                    $report['entity_details'] = $stmt->fetch();
+                }
+                
                 echo json_encode(['success' => true, 'report' => $report]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Report not found']);
@@ -321,5 +389,5 @@ try {
 
 } catch (Exception $e) {
     error_log("Admin API Error: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => defined('DEV_MODE') && DEV_MODE ? $e->getMessage() : 'An error occurred']);
+    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 }

@@ -3,9 +3,19 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
 
-requireEmployer();
-
-$userId = getCurrentUserId();
+// Allow viewing with ID parameter (for admins) or require employer login
+if (isset($_GET['id'])) {
+    // Admin viewing someone else's profile
+    if (!isLoggedIn() || !isAdmin()) {
+        header('Location: ../../admin/login.php');
+        exit;
+    }
+    $userId = (int)$_GET['id'];
+} else {
+    // Employer viewing their own profile
+    requireEmployer();
+    $userId = getCurrentUserId();
+}
 
 // Get employer profile data
 $stmt = $pdo->prepare("

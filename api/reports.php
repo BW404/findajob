@@ -48,12 +48,34 @@ try {
             break;
     }
 } catch (Exception $e) {
-    error_log("Reports API Error: " . $e->getMessage());
+    error_log("Reports API Error: " . $e->getMessage() . " | File: " . $e->getFile() . " | Line: " . $e->getLine());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'An error occurred. Please try again.']);
+    
+    // Show detailed error only in development mode
+    if (defined('DEV_MODE') && DEV_MODE) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'An error occurred. Please try again.']);
+    }
 }
 
 function submitReport($pdo, $reporter_id, $reporter_type) {
+    // Rate limiting: Check number of reports in last hour
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as report_count 
+        FROM reports 
+        WHERE reporter_id = ? 
+        AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+    ");
+    $stmt->execute([$reporter_id]);
+    $result = $stmt->fetch();
+    
+    if ($result['report_count'] >= 5) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'error' => 'Too many reports submitted. Please wait before submitting more.']);
+        exit;
+    }
+    
     // Validate required fields
     $required = ['entity_type', 'reason', 'description'];
     foreach ($required as $field) {
@@ -64,10 +86,10 @@ function submitReport($pdo, $reporter_id, $reporter_type) {
         }
     }
     
-    $entity_type = $_POST['entity_type'];
-    $entity_id = $_POST['entity_id'] ?? null;
-    $reason = $_POST['reason'];
-    $description = trim($_POST['description']);
+    $entity_type = trim($_POST['entity_type']);
+    $entity_id = isset($_POST['entity_id']) ? intval($_POST['entity_id']) : null;
+    $reason = trim($_POST['reason']);
+    $description = trim(strip_tags($_POST['description'])); // Remove HTML tags for security
     
     // Validate entity type
     $valid_entity_types = ['job', 'user', 'company', 'application', 'other'];

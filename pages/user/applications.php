@@ -626,7 +626,7 @@ foreach ($statResults as $stat) {
                                 <button class="btn btn-outline btn-sm report-trigger" 
                                         data-entity-type="job" 
                                         data-entity-id="<?php echo $app['job_id']; ?>" 
-                                        data-entity-name="<?php echo htmlspecialchars($app['job_title']); ?>" 
+                                        data-entity-name="<?php echo htmlspecialchars($app['title']); ?>" 
                                         title="Report this job"
                                         style="color: #dc2626; border-color: #dc2626;">
                                     <i class="fas fa-flag"></i>

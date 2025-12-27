@@ -222,4 +222,185 @@ function darkenColor($hex, $percent) {
     
     return '#' . sprintf("%02x%02x%02x", $r, $g, $b);
 }
+
+/**
+ * Send interview scheduled notification email
+ * @param string $candidateEmail
+ * @param string $candidateName
+ * @param string $jobTitle
+ * @param string $companyName
+ * @param string $interviewDatetime
+ * @param string $interviewType
+ * @param string|null $interviewLink
+ * @param string|null $notes
+ * @return bool
+ */
+function sendInterviewScheduledEmail($candidateEmail, $candidateName, $jobTitle, $companyName, $interviewDatetime, $interviewType, $interviewLink = null, $notes = null) {
+    try {
+        $formattedDate = date('l, F j, Y', strtotime($interviewDatetime));
+        $formattedTime = date('g:i A', strtotime($interviewDatetime));
+        
+        $typeLabels = [
+            'phone' => '📞 Phone Interview',
+            'video' => '🎥 Video Interview',
+            'in_person' => '🏢 In-Person Interview',
+            'online' => '💻 Online Interview'
+        ];
+        
+        $typeLabel = $typeLabels[$interviewType] ?? 'Interview';
+        $primaryColor = '#10b981';
+        $darkerColor = darkenColor($primaryColor, 20);
+        
+        $emailHtml = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+                .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+                .header { background: linear-gradient(135deg, {$primaryColor} 0%, {$darkerColor} 100%); padding: 40px 20px; text-align: center; color: white; }
+                .icon { font-size: 60px; margin-bottom: 20px; }
+                .heading { font-size: 28px; font-weight: 700; margin: 0; }
+                .content { padding: 40px 30px; }
+                .message { font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 30px; }
+                .interview-card { background: #f0fdf4; border: 2px solid {$primaryColor}; padding: 24px; margin: 20px 0; border-radius: 12px; }
+                .job-title { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 8px 0; }
+                .company { font-size: 18px; color: #6b7280; margin: 0 0 20px 0; }
+                .detail-row { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px; background: white; border-radius: 8px; }
+                .detail-icon { font-size: 20px; margin-right: 12px; min-width: 24px; }
+                .detail-content { flex: 1; }
+                .detail-label { font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; }
+                .detail-value { font-size: 16px; font-weight: 600; color: #111827; margin: 0; }
+                .link-button { display: inline-block; width: 100%; padding: 16px; background-color: {$primaryColor}; color: white !important; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; margin: 16px 0; box-sizing: border-box; }
+                .notes-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 8px; }
+                .notes-title { font-weight: 600; color: #92400e; margin: 0 0 8px 0; font-size: 14px; }
+                .notes-content { color: #78350f; margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+                .tips { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                .tips-title { font-weight: 600; color: #1e40af; margin: 0 0 10px 0; }
+                .tips-list { margin: 0; padding-left: 20px; color: #1e40af; line-height: 1.8; }
+                .footer { background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <div class='icon'>📅</div>
+                    <h1 class='heading'>Interview Scheduled!</h1>
+                </div>
+                
+                <div class='content'>
+                    <p style='font-size: 18px; color: #111827; margin-bottom: 10px;'>Hi {$candidateName},</p>
+                    
+                    <p class='message'>
+                        Great news! <strong>{$companyName}</strong> has scheduled an interview with you for the <strong>{$jobTitle}</strong> position. 
+                        Please review the details below and prepare accordingly.
+                    </p>
+                    
+                    <div class='interview-card'>
+                        <h3 class='job-title'>{$jobTitle}</h3>
+                        <p class='company'>📍 {$companyName}</p>
+                        
+                        <div class='detail-row'>
+                            <div class='detail-icon'>📅</div>
+                            <div class='detail-content'>
+                                <p class='detail-label'>Date</p>
+                                <p class='detail-value'>{$formattedDate}</p>
+                            </div>
+                        </div>
+                        
+                        <div class='detail-row'>
+                            <div class='detail-icon'>🕐</div>
+                            <div class='detail-content'>
+                                <p class='detail-label'>Time</p>
+                                <p class='detail-value'>{$formattedTime}</p>
+                            </div>
+                        </div>
+                        
+                        <div class='detail-row'>
+                            <div class='detail-icon'>🎯</div>
+                            <div class='detail-content'>
+                                <p class='detail-label'>Interview Type</p>
+                                <p class='detail-value'>{$typeLabel}</p>
+                            </div>
+                        </div>
+                        
+                        " . ($interviewLink ? "
+                        <div style='margin-top: 16px;'>
+                            <a href='{$interviewLink}' class='link-button'>
+                                🔗 Join Interview Meeting
+                            </a>
+                            <p style='font-size: 12px; color: #6b7280; text-align: center; margin: 8px 0 0 0;'>
+                                Meeting Link: <a href='{$interviewLink}' style='color: {$primaryColor}; word-break: break-all;'>{$interviewLink}</a>
+                            </p>
+                        </div>
+                        " : "") . "
+                    </div>
+                    
+                    " . ($notes ? "
+                    <div class='notes-box'>
+                        <p class='notes-title'>📝 Additional Instructions from Employer:</p>
+                        <p class='notes-content'>{$notes}</p>
+                    </div>
+                    " : "") . "
+                    
+                    <div class='tips'>
+                        <p class='tips-title'>💡 Interview Preparation Tips:</p>
+                        <ul class='tips-list'>
+                            <li>Research the company and the role thoroughly</li>
+                            <li>Review your application and CV before the interview</li>
+                            <li>Prepare answers to common interview questions</li>
+                            <li>Test your internet connection and equipment (for video interviews)</li>
+                            <li>Dress professionally and arrive/join 5-10 minutes early</li>
+                            <li>Prepare thoughtful questions to ask the interviewer</li>
+                        </ul>
+                    </div>
+                    
+                    <p style='color: #6b7280; font-size: 14px; margin-top: 30px; padding: 16px; background: #f9fafb; border-radius: 8px;'>
+                        <strong>Need help?</strong><br>
+                        View your scheduled interviews and manage applications in your 
+                        <a href='" . SITE_URL . "/pages/user/dashboard.php' style='color: {$primaryColor}; font-weight: 600;'>dashboard</a>.
+                    </p>
+                </div>
+                
+                <div class='footer'>
+                    <p style='margin: 0 0 10px 0;'><strong>" . SITE_NAME . "</strong></p>
+                    <p style='margin: 0;'>Nigeria's #1 Job Platform</p>
+                    <p style='margin: 10px 0 0 0;'>
+                        <a href='" . SITE_URL . "' style='color: #6b7280; text-decoration: none;'>Visit Website</a> | 
+                        <a href='" . SITE_URL . "/pages/user/applications.php' style='color: #6b7280; text-decoration: none;'>My Applications</a>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        ";
+        
+        $subject = "Interview Scheduled: {$jobTitle} at {$companyName}";
+        
+        // Send email headers
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: " . SITE_NAME . " <" . SITE_EMAIL . ">\r\n";
+        $headers .= "Reply-To: " . SITE_EMAIL . "\r\n";
+        
+        // Store email in development mode
+        if (defined('DEV_MODE') && DEV_MODE && function_exists('devStoreEmail')) {
+            devStoreEmail($candidateEmail, $subject, $emailHtml, 'interview_scheduled');
+        }
+        
+        // Send actual email in production
+        $sent = mail($candidateEmail, $subject, $emailHtml, $headers);
+        
+        // Log the notification
+        error_log("Interview scheduled email sent to {$candidateEmail} - Job: {$jobTitle} - Date: {$interviewDatetime}");
+        
+        return $sent || (defined('DEV_MODE') && DEV_MODE);
+        
+    } catch (Exception $e) {
+        error_log("Error sending interview email: " . $e->getMessage());
+        return false;
+    }
+}
 ?>

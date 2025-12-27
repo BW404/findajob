@@ -172,6 +172,35 @@ try {
     error_log("Recommended jobs error: " . $e->getMessage());
 }
 
+// Get upcoming interviews
+$upcomingInterviews = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT 
+            ja.id,
+            ja.interview_date,
+            ja.interview_type,
+            ja.interview_link,
+            ja.employer_notes,
+            j.id as job_id,
+            j.title as job_title,
+            j.company_name,
+            j.state,
+            j.city
+        FROM job_applications ja
+        JOIN jobs j ON ja.job_id = j.id
+        WHERE ja.job_seeker_id = ?
+        AND ja.interview_date IS NOT NULL
+        AND ja.interview_date >= NOW()
+        ORDER BY ja.interview_date ASC
+        LIMIT 3
+    ");
+    $stmt->execute([$userId]);
+    $upcomingInterviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Upcoming interviews error: " . $e->getMessage());
+}
+
 // Get recent activities
 $recentActivities = [];
 try {
@@ -1475,6 +1504,82 @@ function getApplicationStatusMessage($status) {
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <!-- Upcoming Interviews -->
+                    <?php if (count($upcomingInterviews) > 0): ?>
+                    <div class="dashboard-card" style="border-left: 4px solid #8b5cf6;">
+                        <div class="card-header">
+                            <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-video" style="color: #8b5cf6;"></i>
+                                Upcoming Interviews
+                            </h3>
+                            <a href="interviews.php" class="view-all" style="color: #8b5cf6;">View All →</a>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <?php foreach ($upcomingInterviews as $interview): 
+                                $interviewDate = new DateTime($interview['interview_date']);
+                                $now = new DateTime();
+                                $diff = $now->diff($interviewDate);
+                                $daysUntil = $diff->days;
+                                
+                                $urgencyBadge = '';
+                                $urgencyColor = '#10b981';
+                                if ($interviewDate->format('Y-m-d') === $now->format('Y-m-d')) {
+                                    $urgencyBadge = 'TODAY';
+                                    $urgencyColor = '#dc2626';
+                                } elseif ($daysUntil === 1) {
+                                    $urgencyBadge = 'TOMORROW';
+                                    $urgencyColor = '#f59e0b';
+                                }
+                            ?>
+                            <div style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <?php if ($urgencyBadge): ?>
+                                <div style="background: <?php echo $urgencyColor; ?>; color: white; font-size: 0.7rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; margin-bottom: 0.75rem;">
+                                    <?php echo $urgencyBadge; ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0 0 0.25rem 0; color: #1a202c; font-size: 1.1rem; font-weight: 700;">
+                                            <?php echo htmlspecialchars($interview['job_title']); ?>
+                                        </h4>
+                                        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
+                                            <i class="fas fa-building"></i> <?php echo htmlspecialchars($interview['company_name']); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem; color: #64748b;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-calendar" style="color: #8b5cf6; width: 16px;"></i>
+                                        <span><?php echo $interviewDate->format('D, M j, Y'); ?></span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-clock" style="color: #8b5cf6; width: 16px;"></i>
+                                        <span><?php echo $interviewDate->format('g:i A'); ?></span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-<?php echo $interview['interview_type'] === 'video' ? 'video' : ($interview['interview_type'] === 'phone' ? 'phone' : 'map-marker-alt'); ?>" style="color: #8b5cf6; width: 16px;"></i>
+                                        <span><?php echo ucfirst($interview['interview_type']); ?> Interview</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <?php if ($interview['interview_type'] === 'video' && $interview['interview_link']): ?>
+                                    <a href="<?php echo htmlspecialchars($interview['interview_link']); ?>" target="_blank" style="background: #8b5cf6; color: white; padding: 0.6rem 1.25rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+                                        <i class="fas fa-video"></i> Join Meeting
+                                    </a>
+                                    <?php endif; ?>
+                                    <a href="interviews.php" style="background: #f3f4f6; color: #64748b; padding: 0.6rem 1.25rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+                                        <i class="fas fa-info-circle"></i> View Details
+                                    </a>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <?php 
                     // Display Internship Badges

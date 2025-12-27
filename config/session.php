@@ -6,7 +6,61 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Check if user is logged in
 function isLoggedIn() {
+    if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+        return false;
+    }
+    
+    // Check if user is suspended (only if logged in)
+    checkSuspensionStatus();
+    
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+// Check if current user's account is suspended
+function checkSuspensionStatus() {
+    if (!isset($_SESSION['user_id'])) {
+        return;
+    }
+    
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT is_suspended, suspension_expires, suspension_reason 
+            FROM users 
+            WHERE id = ?
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if ($user && $user['is_suspended']) {
+            // Check if suspension has expired
+            if ($user['suspension_expires'] && strtotime($user['suspension_expires']) < time()) {
+                // Auto-unsuspend
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET is_suspended = 0,
+                        suspension_reason = NULL,
+                        suspended_at = NULL,
+                        suspended_by = NULL,
+                        suspension_expires = NULL
+                    WHERE id = ?
+                ");
+                $stmt->execute([$_SESSION['user_id']]);
+            } else {
+                // Force logout suspended user
+                $_SESSION['suspension_message'] = $user['suspension_reason'] ?: 'Your account has been suspended.';
+                $_SESSION['suspension_expires'] = $user['suspension_expires'];
+                logoutUser();
+                
+                // Redirect to login with suspension message
+                header('Location: /findajob/pages/auth/login.php?suspended=1');
+                exit();
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Suspension check error: " . $e->getMessage());
+    }
 }
 
 // Check if user is job seeker

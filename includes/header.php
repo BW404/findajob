@@ -26,6 +26,8 @@ $is_auth_page = strpos($_SERVER['REQUEST_URI'], '/auth/') !== false;
 $user_avatar = null;
 $user_nin_verified = false;
 $user_first_name = $_SESSION['first_name'] ?? 'User';
+$upcoming_interviews_count = 0;
+
 if (isLoggedIn()) {
     try {
         $db_path = $header_base_path . 'config/database.php';
@@ -44,6 +46,19 @@ if (isLoggedIn()) {
                     LEFT JOIN job_seeker_profiles jsp ON u.id = jsp.user_id 
                     WHERE u.id = ?
                 ");
+                $stmt->execute([$userId]);
+                $result = $stmt->fetch();
+                
+                // Get upcoming interviews count
+                $interviewStmt = $pdo->prepare("
+                    SELECT COUNT(*) 
+                    FROM job_applications 
+                    WHERE job_seeker_id = ? 
+                    AND interview_date IS NOT NULL 
+                    AND interview_date >= NOW()
+                ");
+                $interviewStmt->execute([$userId]);
+                $upcoming_interviews_count = $interviewStmt->fetchColumn();
             } else {
                 // Get logo from employer_profiles or users table
                 $stmt = $pdo->prepare("
@@ -55,9 +70,10 @@ if (isLoggedIn()) {
                     LEFT JOIN employer_profiles ep ON u.id = ep.user_id 
                     WHERE u.id = ?
                 ");
+                $stmt->execute([$userId]);
+                $result = $stmt->fetch();
             }
-            $stmt->execute([$userId]);
-            $result = $stmt->fetch();
+            
             if ($result) {
                 // Update first name from database (may have been updated by NIN verification)
                 $user_first_name = $result['first_name'] ?? $_SESSION['first_name'];
@@ -101,6 +117,14 @@ if (isLoggedIn()) {
                             <li><a href="<?php echo $is_auth_page ? '../user/private-offers.php' : '/findajob/pages/user/private-offers.php'; ?>" class="nav-link" style="position: relative;">
                                 Private Offers
                                 <span id="privateOffersNotificationJobSeeker" style="display: none; position: absolute; top: -5px; right: -10px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px;"></span>
+                            </a></li>
+                            <li><a href="<?php echo $is_auth_page ? '../user/interviews.php' : '/findajob/pages/user/interviews.php'; ?>" class="nav-link" style="position: relative;">
+                                <i class="fas fa-video"></i> Interviews
+                                <?php if ($upcoming_interviews_count > 0): ?>
+                                <span style="position: absolute; top: -5px; right: -10px; background: #8b5cf6; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; font-weight: 700;">
+                                    <?php echo $upcoming_interviews_count; ?>
+                                </span>
+                                <?php endif; ?>
                             </a></li>
                             <li><a href="<?php echo $is_auth_page ? '../user/applications.php' : '/findajob/pages/user/applications.php'; ?>" class="nav-link">My Applications</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../user/profile.php' : '/findajob/pages/user/profile.php'; ?>" class="nav-link">Profile</a></li>
