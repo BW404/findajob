@@ -10,6 +10,34 @@ if (!function_exists('hasPermission')) {
     require_once __DIR__ . '/../../config/permissions.php';
 }
 
+// Define fallback functions if permissions.php is missing
+if (!function_exists('hasPermission')) {
+    function hasPermission($userId, $permissionName) {
+        return true; // Default to allow if function not available
+    }
+}
+if (!function_exists('hasAnyPermission')) {
+    function hasAnyPermission($userId, array $permissions) {
+        return true; // Default to allow if function not available
+    }
+}
+if (!function_exists('isSuperAdmin')) {
+    function isSuperAdmin($userId = null) {
+        global $pdo;
+        if ($userId === null) {
+            $userId = getCurrentUserId();
+        }
+        try {
+            $stmt = $pdo->prepare("SELECT admin_role_id FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+            return $user && $user['admin_role_id'] == 1; // ID 1 is Super Admin
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+}
+
 // Get current admin's role
 $current_user_id = getCurrentUserId();
 $admin_role_name = 'Admin';
@@ -100,6 +128,10 @@ try {
                 <span>Jobs Manager</span>
             </a>
             <?php endif; ?>
+            <a href="job-centres.php" class="nav-link <?= $current_page == 'job-centres.php' ? 'active' : '' ?>">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Job Centres</span>
+            </a>
             <?php if (hasPermission(getCurrentUserId(), 'view_cvs')): ?>
             <a href="cvs.php" class="nav-link <?= $current_page == 'cvs.php' ? 'active' : '' ?>">
                 <i class="fas fa-file-alt"></i>
