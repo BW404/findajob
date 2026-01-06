@@ -52,6 +52,7 @@ $base_path = $is_auth_page ? '../../' : '/findajob/';
                 <h4>For Job Seekers</h4>
                 <ul class="footer-links">
                     <li><a href="<?php echo $base_path; ?>pages/jobs/browse.php">Browse Jobs</a></li>
+                    <li><a href="<?php echo $base_path; ?>pages/user/job-centres.php">Job Centres</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/services/cv-creator.php">CV Builder</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/services/training.php">Career Training</a></li>
                     <li><a href="<?php echo $base_path; ?>pages/payment/plans.php">Upgrade to Pro</a></li>

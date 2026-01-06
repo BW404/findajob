@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Job Centres Filter Debug</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .test { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        pre { background: #f9fafb; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
+        h3 { color: #dc2626; margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Job Centres Filter Debugging</h1>
+
+    <div class="test">
+        <h3>Test Different Filter Combinations</h3>
+        <button onclick="testFilter('all')">All Centres</button>
+        <button onclick="testFilter('government')">Government Only</button>
+        <button onclick="testFilter('private')">Private Only</button>
+        <button onclick="testFilter('online')">Online Only</button>
+        <button onclick="testFilter('offline')">Offline Only</button>
+        <div id="results"></div>
+    </div>
+
+    <div class="test">
+        <h3>Manual API Test</h3>
+        <p>Enter custom parameters:</p>
+        <input type="text" id="customParams" placeholder="e.g., page=1&is_government=1" style="width: 400px; padding: 8px;">
+        <button onclick="testCustom()">Test</button>
+        <div id="customResults"></div>
+    </div>
+
+    <script>
+        async function testFilter(type) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+            
+            let url = '/findajob/api/job-centres.php?action=list';
+            
+            switch(type) {
+                case 'government':
+                    url += '&is_government=1';
+                    break;
+                case 'private':
+                    url += '&is_government=0';
+                    break;
+                case 'online':
+                    url += '&category=online';
+                    break;
+                case 'offline':
+                    url += '&category=offline';
+                    break;
+            }
+            
+            try {
+                console.log('Testing URL:', url);
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let html = `
+                    <p class="${data.success ? 'success' : 'error'}">
+                        <strong>Status:</strong> ${data.success ? '✓ Success' : '✗ Failed'}
+                    </p>
+                    <p><strong>URL:</strong> <code>${url}</code></p>
+                    <p><strong>Centres Returned:</strong> ${data.centres ? data.centres.length : 0}</p>
+                    <p><strong>Total in DB:</strong> ${data.pagination ? data.pagination.total : 'N/A'}</p>
+                `;
+                
+                if (data.centres && data.centres.length > 0) {
+                    html += '<p><strong>Centre Names:</strong></p><ul>';
+                    data.centres.forEach(c => {
+                        html += `<li>${c.name} (${c.is_government ? 'Government' : 'Private'}, ${c.category})</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                html += '<p><strong>Full Response:</strong></p>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                resultsDiv.innerHTML = html;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testCustom() {
+            const params = document.getElementById('customParams').value;
+            const resultsDiv = document.getElementById('customResults');
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+            
+            const url = `/findajob/api/job-centres.php?action=list&${params}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <p class="success">✓ Response received</p>
+                    <p><strong>URL:</strong> <code>${url}</code></p>
+                    <p><strong>Centres:</strong> ${data.centres ? data.centres.length : 0}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = () => testFilter('all');
+    </script>
+</body>
+</html>

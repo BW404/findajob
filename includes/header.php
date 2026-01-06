@@ -114,6 +114,7 @@ if (isLoggedIn()) {
                         <?php if (isJobSeeker()): ?>
                             <li><a href="<?php echo $is_auth_page ? '../user/dashboard.php' : '/findajob/pages/user/dashboard.php'; ?>" class="nav-link">Dashboard</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../jobs/browse.php' : '/findajob/pages/jobs/browse.php'; ?>" class="nav-link">Browse Jobs</a></li>
+                            <li><a href="<?php echo $is_auth_page ? '../user/job-centres.php' : '/findajob/pages/user/job-centres.php'; ?>" class="nav-link">Job Centres</a></li>
                             <li><a href="<?php echo $is_auth_page ? '../user/private-offers.php' : '/findajob/pages/user/private-offers.php'; ?>" class="nav-link" style="position: relative;">
                                 Private Offers
                                 <span id="privateOffersNotificationJobSeeker" style="display: none; position: absolute; top: -5px; right: -10px; background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px;"></span>
@@ -162,6 +163,7 @@ if (isLoggedIn()) {
                         </li>
                     <?php else: ?>
                         <li><a href="<?php echo $is_auth_page ? '../jobs/browse.php' : '/findajob/pages/jobs/browse.php'; ?>" class="nav-link">Browse Jobs</a></li>
+                        <li><a href="<?php echo $is_auth_page ? '../user/job-centres.php' : '/findajob/pages/user/job-centres.php'; ?>" class="nav-link">Job Centres</a></li>
                         <li><a href="<?php echo $is_auth_page ? '../services/cv-creator.php' : '/findajob/pages/services/cv-creator.php'; ?>" class="nav-link">CV Builder</a></li>
                         <li><a href="<?php echo $is_auth_page ? 'login.php' : '/findajob/pages/auth/login.php'; ?>" class="nav-link">Sign In</a></li>
                         <li><a href="<?php echo $is_auth_page ? 'register-jobseeker.php' : '/findajob/pages/auth/register-jobseeker.php'; ?>" class="btn btn-register nav-cta">Get Started</a></li>
