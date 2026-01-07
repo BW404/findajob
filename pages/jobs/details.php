@@ -13,6 +13,7 @@ $dbPath = __DIR__ . '/../../config/database.php';
 $sessionPath = __DIR__ . '/../../config/session.php';
 $funcPath = __DIR__ . '/../../includes/functions.php';
 $constPath = __DIR__ . '/../../config/constants.php';
+$adPath = __DIR__ . '/../../includes/ad-display.php';
 
 if (!file_exists($dbPath)) {
     if (isset($_GET['debug']) && $_GET['debug']) echo "Missing database.php at $dbPath";
@@ -38,6 +39,11 @@ require_once $funcPath;
 // Load constants (SITE_NAME, SITE_URL, etc.) if available
 if (file_exists($constPath)) {
     require_once $constPath;
+}
+
+// Load ad display functions
+if (file_exists($adPath)) {
+    require_once $adPath;
 }
 
 // Pro features for application limits
@@ -224,6 +230,14 @@ if (isset($_GET['debug']) && $_GET['debug']) {
                             <h3 style="margin-bottom:8px;">Job description</h3>
                             <div class="job-description" style="line-height:1.6; color:var(--text-primary);"><?php echo nl2br(htmlspecialchars($job['description'] ?? '')); ?></div>
                         </section>
+                        
+                        <?php 
+                        // Display inline ad after description
+                        $inline_ads = getActiveAds('job_details', 'inline', 1);
+                        if (!empty($inline_ads)) {
+                            displayInlineAd($inline_ads[0]);
+                        }
+                        ?>
 
                         <?php if (!empty($job['requirements'])): ?>
                         <section class="job-section" style="margin-top:1rem;">
@@ -519,5 +533,7 @@ if (isset($_GET['debug']) && $_GET['debug']) {
         // Add class for bottom nav styling
         document.body.classList.add('has-bottom-nav');
     </script>
+    
+    <?php includeAdTrackingScript(); ?>
 </body>
 </html>

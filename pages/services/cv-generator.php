@@ -3,6 +3,7 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
 require_once '../../includes/pro-features.php';
+require_once '../../includes/ad-display.php';
 
 requireJobSeeker();
 
@@ -457,6 +458,14 @@ if ($editingCvId) {
     <?php include '../../includes/header.php'; ?>
 
     <div class="generator-container">
+        <?php 
+        // Display banner ad at top of CV generator
+        $banner_ads = getActiveAds('cv_page', 'banner', 1);
+        if (!empty($banner_ads)) {
+            displayBannerAd($banner_ads[0], 'medium');
+        }
+        ?>
+        
         <div style="margin-bottom: 2rem;">
             <h1><i class="fas fa-magic"></i> AI-Powered CV Generator</h1>
             <p style="color: #6b7280;">Create a professional CV with AI assistance in minutes</p>
@@ -988,6 +997,16 @@ if ($editingCvId) {
                 </form>
             </div>
         </div>
+        
+        <?php 
+        // Display inline ad at bottom of CV generator
+        $inline_ads = getActiveAds('cv_page', 'inline', 1);
+        if (!empty($inline_ads)) {
+            echo '<div style="margin-top: 2rem;">';
+            displayInlineAd($inline_ads[0]);
+            echo '</div>';
+        }
+        ?>
     </div>
 
     <script>
@@ -1652,5 +1671,7 @@ if ($editingCvId) {
             });
         }
     </script>
+    
+    <?php includeAdTrackingScript(); ?>
 </body>
 </html>

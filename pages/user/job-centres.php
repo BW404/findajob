@@ -2,6 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/ad-display.php';
 
 // Check if user is logged in and is a job seeker
 if (!isLoggedIn()) {
@@ -96,17 +97,20 @@ $page_title = 'Job Centres - Find Employment Assistance';
             right: 0.5rem;
             top: 50%;
             transform: translateY(-50%);
-            background: var(--primary);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
             border: none;
             padding: 0.5rem 1.5rem;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
         }
 
         .search-btn:hover {
-            background: var(--primary-dark);
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            transform: translateY(-52%);
         }
 
         .filter-tags {
@@ -311,17 +315,20 @@ $page_title = 'Job Centres - Find Employment Assistance';
         .btn-view {
             flex: 1;
             padding: 0.75rem;
-            background: var(--primary);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
         }
 
         .btn-view:hover {
-            background: var(--primary-dark);
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
         }
 
         .btn-bookmark {
@@ -398,8 +405,10 @@ $page_title = 'Job Centres - Find Employment Assistance';
         }
 
         .pagination button:hover:not(:disabled) {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: #fffbeb;
+            transform: translateY(-2px);
         }
 
         .pagination button:disabled {
@@ -408,9 +417,10 @@ $page_title = 'Job Centres - Find Employment Assistance';
         }
 
         .pagination button.active {
-            background: var(--primary);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
-            border-color: var(--primary);
+            border-color: #f59e0b;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
         }
 
         /* View Toggle Styles */
@@ -438,13 +448,13 @@ $page_title = 'Job Centres - Find Employment Assistance';
         }
 
         .view-toggle button:hover {
-            color: var(--primary);
+            color: #f59e0b;
         }
 
         .view-toggle button.active {
-            background: white;
-            color: var(--primary);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
         }
 
         /* List View Styles */
@@ -598,6 +608,14 @@ $page_title = 'Job Centres - Find Employment Assistance';
 
     <!-- View Toggle & Centres Container -->
     <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+        <?php 
+        // Display banner ad at top of job centres
+        $banner_ads = getActiveAds('dashboard', 'banner', 1);
+        if (!empty($banner_ads)) {
+            displayBannerAd($banner_ads[0], 'medium');
+        }
+        ?>
+        
         <div class="view-toggle">
             <button class="active" onclick="setView('grid')" id="gridViewBtn">
                 <span>▦</span> Grid View
@@ -618,6 +636,16 @@ $page_title = 'Job Centres - Find Employment Assistance';
 
     <!-- Pagination -->
     <div class="pagination" id="pagination" style="display: none;"></div>
+    
+    <?php 
+    // Display inline ad after job centres
+    echo '<div style="max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem;">';
+    $inline_ads = getActiveAds('dashboard', 'inline', 1);
+    if (!empty($inline_ads)) {
+        displayInlineAd($inline_ads[0]);
+    }
+    echo '</div>';
+    ?>
 
     <?php include '../../includes/footer.php'; ?>
 
@@ -1099,5 +1127,7 @@ $page_title = 'Job Centres - Find Employment Assistance';
             loadCentres();
         });
     </script>
+    
+    <?php includeAdTrackingScript(); ?>
 </body>
 </html>

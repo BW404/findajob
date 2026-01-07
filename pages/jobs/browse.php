@@ -3,6 +3,7 @@ require_once '../../config/database.php';
 require_once '../../config/session.php';
 require_once '../../config/maintenance-check.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/ad-display.php';
 
 // Get filter parameters
 $keywords = $_GET['keywords'] ?? $_GET['q'] ?? '';
@@ -226,6 +227,14 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php endforeach; ?>
                 </div>
             </div>
+            
+            <?php 
+            // Display sidebar ads
+            $sidebar_ads = getActiveAds('jobs_page', 'sidebar', 2);
+            foreach ($sidebar_ads as $ad) {
+                displaySidebarAd($ad);
+            }
+            ?>
             
             <div class="sidebar-section">
                 <h3>Quick Tips</h3>
@@ -1132,6 +1141,7 @@ $popular_locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- PWA Scripts -->
     <script src="../../assets/js/pwa.js"></script>
+    <?php includeAdTrackingScript(); ?>
     <script>
         // Initialize PWA features
         if ('PWAManager' in window) {

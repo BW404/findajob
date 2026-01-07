@@ -42,10 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $description = trim($_POST['description']);
                 $ad_type = $_POST['ad_type'];
                 $placement = $_POST['placement'];
-                $target_url = trim($_POST['target_url']);
+                $target_url = trim($_POST['target_url'] ?? '');
                 $start_date = $_POST['start_date'];
-                $end_date = $_POST['end_date'];
+                $end_date = $_POST['end_date'] ?? null;
                 $is_active = isset($_POST['is_active']) ? 1 : 0;
+                $ad_position = $_POST['ad_position'] ?? 'center';
+                $priority = (int)($_POST['priority'] ?? 0);
+                $custom_code = trim($_POST['custom_code'] ?? '');
                 
                 // Handle image upload
                 $image_path = null;
@@ -72,10 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO advertisements (title, description, ad_type, placement, image_path, target_url, start_date, end_date, is_active, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO advertisements (title, description, ad_type, placement, image_path, custom_code, ad_position, priority, target_url, start_date, end_date, is_active, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$title, $description, $ad_type, $placement, $image_path, $target_url, $start_date, $end_date, $is_active, $user_id]);
+                $stmt->execute([$title, $description, $ad_type, $placement, $image_path, $custom_code, $ad_position, $priority, $target_url, $start_date, $end_date, $is_active, $user_id]);
                 
                 echo json_encode(['success' => true, 'message' => 'Advertisement created successfully']);
                 exit;
@@ -91,10 +94,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $description = trim($_POST['description']);
                 $ad_type = $_POST['ad_type'];
                 $placement = $_POST['placement'];
-                $target_url = trim($_POST['target_url']);
+                $target_url = trim($_POST['target_url'] ?? '');
                 $start_date = $_POST['start_date'];
-                $end_date = $_POST['end_date'];
+                $end_date = $_POST['end_date'] ?? null;
                 $is_active = isset($_POST['is_active']) ? 1 : 0;
+                $ad_position = $_POST['ad_position'] ?? 'center';
+                $priority = (int)($_POST['priority'] ?? 0);
+                $custom_code = trim($_POST['custom_code'] ?? '');
                 
                 // Handle image upload
                 if (isset($_FILES['ad_image']) && $_FILES['ad_image']['error'] === 0) {
@@ -119,18 +125,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $image_path = 'uploads/ads/' . $filename;
                         $stmt = $pdo->prepare("
                             UPDATE advertisements 
-                            SET title = ?, description = ?, ad_type = ?, placement = ?, image_path = ?, target_url = ?, start_date = ?, end_date = ?, is_active = ?
+                            SET title = ?, description = ?, ad_type = ?, placement = ?, image_path = ?, custom_code = ?, ad_position = ?, priority = ?, target_url = ?, start_date = ?, end_date = ?, is_active = ?
                             WHERE id = ?
                         ");
-                        $stmt->execute([$title, $description, $ad_type, $placement, $image_path, $target_url, $start_date, $end_date, $is_active, $ad_id]);
+                        $stmt->execute([$title, $description, $ad_type, $placement, $image_path, $custom_code, $ad_position, $priority, $target_url, $start_date, $end_date, $is_active, $ad_id]);
                     }
                 } else {
                     $stmt = $pdo->prepare("
                         UPDATE advertisements 
-                        SET title = ?, description = ?, ad_type = ?, placement = ?, target_url = ?, start_date = ?, end_date = ?, is_active = ?
+                        SET title = ?, description = ?, ad_type = ?, placement = ?, custom_code = ?, ad_position = ?, priority = ?, target_url = ?, start_date = ?, end_date = ?, is_active = ?
                         WHERE id = ?
                     ");
-                    $stmt->execute([$title, $description, $ad_type, $placement, $target_url, $start_date, $end_date, $is_active, $ad_id]);
+                    $stmt->execute([$title, $description, $ad_type, $placement, $custom_code, $ad_position, $priority, $target_url, $start_date, $end_date, $is_active, $ad_id]);
                 }
                 
                 echo json_encode(['success' => true, 'message' => 'Advertisement updated successfully']);
@@ -928,11 +934,14 @@ try {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Type *</label>
-                        <select id="adType" name="ad_type" required>
-                            <option value="banner">Banner</option>
-                            <option value="sidebar">Sidebar</option>
-                            <option value="inline">Inline</option>
-                            <option value="popup">Popup</option>
+                        <select id="adType" name="ad_type" required onchange="toggleAdFields()">
+                            <option value="banner">Banner Ad</option>
+                            <option value="sidebar">Sidebar Ad</option>
+                            <option value="inline">Inline Ad</option>
+                            <option value="popup">Popup Ad</option>
+                            <option value="google_adsense">Google AdSense</option>
+                            <option value="custom_code">Custom Code</option>
+                            <option value="video">Video Ad</option>
                         </select>
                     </div>
 
@@ -943,16 +952,47 @@ try {
                             <option value="jobs_page">Jobs Page</option>
                             <option value="job_details">Job Details</option>
                             <option value="dashboard">Dashboard</option>
+                            <option value="search_results">Search Results</option>
+                            <option value="profile_page">Profile Page</option>
+                            <option value="cv_page">CV Page</option>
+                            <option value="company_page">Company Page</option>
+                            <option value="all_pages">All Pages</option>
                         </select>
                     </div>
                 </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Position</label>
+                        <select id="adPosition" name="ad_position">
+                            <option value="top">Top</option>
+                            <option value="center" selected>Center</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label>Advertisement Image</label>
-                    <input type="file" name="ad_image" accept="image/*">
+                    <div class="form-group">
+                        <label>Priority (0-100)</label>
+                        <input type="number" id="adPriority" name="priority" value="0" min="0" max="100">
+                        <small style="display:block; margin-top:5px; color:#666;">Higher priority ads are shown first</small>
+                    </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="imageField">
+                    <label>Advertisement Image</label>
+                    <input type="file" name="ad_image" accept="image/*">
+                    <small style="display:block; margin-top:5px; color:#666;">Supported formats: JPG, PNG, GIF, WebP (Max 5MB)</small>
+                </div>
+                
+                <div class="form-group" id="customCodeField" style="display:none;">
+                    <label>Custom Code (HTML/JavaScript) *</label>
+                    <textarea id="customCode" name="custom_code" rows="8" placeholder="<script>&#10;  // Google AdSense or other ad network code&#10;</script>"></textarea>
+                    <small style="display:block; margin-top:5px; color:#666;">Paste your Google AdSense code or custom HTML/JavaScript here</small>
+                </div>
+
+                <div class="form-group" id="urlField">
                     <label>Target URL</label>
                     <input type="url" id="adUrl" name="target_url" placeholder="https://example.com">
                 </div>
@@ -989,6 +1029,25 @@ try {
     </div>
 
     <script>
+        function toggleAdFields() {
+            const adType = document.getElementById('adType').value;
+            const imageField = document.getElementById('imageField');
+            const customCodeField = document.getElementById('customCodeField');
+            const urlField = document.getElementById('urlField');
+            
+            // Reset visibility
+            imageField.style.display = 'block';
+            customCodeField.style.display = 'none';
+            urlField.style.display = 'block';
+            
+            // Show/hide fields based on ad type
+            if (adType === 'google_adsense' || adType === 'custom_code') {
+                imageField.style.display = 'none';
+                customCodeField.style.display = 'block';
+                urlField.style.display = 'none';
+            }
+        }
+        
         function openCreateModal() {
             document.getElementById('modalTitle').textContent = 'Create Advertisement';
             document.getElementById('formAction').value = 'create_ad';
@@ -996,6 +1055,7 @@ try {
             document.getElementById('adId').value = '';
             document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('adModal').classList.add('active');
+            toggleAdFields();
         }
 
         function editAd(ad) {
@@ -1006,11 +1066,24 @@ try {
             document.getElementById('adDescription').value = ad.description || '';
             document.getElementById('adType').value = ad.ad_type;
             document.getElementById('adPlacement').value = ad.placement;
+            
+            // Set new fields
+            if (ad.ad_position) {
+                document.getElementById('adPosition').value = ad.ad_position;
+            }
+            if (ad.priority) {
+                document.getElementById('adPriority').value = ad.priority;
+            }
+            if (ad.custom_code) {
+                document.getElementById('customCode').value = ad.custom_code;
+            }
+            
             document.getElementById('adUrl').value = ad.target_url || '';
             document.getElementById('startDate').value = ad.start_date;
             document.getElementById('endDate').value = ad.end_date || '';
             document.getElementById('isActive').checked = ad.is_active == 1;
             document.getElementById('adModal').classList.add('active');
+            toggleAdFields();
         }
 
         function closeModal() {

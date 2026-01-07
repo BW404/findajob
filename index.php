@@ -3,6 +3,7 @@ require_once 'config/database.php';
 require_once 'config/session.php';
 require_once 'config/constants.php';
 require_once 'config/maintenance-check.php';
+require_once 'includes/ad-display.php';
 
 // If already logged in, redirect to appropriate dashboard
 if (isLoggedIn()) {
@@ -112,6 +113,14 @@ if (isLoggedIn()) {
             </div>
         </section>
 
+        <?php 
+        // Display banner ad after hero section
+        $homepage_ads = getActiveAds('homepage', 'banner', 1);
+        if (!empty($homepage_ads)) {
+            displayBannerAd($homepage_ads[0], 'large');
+        }
+        ?>
+
         <!-- Features Section -->
         <section style="padding: 4rem 0; background: white;">
             <div class="container">
@@ -158,6 +167,14 @@ if (isLoggedIn()) {
                 </div>
             </div>
         </section>
+
+        <?php 
+        // Display inline ad between features and CTA
+        $inline_ads = getActiveAds('homepage', 'inline', 1);
+        if (!empty($inline_ads)) {
+            displayInlineAd($inline_ads[0]);
+        }
+        ?>
 
         <!-- CTA Section -->
         <section style="background: var(--background); padding: 4rem 0;">
@@ -219,6 +236,7 @@ if (isLoggedIn()) {
     <!-- PWA Scripts -->
     <script src="assets/js/pwa.js"></script>
     <script src="assets/js/location-autocomplete.js"></script>
+    <?php includeAdTrackingScript(); ?>
     <script>
         // Add body class for bottom nav
         document.body.classList.add('has-bottom-nav');
